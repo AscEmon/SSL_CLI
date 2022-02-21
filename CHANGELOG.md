@@ -16,3 +16,12 @@
 ## 1.0.4
 
 - WIP: file create under folder.
+
+## 1.0.5
+
+- WIP: file create under folder with content.
+
+## 1.0.6
+
+- WIP: file create under folder with content.
+- localization file type create

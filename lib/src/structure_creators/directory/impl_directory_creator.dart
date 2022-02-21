@@ -8,7 +8,10 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _l10n = 'l10n';
   final _mvc = 'mvc';
   final _utils = 'utils';
-  final _appUrl='app_url.dart';
+  final _model = 'model';
+  final _widget = 'widget';
+  final _intl_bn_arb='intl_bn.arb';
+   final _intl_en_arb='intl_en.arb';
 
   late final String basePath;
 
@@ -57,14 +60,23 @@ class ImplDirectoryCreator implements IDirectoryCreator {
 
       print('creating directories...\n');
 
+      //constant directory
       print('creating constant directory...');
       await Directory(absConstantPath).create();
-      await Directory('$absConstantPath/$_appUrl').create();
 
-      // data directory
-      print('creating data directory...');
+      // dataProvider directory
+      print('creating dataProvider directory...');
       await Directory(absDataProviderPath).create();
+
+      //global directory
+      print('creating global directory...');
       await Directory(absGlobalPath).create();
+      await Directory('$absGlobalPath/$_model').create();
+      await Directory('$absGlobalPath/$_widget').create();
+      
+
+      //l10n directory
+      print('creating l10n directory...');
       await Directory(absl10nPath).create();
       await Directory(absMvcPath).create();
       await Directory(absUtilsPath).create();
