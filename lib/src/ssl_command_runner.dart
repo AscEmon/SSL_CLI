@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:args/args.dart';
-import 'package:license/license.dart';
+
 
 import 'command/create_command.dart';
 import 'command/help_command.dart';
@@ -9,7 +9,7 @@ import 'command/i_command.dart';
 
 class SSLCommandRunner {
   void run(List<String> arguments) {
-    LicenseData(copyrightHolderName: 'Abu Sayed Chowdhury');
+ 
     final argParser = ArgParser();
 
     argParser.addCommand('create');

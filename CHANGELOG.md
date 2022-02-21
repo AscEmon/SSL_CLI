@@ -5,3 +5,10 @@
 
 - change readme file.
 - bin folder added.
+
+
+## 1.0.3
+
+- change log file.
+- executable file added in pubspec
+- licence package remove
