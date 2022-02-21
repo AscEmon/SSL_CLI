@@ -25,3 +25,7 @@
 
 - WIP: file create under folder with content.
 - localization file type create
+
+## 1.0.7
+
+- minor bug fixed
