@@ -12,8 +12,8 @@ class ImplFileCreator implements IFileCreator {
     print('creating necessary files...');
 
     await _createFile(
-      directoryCreator.globalDir.path + '/core',
-      'bloc_observer',
+      directoryCreator.constantDir.path + '/app_url',
+      'Class AppUrl{ static const BASE_URL = "";}',
     );
 
     await _createFile(

@@ -8,6 +8,7 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _l10n = 'l10n';
   final _mvc = 'mvc';
   final _utils = 'utils';
+  final _appUrl='app_url.dart';
 
   late final String basePath;
 
@@ -56,10 +57,9 @@ class ImplDirectoryCreator implements IDirectoryCreator {
 
       print('creating directories...\n');
 
-      // bloc directory
       print('creating constant directory...');
       await Directory(absConstantPath).create();
-      // await Directory('$absBlocPath/$_core').create();
+      await Directory('$absConstantPath/$_appUrl').create();
 
       // data directory
       print('creating data directory...');
