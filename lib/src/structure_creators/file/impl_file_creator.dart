@@ -288,11 +288,25 @@ class PrefHelper {
       directoryCreator.l10nDir.path,
       'intl_en',
       fileExtention: 'arb',
-      content:
-          """{"logout_button":"Log out","item":"You have %d item","add_address":"Add Adress"}""",
+      content: """{
+
+    "logout_button": "Log out",
+    "note": "Note",
+    "cancel": "Cancel",
+    "yes": "Yes",
+    "delete": "Delete",
+    "item": "You have %d item",
+    "add_address":"Add Adress"
+
+
+}""",
     );
 
     //MVC  module file
+    await _createFile(
+      directoryCreator.mvcDir.path + '/controller',
+      'controller_name',
+    );
     await _createFile(
       directoryCreator.mvcDir.path + '/model',
       'model_class_name',
@@ -301,10 +315,7 @@ class PrefHelper {
       directoryCreator.mvcDir.path + '/views',
       'views_name',
     );
-    await _createFile(
-      directoryCreator.mvcDir.path + '/controller',
-      'controller_name',
-    );
+
 //Utils file
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_assets',
         content:
