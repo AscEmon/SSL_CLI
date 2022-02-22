@@ -73,3 +73,6 @@
 ## 1.0.18
 
 -nested folder file create error
+## 1.0.19
+
+-nested folder file create issue find

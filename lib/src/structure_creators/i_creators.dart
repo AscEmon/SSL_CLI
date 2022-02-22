@@ -12,6 +12,7 @@ abstract class IDirectoryCreator {
   Directory get l10nDir;
   Directory get mvcDir;
   Directory get utilsDir;
+  Directory get  mvcControllerDir;
 }
 
 abstract class IFileCreator {

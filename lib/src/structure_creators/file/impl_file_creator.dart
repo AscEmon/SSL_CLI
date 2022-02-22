@@ -304,15 +304,15 @@ class PrefHelper {
 
     //MVC  module file
     await _createFile(
-      directoryCreator.mvcDir.path + "/controller",
+      directoryCreator.mvcDir.path + '/module_name' + '/controller',
       'controller_name',
     );
     await _createFile(
-      directoryCreator.mvcDir.path + '/model',
+      directoryCreator.mvcDir.path + '/module_name' + '/model',
       'model_class_name',
     );
     await _createFile(
-      directoryCreator.mvcDir.path + '/views',
+      directoryCreator.mvcDir.path + '/module_name' + '/views',
       'views_name',
     );
 
