@@ -76,3 +76,6 @@
 ## 1.0.19
 
 -nested folder file create issue find
+## 1.0.20
+
+-minor bug
