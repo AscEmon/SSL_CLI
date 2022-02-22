@@ -62,3 +62,6 @@
 ## 1.0.15
 
 -model and util file not generate issue 
+## 1.0.16
+
+-multiline content create for data_provider
