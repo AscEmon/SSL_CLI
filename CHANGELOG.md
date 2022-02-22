@@ -41,3 +41,24 @@
 - content added for multiline
 - mvc folder create
 - util folder create
+
+## 1.0.10
+
+- content type list added
+
+
+## 1.0.11
+
+- crate module in  mvc
+## 1.0.12
+
+- create multiline problem
+## 1.0.13
+
+-apiclient create 
+## 1.0.14
+
+-apiclient create test using comment 
+## 1.0.15
+
+-model and util file not generate issue 

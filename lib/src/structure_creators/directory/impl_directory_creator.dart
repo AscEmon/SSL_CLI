@@ -11,6 +11,7 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _model = 'model';
   final _widget = 'widget';
   final _views = 'views';
+  final _module_name='module_name';
   final _controller = 'controller';
   final _styles='styles';
 
@@ -80,19 +81,18 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       await Directory(absl10nPath).create();
 
       //MVC directory
-      print('creating l10n directory...');
+      print('creating mvc directory...');
       await Directory(absMvcPath).create();
-      await Directory('$absGlobalPath/$_controller').create();
-      await Directory('$absGlobalPath/$_model').create();
-      await Directory('$absGlobalPath/$_views').create();
+      await Directory('$absMvcPath/$_module_name').create();
+      await Directory('$absMvcPath/$_module_name/$_controller').create();
+      await Directory('$absMvcPath/$_module_name/$_model').create();
+      await Directory('$absMvcPath/$_module_name/$_views').create();
 
       //Utils directory
-      print('creating l10n directory...');
+      print('creating util directory...');
       await Directory(absUtilsPath).create();
-      await Directory('$absGlobalPath/$_styles').create();
+      await Directory('$absUtilsPath/$_styles').create();
 
-      // print('creating utils directory...');
-      // await Directory('$basePath/$_utils').create();
 
       return true;
     } catch (e, s) {
