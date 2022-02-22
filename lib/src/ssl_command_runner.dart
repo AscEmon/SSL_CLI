@@ -1,8 +1,5 @@
 import 'dart:io';
-
 import 'package:args/args.dart';
-
-
 import 'command/create_command.dart';
 import 'command/help_command.dart';
 import 'command/i_command.dart';

@@ -29,3 +29,15 @@
 ## 1.0.7
 
 - minor bug fixed
+
+## 1.0.8
+
+- content added for multiline
+- mvc folder create
+- util folder create
+
+## 1.0.9
+
+- content added for multiline
+- mvc folder create
+- util folder create

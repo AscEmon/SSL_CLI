@@ -10,8 +10,9 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _utils = 'utils';
   final _model = 'model';
   final _widget = 'widget';
-  final _intl_bn_arb='intl_bn.arb';
-   final _intl_en_arb='intl_en.arb';
+  final _views = 'views';
+  final _controller = 'controller';
+  final _styles='styles';
 
   late final String basePath;
 
@@ -73,35 +74,25 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       await Directory(absGlobalPath).create();
       await Directory('$absGlobalPath/$_model').create();
       await Directory('$absGlobalPath/$_widget').create();
-      
 
       //l10n directory
       print('creating l10n directory...');
       await Directory(absl10nPath).create();
+
+      //MVC directory
+      print('creating l10n directory...');
       await Directory(absMvcPath).create();
+      await Directory('$absGlobalPath/$_controller').create();
+      await Directory('$absGlobalPath/$_model').create();
+      await Directory('$absGlobalPath/$_views').create();
+
+      //Utils directory
+      print('creating l10n directory...');
       await Directory(absUtilsPath).create();
+      await Directory('$absGlobalPath/$_styles').create();
 
-      // await Directory('$absDataPath/$_core').create();
-      // await Directory('$absDataPath/models').create();
-      // await Directory('$absDataPath/repositories').create();
-      // await Directory('$absDataPath/contractors').create();
-      // await Directory('$absDataPath/data_providers').create();
-
-      // ui directory
-      // print('creating ui directory...');
-      // await Directory(absUiPath).create();
-      // await Directory('$absUiPath/pages').create();
-      // await Directory('$absUiPath/dialogs').create();
-      // await Directory('$absUiPath/$_core').create();
-      // await Directory('$absUiPath/global').create();
-
-      // await Directory('$absUiPath/mvc/get_module/controller').create();
-      // await Directory('$absUiPath/mvc/get_module/model').create();
-      // await Directory('$absUiPath/mvc/get_module/views').create();
-
-      // utils directory
-      print('creating utils directory...');
-      await Directory('$basePath/$_utils').create();
+      // print('creating utils directory...');
+      // await Directory('$basePath/$_utils').create();
 
       return true;
     } catch (e, s) {

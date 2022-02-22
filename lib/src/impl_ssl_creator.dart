@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'structure_creators/i_creators.dart';
 
 class ImplSSLCreator implements ISSLCreator {
