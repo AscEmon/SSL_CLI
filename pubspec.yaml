@@ -1,6 +1,6 @@
 name: ssl_cli
 description: A simple command-line application to generate SSL template (folder and file structure) for Flutter Applications
-version: 1.0.17
+version: 1.0.18
 homepage: https://github.com/AscEmon/SSL_CLI
 
 environment:

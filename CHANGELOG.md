@@ -69,3 +69,7 @@
 ## 1.0.17
 
 -nested folder file create issues
+
+## 1.0.18
+
+-nested folder file create error

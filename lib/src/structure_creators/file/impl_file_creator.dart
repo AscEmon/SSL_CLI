@@ -304,7 +304,7 @@ class PrefHelper {
 
     //MVC  module file
     await _createFile(
-      directoryCreator.mvcDir.path + '/controller',
+      directoryCreator.mvcDir.path + "/controller",
       'controller_name',
     );
     await _createFile(
@@ -604,7 +604,7 @@ class MyApp extends StatelessWidget {
     String basePath,
     String fileName, {
     String? content,
-    String fileExtention = 'dart',
+    String? fileExtention = 'dart',
   }) async {
     String fileType = fileExtention == 'dart' ? 'dart' : 'arb';
     try {

@@ -84,6 +84,8 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       print('creating mvc directory...');
       await Directory(absMvcPath).create();
       await Directory('$absMvcPath/$_module_name').create();
+
+      
       await Directory('$absMvcPath/$_module_name/$_controller').create();
       await Directory('$absMvcPath/$_module_name/$_model').create();
       await Directory('$absMvcPath/$_module_name/$_views').create();
