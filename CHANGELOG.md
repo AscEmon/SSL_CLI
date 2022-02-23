@@ -102,3 +102,6 @@
 ## 1.0.26
 
 -project name find issue
+## 1.0.27
+
+-project name argument generate issue
