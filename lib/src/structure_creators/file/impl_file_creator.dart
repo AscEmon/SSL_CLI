@@ -4,7 +4,7 @@ import '../i_creators.dart';
 class ImplFileCreator implements IFileCreator {
   final IDirectoryCreator directoryCreator;
   final String projectName;
-  ImplFileCreator(this.directoryCreator,this.projectName);
+  ImplFileCreator(this.directoryCreator, this.projectName);
 
   @override
   Future<void> createNecessaryFiles() async {
@@ -872,8 +872,7 @@ extension Navigation on Widget {
 }
 """);
     await _createFile(directoryCreator.utilsDir.path, 'view_util',
-        content:
-            """import 'package:flutter/material.dart';
+        content: """import 'package:flutter/material.dart';
 import 'package:$projectName/utils/navigation_service.dart';
 
 class ViewUtil {
@@ -962,6 +961,14 @@ class MyApp extends StatelessWidget {
 }
 """,
     );
+
+    //localization yaml file create in project folder
+    await _createFile(projectName, 'l10n',
+        fileExtention: 'yaml',
+        content: """arb-dir: lib/l10n
+template-arb-file: intl_en.arb
+output-localization-file: app_localizations.dart
+""");
   }
 
   Future<void> _createFile(
@@ -970,7 +977,15 @@ class MyApp extends StatelessWidget {
     String? content,
     String? fileExtention = 'dart',
   }) async {
-    String fileType = fileExtention == 'dart' ? 'dart' : 'arb';
+    String fileType;
+    if (fileExtention == 'yaml') {
+      fileType = 'yaml';
+    } else if (fileExtention == 'arb') {
+      fileType = 'arb';
+    } else {
+      fileType = 'dart';
+    }
+
     try {
       final file = await File('$basePath/$fileName.$fileType').create();
 

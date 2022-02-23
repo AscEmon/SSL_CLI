@@ -12,15 +12,13 @@ class SSLCommandRunner {
     argParser.addCommand('help');
 
     final res = argParser.parse(arguments);
-    stderr.write("This is res name "+arguments[0].toString());
+   
 
     if (res.command != null && res.command!.name != null) {
       ICommand? command;
       if (res.command!.name!.startsWith('create')) {
         final projectName = arguments[1];
-        stderr.write("This is res project name "+arguments[1].toString());
         final isWelcome = welcomeBoard();
-
         if (isWelcome) {
           command = CreateCommand(projectName: projectName);
         } else {
