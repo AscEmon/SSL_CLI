@@ -21,7 +21,8 @@ class ImplFileCreator implements IFileCreator {
     await _createFile(
       directoryCreator.constantDir.path,
       'constant_key',
-      content: """const String USER_UID = 'USER_UID'; """,
+      content: """const String USER_UID = 'USER_UID';
+const String TOKEN = 'TOKEN';  """,
     );
 
     //dataProvider folder file
@@ -190,6 +191,7 @@ class ApiClient {
     return str;
   }
 }
+
 """);
     await _createFile(
       directoryCreator.dataProviderDir.path,
@@ -389,7 +391,7 @@ class ApiClient {
  """,
     );
 
-    await _createFile(directoryCreator.dataProviderDir.path, 'pref_helper.dart',
+    await _createFile(directoryCreator.dataProviderDir.path, 'pref_helper',
         content: """import 'package:$projectName/constant/constant_key.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
