@@ -4,10 +4,12 @@ import '../structure_creators/file/impl_file_creator.dart';
 import 'i_command.dart';
 
 class CreateCommand implements ICommand {
+  String projectName;
+  CreateCommand({required this.projectName});
   @override
   Future<void> execute() async {
     final directoryCreator = ImplDirectoryCreator();
-    final fileCreator = ImplFileCreator(directoryCreator);
+    final fileCreator = ImplFileCreator(directoryCreator,projectName);
 
     final sslCreator = ImplSSLCreator(
       directoryCreator: directoryCreator,

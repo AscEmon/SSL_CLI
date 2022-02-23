@@ -3,8 +3,8 @@ import '../i_creators.dart';
 
 class ImplFileCreator implements IFileCreator {
   final IDirectoryCreator directoryCreator;
-
-  ImplFileCreator(this.directoryCreator);
+  final String projectName;
+  ImplFileCreator(this.directoryCreator,this.projectName);
 
   @override
   Future<void> createNecessaryFiles() async {
@@ -29,12 +29,12 @@ class ImplFileCreator implements IFileCreator {
         content: """import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart' as d;
-import 'package:riverpod_test/constant/app_url.dart';
-import 'package:riverpod_test/constant/constant_key.dart';
-import 'package:riverpod_test/data_provider/pref_helper.dart';
-import 'package:riverpod_test/utils/enum.dart';
-import 'package:riverpod_test/utils/navigation_service.dart';
-import 'package:riverpod_test/utils/view_util.dart';
+import 'package:$projectName/constant/app_url.dart';
+import 'package:$projectName/constant/constant_key.dart';
+import 'package:$projectName/data_provider/pref_helper.dart';
+import 'package:$projectName/utils/enum.dart';
+import 'package:$projectName/utils/navigation_service.dart';
+import 'package:$projectName/utils/view_util.dart';
 
 class ApiClient {
   late d.Dio _dio;
@@ -198,12 +198,12 @@ class ApiClient {
 import 'dart:io';
 import 'package:dio/dio.dart' as d;
 import 'package:flutter/material.dart';
-import 'package:riverpod_test/constant/app_url.dart';
-import 'package:riverpod_test/constant/constant_key.dart';
-import 'package:riverpod_test/data_provider/pref_helper.dart';
-import 'package:riverpod_test/global/model/graph_ql_error_response.dart';
-import 'package:riverpod_test/utils/navigation_service.dart';
-import 'package:riverpod_test/utils/view_util.dart';
+import 'package:$projectName/constant/app_url.dart';
+import 'package:$projectName/constant/constant_key.dart';
+import 'package:$projectName/data_provider/pref_helper.dart';
+import 'package:$projectName/global/model/graph_ql_error_response.dart';
+import 'package:$projectName/utils/navigation_service.dart';
+import 'package:$projectName/utils/view_util.dart';
 
 class ApiClient {
   late d.Dio _dio;
@@ -390,7 +390,7 @@ class ApiClient {
     );
 
     await _createFile(directoryCreator.dataProviderDir.path, 'pref_helper.dart',
-        content: """import 'package:riverpod_test/constant/constant_key.dart';
+        content: """import 'package:$projectName/constant/constant_key.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class PrefHelper {
@@ -583,7 +583,7 @@ class KColors {
 """);
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_size',
         content: """import 'package:flutter/material.dart';
-import 'package:riverpod_test/utils/navigation_service.dart';
+import 'package:$projectName/utils/navigation_service.dart';
 
 //zeplin size
 // width 414
@@ -615,7 +615,7 @@ extension KSizes on num {
         directoryCreator.utilsDir.path + '/styles', 'k_text_style',
         content: """import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:riverpod_test/utils/styles/styles.dart';
+import 'package:$projectName/utils/styles/styles.dart';
 
 class KTextStyle {
   static TextStyle headLine3 = GoogleFonts.quicksand(
@@ -687,7 +687,7 @@ enum Method { POST, GET, PUT, DELETE, PATCH }""");
 
     await _createFile(directoryCreator.utilsDir.path, 'extention',
         content: """import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_test/data_provider/pref_helper.dart';
+import 'package:$projectName/data_provider/pref_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart'
     show AppLocalizations;
@@ -874,7 +874,7 @@ extension Navigation on Widget {
     await _createFile(directoryCreator.utilsDir.path, 'view_util',
         content:
             """import 'package:flutter/material.dart';
-import 'package:riverpod_test/utils/navigation_service.dart';
+import 'package:$projectName/utils/navigation_service.dart';
 
 class ViewUtil {
   static SSLSnackbar(String msg) {
@@ -900,9 +900,9 @@ class ViewUtil {
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:riverpod_test/data_provider/pref_helper.dart';
-import 'package:riverpod_test/utils/navigation_service.dart';
-import 'package:riverpod_test/utils/styles/styles.dart';
+import 'package:$projectName/data_provider/pref_helper.dart';
+import 'package:$projectName/utils/navigation_service.dart';
+import 'package:$projectName/utils/styles/styles.dart';
 //localization
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
