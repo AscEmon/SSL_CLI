@@ -18,11 +18,11 @@ class SSLCommandRunner {
       ICommand? command;
       if (res.command!.name!.startsWith('create')) {
         final projectName = res.command!.name!.split(" ");
-        stderr.write("This is res project name "+projectName.toString());
+        stderr.write("This is res project name "+projectName.last);
         final isWelcome = welcomeBoard();
 
         if (isWelcome) {
-          command = CreateCommand(projectName: projectName[1]);
+          command = CreateCommand(projectName: projectName.last);
         } else {
           exit(0);
         }

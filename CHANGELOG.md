@@ -99,3 +99,6 @@
 ## 1.0.25
 
 -command split issue create for space
+## 1.0.26
+
+-project name find issue
