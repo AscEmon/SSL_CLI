@@ -12,8 +12,4 @@
     
     ssl_cli create
     
-    
-    
-And it will generate the following structure:
 
-<!-- ![structure](https://github.com/thisisyusub/kanza-cli/blob/master/screenshoots/structure.png) -->

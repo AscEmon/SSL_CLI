@@ -13,6 +13,8 @@ class SSLCommandRunner {
     argParser.addCommand('help');
 
     final res = argParser.parse(arguments);
+    stderr.write("This is res arguments "+res.command!.arguments.toString());
+    stderr.write("This is res name "+res.command!.name.toString());
 
     if (res.command != null && res.command!.name != null) {
       ICommand? command;

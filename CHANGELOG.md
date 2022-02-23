@@ -79,3 +79,12 @@
 ## 1.0.20
 
 -minor bug
+
+## 1.0.21
+
+-graph client added
+-content multiple line added with comment
+
+## 1.0.22
+
+-remove unnecessary import file
