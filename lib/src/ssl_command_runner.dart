@@ -17,7 +17,7 @@ class SSLCommandRunner {
     if (res.command != null && res.command!.name != null) {
       ICommand? command;
       if (res.command!.name!.startsWith('create')) {
-        final projectName = res.command!.name!.split("");
+        final projectName = res.command!.name!.split(" ");
         stderr.write("This is res project name "+projectName.toString());
         final isWelcome = welcomeBoard();
 

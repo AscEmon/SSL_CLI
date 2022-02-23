@@ -92,3 +92,10 @@
 ## 1.0.23
 
 -command create condition change switch to if
+
+## 1.0.24
+
+-command split issue create
+## 1.0.25
+
+-command split issue create for space
