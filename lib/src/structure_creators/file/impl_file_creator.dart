@@ -664,7 +664,7 @@ class KTextStyle {
 }
 """);
 
-    await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_assets',
+    await _createFile(directoryCreator.utilsDir.path + '/styles', 'styles',
         content: """export 'k_colors.dart';
 export 'k_size.dart';
 export 'k_text_style.dart';
@@ -897,7 +897,6 @@ class ViewUtil {
       'main',
       content: """import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:$projectName/data_provider/pref_helper.dart';
 import 'package:$projectName/utils/navigation_service.dart';
@@ -911,7 +910,7 @@ void main() async {
   //Set Potraite Mode only
   await SystemChrome.setPreferredOrientations(
       [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
-  runApp(ProviderScope(child: MyApp()));
+  runApp(MyApp());
 }
 
 /// Make sure you always init shared pref first. It has token and token is need
@@ -963,9 +962,8 @@ class MyApp extends StatelessWidget {
     );
 
     //localization yaml file create in project folder
-    await _createFile(projectName, 'l10n',
-        fileExtention: 'yaml',
-        content: """arb-dir: lib/l10n
+    await _createFile(Directory(projectName).path, 'l10n',
+        fileExtention: 'yaml', content: """arb-dir: lib/l10n
 template-arb-file: intl_en.arb
 output-localization-file: app_localizations.dart
 """);

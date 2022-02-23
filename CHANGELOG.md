@@ -112,3 +112,6 @@
 ## 1.1.0
 
 -file create under project
+## 1.1.1
+
+-remove riverpod import and l10n file create issue 
