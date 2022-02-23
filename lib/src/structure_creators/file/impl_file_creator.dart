@@ -22,7 +22,10 @@ class ImplFileCreator implements IFileCreator {
       directoryCreator.constantDir.path,
       'constant_key',
       content: """const String USER_UID = 'USER_UID';
-const String TOKEN = 'TOKEN';  """,
+const String TOKEN = 'TOKEN';  
+const String LANGUAGE = "LANGUAGE";
+const String USER_ID = "USER_ID";
+""",
     );
 
     //dataProvider folder file
@@ -256,7 +259,7 @@ class ApiClient {
 
       d.Response response;
       _header[d.Headers.contentTypeHeader] = 'multipart/form-data';
-      _initDio(baseUrl: AppUrl.FILE_UPLOAD_BASE_URL);
+      _initDio(baseUrl: AppUrl.BASE_URL);
 
       Map<String, d.MultipartFile> fileMap = {};
       if (files != null) {
@@ -296,19 +299,19 @@ class ApiClient {
       String url = '',
       Map<String, dynamic> variables = const {},
       bool isLoaderShowing = false}) async {
-    if (isLoaderShowing) CircularProgressIndicator();
+    if (isLoaderShowing) const CircularProgressIndicator();
 
     d.Response response;
     _initDio(baseUrl: AppUrl.BASE_URL);
 
     try {
-      String paramJson = ''' 
+      String paramJson =
+          ''' 
       {
       "query" : "\$body",
       "variables" : \${jsonEncode(variables)}
       }
-      '''
-          .replaceAll("\n", "");
+      '''.replaceAll("", "");
 
       response = await _dio.post(url, data: paramJson);
 
@@ -342,9 +345,10 @@ class ApiClient {
           if (result.errors[0].message == "Invalid User" ||
               result.errors[0].message == "User does not exist") {
             PrefHelper.logout();
-           // GetScreen().pushAndRemoveUntil(Navigation.key.currentContext);
-          } else
+            // GetScreen().pushAndRemoveUntil(Navigation.key.currentContext);
+          } else {
             _showExceptionSnackBar(result.errors[0].message);
+          }
         }
       }
     } catch (e) {}
@@ -367,10 +371,9 @@ class ApiClient {
         break;
       case d.DioErrorType.connectTimeout:
         _showExceptionSnackBar("Connection failed!. Please refresh");
-        // return request(body: body, variables: variables);
+
         break;
       case d.DioErrorType.sendTimeout:
-        // return request(body: body, variables: variables);
         break;
       case d.DioErrorType.receiveTimeout:
         break;
@@ -388,6 +391,7 @@ class ApiClient {
     ViewUtil.SSLSnackbar(msg ?? "");
   }
 }
+
  """,
     );
 

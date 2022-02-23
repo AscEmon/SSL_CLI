@@ -118,3 +118,7 @@
 ## 1.1.2
 
 -minor bug issue 
+## 1.1.3
+
+-constant file added
+-graphclient refactor 
