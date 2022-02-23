@@ -88,3 +88,7 @@
 ## 1.0.22
 
 -remove unnecessary import file
+
+## 1.0.23
+
+-command create condition change switch to if
