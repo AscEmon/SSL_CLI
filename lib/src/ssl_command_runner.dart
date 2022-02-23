@@ -5,19 +5,20 @@ import 'command/help_command.dart';
 import 'command/i_command.dart';
 
 class SSLCommandRunner {
-  void run(List<String> arguments,String projectName) {
+  void run(List<String> arguments) {
     final argParser = ArgParser();
 
     argParser.addCommand('create');
     argParser.addCommand('help');
 
     final res = argParser.parse(arguments);
-    stderr.write("This is project name "+projectName);
+    stderr.write("This is res name "+arguments[0].toString());
 
-    if (res.command != null && res.command!.name != null && projectName.isNotEmpty) {
+    if (res.command != null && res.command!.name != null) {
       ICommand? command;
       if (res.command!.name!.startsWith('create')) {
-        stderr.write("This is res project name "+projectName);
+        final projectName = arguments[1];
+        stderr.write("This is res project name "+arguments[1].toString());
         final isWelcome = welcomeBoard();
 
         if (isWelcome) {
