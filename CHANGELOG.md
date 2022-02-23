@@ -105,3 +105,6 @@
 ## 1.0.27
 
 -project name argument generate issue
+## 1.0.28
+
+-multiple argument pass issue
