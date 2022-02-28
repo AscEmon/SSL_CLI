@@ -129,4 +129,7 @@
 
 -create components folder and file create
 - added base path in project name
+## 1.1.5
+
+-required projet name remove
 
