@@ -11,9 +11,13 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _model = 'model';
   final _widget = 'widget';
   final _views = 'views';
-  final _module_name='module_name';
+  final _module_name = 'module_name';
   final _controller = 'controller';
-  final _styles='styles';
+  final _styles = 'styles';
+  final _components='components';
+
+  final String projectName;
+  ImplDirectoryCreator({required this.projectName});
 
   late final String basePath;
 
@@ -41,16 +45,15 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   // TODO: implement utils
   Directory get utilsDir => Directory('$basePath/$_utils');
 
-
   @override
   Future<bool> createDirectories() async {
     try {
-      final libDir = Directory('lib');
+      final libDir = Directory("$projectName/lib");
 
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
       } else {
-        final res = await Directory('lib').create(recursive: true);
+        final res = await Directory("$projectName/lib").create(recursive: true);
         basePath = res.absolute.path;
       }
 
@@ -86,16 +89,15 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       await Directory(absMvcPath).create();
       await Directory('$absMvcPath/$_module_name').create();
 
-      
       await Directory('$absMvcPath/$_module_name/$_controller').create();
       await Directory('$absMvcPath/$_module_name/$_model').create();
       await Directory('$absMvcPath/$_module_name/$_views').create();
+       await Directory('$absMvcPath/$_module_name/$_views/$_components').create();
 
       //Utils directory
       print('creating util directory...');
       await Directory(absUtilsPath).create();
       await Directory('$absUtilsPath/$_styles').create();
-
 
       return true;
     } catch (e, s) {
@@ -104,6 +106,4 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       return false;
     }
   }
-
-  
 }

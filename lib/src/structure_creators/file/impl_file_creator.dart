@@ -561,6 +561,10 @@ class Errors {
       directoryCreator.mvcDir.path + '/module_name' + '/views',
       'views_name',
     );
+    await _createFile(
+      directoryCreator.mvcDir.path + '/module_name' + '/views'+'components',
+      'widget_name',
+    );
 
 //Utils file
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_assets',
