@@ -68,7 +68,7 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       final absl10nPath = l10nDir.absolute.path;
       final absMvcPath = mvcDir.absolute.path;
       final absUtilsPath = utilsDir.absolute.path;
-      final assetPath=Directory("${Directory.current.path}+$_assets").absolute.path;
+      final assetPath=Directory("${Directory.current.path}+/$_assets").absolute.path;
 
       print('creating directories...\n');
       
