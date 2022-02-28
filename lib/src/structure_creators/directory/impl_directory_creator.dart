@@ -15,6 +15,9 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _controller = 'controller';
   final _styles = 'styles';
   final _components = 'components';
+  final _assets='assets';
+  final _images='images';
+  final _svg='svg';
 
   final String projectName;
   ImplDirectoryCreator(this.projectName);
@@ -50,11 +53,6 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   Future<bool> createDirectories() async {
     try {
       final libDir = Directory("lib");
-      // final projectDir=Directory.current.path;
-      // if(projectDir.isNotEmpty)
-      // {
-      //   projectDirPath=projectDir;
-      // }
       
 
       if (await libDir.exists()) {
@@ -70,8 +68,16 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       final absl10nPath = l10nDir.absolute.path;
       final absMvcPath = mvcDir.absolute.path;
       final absUtilsPath = utilsDir.absolute.path;
+      final assetPath=Directory("${Directory.current.path}+$_assets").absolute.path;
 
       print('creating directories...\n');
+      
+      //create aaset folder 
+      print('creating asset directory...');
+      await Directory(assetPath).create();
+      await Directory('$assetPath/$_images').create();
+      await Directory('$assetPath/$_svg').create();
+
 
       //constant directory
       print('creating constant directory...');
