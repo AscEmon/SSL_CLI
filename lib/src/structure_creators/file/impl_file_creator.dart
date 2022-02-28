@@ -936,6 +936,11 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 // 	</array>
 
 //Add this line in pubspec.yaml
+
+//This line is added for localization 
+ // flutter_localizations:
+  //  sdk: flutter
+   
 //pls check pubspec.yaml
 // generate: true
 
