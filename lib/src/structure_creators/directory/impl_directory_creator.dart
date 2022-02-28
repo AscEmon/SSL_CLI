@@ -14,10 +14,10 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _module_name = 'module_name';
   final _controller = 'controller';
   final _styles = 'styles';
-  final _components='components';
+  final _components = 'components';
 
   final String projectName;
-  ImplDirectoryCreator({required this.projectName});
+  ImplDirectoryCreator(this.projectName);
 
   late final String basePath;
 
@@ -92,7 +92,8 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       await Directory('$absMvcPath/$_module_name/$_controller').create();
       await Directory('$absMvcPath/$_module_name/$_model').create();
       await Directory('$absMvcPath/$_module_name/$_views').create();
-       await Directory('$absMvcPath/$_module_name/$_views/$_components').create();
+      await Directory('$absMvcPath/$_module_name/$_views/$_components')
+          .create();
 
       //Utils directory
       print('creating util directory...');

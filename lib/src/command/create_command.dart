@@ -8,8 +8,8 @@ class CreateCommand implements ICommand {
   CreateCommand({required this.projectName});
   @override
   Future<void> execute() async {
-    final directoryCreator = ImplDirectoryCreator();
-    final fileCreator = ImplFileCreator(directoryCreator,projectName);
+    final directoryCreator = ImplDirectoryCreator(projectName);
+    final fileCreator = ImplFileCreator(directoryCreator, projectName);
 
     final sslCreator = ImplSSLCreator(
       directoryCreator: directoryCreator,
