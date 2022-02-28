@@ -157,3 +157,7 @@
  ## 1.1.12
 
 -Asset folder create path issue fix
+ ## 1.1.13
+
+-localization comment added
+-viewName class added

@@ -558,11 +558,22 @@ class Errors {
       'model_class_name',
     );
     await _createFile(
-      directoryCreator.mvcDir.path + '/module_name' + '/views',
-      'views_name',
-    );
+        directoryCreator.mvcDir.path + '/module_name' + '/views', 'views_name',
+        content: """
+import 'package:flutter/material.dart';
+
+class ViewsName extends StatelessWidget {
+  const ViewsName({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(body: Center(child: Container(child: Text("Project Setup"),)));
+  }
+}
+
+""");
     await _createFile(
-      directoryCreator.mvcDir.path + '/module_name' + '/views'+'/components',
+      directoryCreator.mvcDir.path + '/module_name' + '/views' + '/components',
       'widget_name',
     );
 
@@ -583,12 +594,12 @@ class KColors {
   static const darkAccent = Color(0xFF2C4251);
   static const white = Colors.white;
   static const black = Colors.black;
-  static final charcoal = Color(0xFF264654);
+  static const charcoal = Color(0xFF264654);
   static final lightCharcoal = charcoal.withOpacity(.12);
   static const spaceCadet = Color(0xFF2C3549);
   static final lightRed = Colors.red[100];
-  static final red = Colors.red;
-  static final transparent = Colors.transparent;
+  static const red = Colors.red;
+  static const transparent = Colors.transparent;
 }
 """);
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_size',
@@ -695,8 +706,8 @@ enum CART_STATUS {
 
 enum Method { POST, GET, PUT, DELETE, PATCH }""");
 
-    await _createFile(directoryCreator.utilsDir.path, 'extention',
-        content: """import 'package:flutter_riverpod/flutter_riverpod.dart';
+    await _createFile(directoryCreator.utilsDir.path, 'extention', content: """
+// import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:$projectName/data_provider/pref_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart'
@@ -780,10 +791,9 @@ extension Context on BuildContext {
 //Incase if you face any issue using this then please wrap your widget
 //with consumer and then call your provider
 
-  T read<T>(ProviderBase<T> provider) {
-    /// Reads a provider without listening to it
-    return ProviderScope.containerOf(this, listen: false).read(provider);
-  }
+  // T read<T>(ProviderBase<T> provider) {
+  //   return ProviderScope.containerOf(this, listen: false).read(provider);
+  // }
 }
 
 extension validationExtention on String {
@@ -905,14 +915,29 @@ class ViewUtil {
     await _createFile(
       'lib',
       'main',
-      content: """import 'package:flutter/material.dart';
+      content: """
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:$projectName/data_provider/pref_helper.dart';
-import 'package:$projectName/utils/navigation_service.dart';
-import 'package:$projectName/utils/styles/styles.dart';
+import 'package:ssl_template/data_provider/pref_helper.dart';
+import 'package:ssl_template/mvc/module_name/views/views_name.dart';
+import 'package:ssl_template/utils/navigation_service.dart';
+import 'package:ssl_template/utils/styles/styles.dart';
 //localization
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+//iOS localization is required to add this below
+//code in dict tag in info.plist
+
+// <key>CFBundleLocalizations</key>
+// 	<array>
+// 		<string>en</string>
+// 		<string>sv</string>
+// 	</array>
+
+//Add this line in pubspec.yaml
+//pls check pubspec.yaml
+// generate: true
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -952,7 +977,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ThemeData().colorScheme.copyWith(
               secondary: KColors.accent,
             ),
-        primarySwatch: KColors.createMaterialColor(KColors.primary),
+        primarySwatch: Colors.blue,
         appBarTheme: AppBarTheme(
           iconTheme: IconThemeData(size: 16),
           actionsIconTheme: IconThemeData(size: 16),
@@ -964,10 +989,11 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: ,
+      home:ViewsName(),
     );
   }
 }
+
 """,
     );
 
