@@ -562,7 +562,7 @@ class Errors {
       'views_name',
     );
     await _createFile(
-      directoryCreator.mvcDir.path + '/module_name' + '/views'+'components',
+      directoryCreator.mvcDir.path + '/module_name' + '/views'+'/components',
       'widget_name',
     );
 

@@ -132,4 +132,8 @@
 ## 1.1.5
 
 -required projet name remove
+## 1.1.6
+
+-project folder path structure prroblem
+
 

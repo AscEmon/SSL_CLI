@@ -48,12 +48,12 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   @override
   Future<bool> createDirectories() async {
     try {
-      final libDir = Directory("$projectName/lib");
+      final libDir = Directory(projectName);
 
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
       } else {
-        final res = await Directory("$projectName/lib").create(recursive: true);
+        final res = await Directory(projectName).create(recursive: true);
         basePath = res.absolute.path;
       }
 
