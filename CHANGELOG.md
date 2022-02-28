@@ -135,5 +135,8 @@
 ## 1.1.6
 
 -project folder path structure prroblem
+## 1.1.7
+
+-lib folder create issue 
 
 

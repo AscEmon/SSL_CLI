@@ -53,7 +53,7 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
       } else {
-        final res = await Directory(projectName).create(recursive: true);
+        final res = await Directory("$projectName/lib").create(recursive: true);
         basePath = res.absolute.path;
       }
 
