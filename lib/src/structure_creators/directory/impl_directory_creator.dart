@@ -68,15 +68,15 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       final absl10nPath = l10nDir.absolute.path;
       final absMvcPath = mvcDir.absolute.path;
       final absUtilsPath = utilsDir.absolute.path;
-      final assetPath=Directory("${Directory.current.path}+/$_assets").absolute.path;
+      final assetPath=Directory(Directory.current.path).absolute.path;
 
       print('creating directories...\n');
       
       //create aaset folder 
       print('creating asset directory...');
-      await Directory(assetPath).create();
-      await Directory('$assetPath/$_images').create();
-      await Directory('$assetPath/$_svg').create();
+      await Directory('$assetPath/$_assets').create();
+      await Directory('$assetPath/$_assets/$_images').create();
+      await Directory('$assetPath/$_assets/$_svg').create();
 
 
       //constant directory

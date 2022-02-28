@@ -153,4 +153,7 @@
 ## 1.1.11
 
 -Asset folder path issue fix
- 
+
+ ## 1.1.12
+
+-Asset folder create path issue fix
