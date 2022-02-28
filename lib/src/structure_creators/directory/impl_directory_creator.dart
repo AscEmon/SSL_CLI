@@ -20,6 +20,7 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   ImplDirectoryCreator(this.projectName);
 
   late final String basePath;
+  late final String projectDirPath;
 
   @override
   // TODO: implement constantDir
@@ -48,12 +49,18 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   @override
   Future<bool> createDirectories() async {
     try {
-      final libDir = Directory(projectName);
+      final libDir = Directory("lib");
+      // final projectDir=Directory.current.path;
+      // if(projectDir.isNotEmpty)
+      // {
+      //   projectDirPath=projectDir;
+      // }
+      
 
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
       } else {
-        final res = await Directory("$projectName/lib").create(recursive: true);
+        final res = await Directory("lib").create(recursive: true);
         basePath = res.absolute.path;
       }
 

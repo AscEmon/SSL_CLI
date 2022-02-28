@@ -972,7 +972,7 @@ class MyApp extends StatelessWidget {
     );
 
     //localization yaml file create in project folder
-    await _createFile(Directory(projectName).path, 'l10n',
+    await _createFile(Directory.current.path, 'l10n',
         fileExtention: 'yaml', content: """arb-dir: lib/l10n
 template-arb-file: intl_en.arb
 output-localization-file: app_localizations.dart

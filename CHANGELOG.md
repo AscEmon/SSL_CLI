@@ -137,6 +137,12 @@
 -project folder path structure prroblem
 ## 1.1.7
 
--lib folder create issue 
+-lib folder create issue
+## 1.1.8
 
+-nested folder create issue  
+
+## 1.1.9
+
+-Asset folder create under project 
 
