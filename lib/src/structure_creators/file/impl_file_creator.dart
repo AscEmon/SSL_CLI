@@ -919,10 +919,10 @@ class ViewUtil {
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:ssl_template/data_provider/pref_helper.dart';
-import 'package:ssl_template/mvc/module_name/views/views_name.dart';
-import 'package:ssl_template/utils/navigation_service.dart';
-import 'package:ssl_template/utils/styles/styles.dart';
+import 'package:$projectName/data_provider/pref_helper.dart';
+import 'package:$projectName/mvc/module_name/views/views_name.dart';
+import 'package:$projectName/utils/navigation_service.dart';
+import 'package:$projectName/utils/styles/styles.dart';
 //localization
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
