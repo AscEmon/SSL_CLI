@@ -650,7 +650,7 @@ class KTextStyle {
   );
 
   static TextStyle buttonText({fontWeight = FontWeight.normal}) => GoogleFonts.quicksand(
-        fontSize:27.sp,
+        fontSize:20.sp,
         fontWeight: fontWeight,
       );
 
@@ -808,9 +808,12 @@ extension validationExtention on String {
 }
 
 extension WidgetExtention on Widget {
-  Widget get centerCircularProgress => Center(
+  Widget centerCircularProgress({Color? progressColor}) => Center(
         child: Container(
-          child: CircularProgressIndicator(),
+          //using adaptive we can easily show platfrom base indicator
+          child: CircularProgressIndicator.adaptive(
+            backgroundColor: progressColor,
+          ),
         ),
       );
 }
@@ -975,6 +978,7 @@ class MyApp extends StatelessWidget {
           ? const Locale('en', 'US')
           : const Locale('bn', 'BD'),
       theme: ThemeData(
+        //globally handle progress color using themeData class
         progressIndicatorTheme: ProgressIndicatorThemeData(color: Colors.green),
         textTheme: GoogleFonts.robotoMonoTextTheme(),
         primaryColor: KColors.primary,

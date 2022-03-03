@@ -12,26 +12,29 @@ class SSLCommandRunner {
     argParser.addCommand('help');
 
     final res = argParser.parse(arguments);
-   
 
-    if (res.command != null && res.command!.name != null) {
-      ICommand? command;
-      if (res.command!.name!.startsWith('create')) {
-        final projectName = arguments[1];
-        final isWelcome = welcomeBoard();
-        if (isWelcome) {
-          command = CreateCommand(projectName: projectName);
+    try {
+      if (res.command != null && res.command!.name != null) {
+        ICommand? command;
+        if (res.command!.name!.startsWith('create')) {
+          final projectName = arguments[1];
+          final isWelcome = welcomeBoard();
+          if (isWelcome) {
+            command = CreateCommand(projectName: projectName);
+          } else {
+            exit(0);
+          }
+        } else if (res.command!.name!.startsWith('help')) {
+          command = HelpCommand();
         } else {
-          exit(0);
+          _errorAndExit(res.command!.name);
         }
-      } else if (res.command!.name!.startsWith('help')) {
-        command = HelpCommand();
-      } else {
-        _errorAndExit(res.command!.name);
-      }
 
-      command!.execute();
-    } else {
+        command!.execute();
+      } else {
+        _errorAndExit();
+      }
+    } catch (e) {
       _errorAndExit();
     }
   }

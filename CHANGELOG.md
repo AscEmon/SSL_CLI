@@ -169,3 +169,9 @@
  ## 1.1.15
 
 -comment update for flutter localization
+
+ ## 1.1.16
+
+- ReadMe update
+- adaptive circular added with param
+- unnecessary error handling 
