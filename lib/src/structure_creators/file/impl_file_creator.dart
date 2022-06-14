@@ -25,6 +25,9 @@ class ImplFileCreator implements IFileCreator {
 const String TOKEN = 'TOKEN';  
 const String LANGUAGE = "LANGUAGE";
 const String USER_ID = "USER_ID";
+const String YYYY_MM_DD = "yyyy-MM-dd";
+const String DD_MM_YYYY = "dd-MM-yyyy";
+const String D_MMM_Y = "d MMMM y";
 """,
     );
 
@@ -32,33 +35,42 @@ const String USER_ID = "USER_ID";
     await _createFile(directoryCreator.dataProviderDir.path, 'api_client',
         content: """import 'dart:convert';
 import 'dart:io';
-import 'package:dio/dio.dart' as d;
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 import 'package:$projectName/constant/app_url.dart';
 import 'package:$projectName/constant/constant_key.dart';
 import 'package:$projectName/data_provider/pref_helper.dart';
+import 'package:$projectName/mvc/login_module/views/login_screen.dart';
 import 'package:$projectName/utils/enum.dart';
+import 'package:$projectName/utils/extention.dart';
 import 'package:$projectName/utils/navigation_service.dart';
+import 'package:$projectName/utils/network_connection.dart';
 import 'package:$projectName/utils/view_util.dart';
 
 class ApiClient {
-  late d.Dio _dio;
+  late Dio _dio;
 
   Map<String, dynamic> _header = {};
 
   _initDio() {
     _header = {
-      // 'language': PrefHelper.getString(PrefConstant.LANGUAGE, "en"),
+      HttpHeaders.contentTypeHeader: "application/json",
       HttpHeaders.authorizationHeader: "Bearer \${PrefHelper.getString(TOKEN)}"
     };
 
-    _dio = d.Dio(d.BaseOptions(baseUrl: AppUrl.BASE_URL, headers: _header));
+    _dio = Dio(BaseOptions(
+      baseUrl: AppUrl.Base.url,
+      headers: _header,
+      connectTimeout: 1000 * 30,
+      sendTimeout: 1000 * 10,
+    ));
     _initInterceptors();
   }
 
   void _initInterceptors() {
-    _dio.interceptors.add(d.InterceptorsWrapper(onRequest: (options, handler) {
+    _dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
       print(
-          'REQUEST[\${options.method}] => PATH: \${AppUrl.BASE_URL}\${options.path} '
+          'REQUEST[\${options.method}] => PATH: \${AppUrl.Base.url}\${options.path} '
           '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => HEADERS: \${options.headers}');
       return handler.next(options);
     }, onResponse: (response, handler) {
@@ -72,41 +84,74 @@ class ApiClient {
     }));
   }
 
-  //Image or file upload using Rest handle
+  // Image or file upload using Rest handle.
   Future requestFormData(String url, Method method,
       Map<String, dynamic>? params, Map<String, File>? files) async {
-    _header[d.Headers.contentTypeHeader] = 'multipart/form-data';
+    _header[Headers.contentTypeHeader] = 'multipart/form-data';
     _initDio();
 
-    Map<String, d.MultipartFile> fileMap = {};
+    Map<String, MultipartFile> fileMap = {};
     if (files != null) {
       for (MapEntry fileEntry in files.entries) {
         File file = fileEntry.value;
-        fileMap[fileEntry.key] = await d.MultipartFile.fromFile(file.path);
+        fileMap[fileEntry.key] = await MultipartFile.fromFile(file.path);
       }
     }
     params?.addAll(fileMap);
-    final data = d.FormData.fromMap(params!);
+    final data = FormData.fromMap(params!);
 
     print(data.fields.toString());
-    //Handle and check all the status
+    // Handle and check all the status.
     return clientHandle(url, method, params, data: data);
   }
 
-  //Normal Rest handle
+  // Normal Rest API  handle.
   Future request(
-      String url, Method method, Map<String, dynamic>? params) async {
-    _initDio();
-    //Handle and check all the status
-    return clientHandle(url, method, params);
+      {required String url,
+      required Method method,
+      Map<String, dynamic>? params,
+      Function? onSuccessFunction(Response response)?}) async {
+    if (NetworkConnection.instance.isInternet) {
+      _initDio();
+      // Handle and check all the status.
+      return clientHandle(url, method, params,
+          onSuccessFunction: onSuccessFunction);
+    } else {
+      NetworkConnection.instance.apiStack.add(APIParams(
+          url: url,
+          method: method,
+          variables: params ?? {},
+          onSuccessFunction: onSuccessFunction));
+      if (ViewUtil.isPresentedDialog == false) {
+        ViewUtil.isPresentedDialog = true;
+        WidgetsBinding.instance!.addPostFrameCallback((_) {
+          ViewUtil.showInternetDialog(onPressed: () {
+            if (NetworkConnection.instance.isInternet == true) {
+              Navigator.of(Navigation.key.currentState!.overlay!.context,
+                      rootNavigator: true)
+                  .pop();
+              ViewUtil.isPresentedDialog = false;
+              NetworkConnection.instance.apiStack.forEach((element) {
+                request(
+                    url: element.url,
+                    method: element.method,
+                    params: element.variables,
+                    onSuccessFunction: element.onSuccessFunction);
+              });
+              NetworkConnection.instance.apiStack = [];
+            }
+          });
+        });
+      }
+    }
   }
 
-//Handle all the method and error
+// Handle all the method and error.
   Future clientHandle(String url, Method method, Map<String, dynamic>? params,
-      {dynamic data}) async {
-    d.Response response;
+      {dynamic data, Function? onSuccessFunction(Response response)?}) async {
+    Response response;
     try {
-      // Handle response code from api
+      // Handle response code from api.
       if (method == Method.POST) {
         response = await _dio.post(url, queryParameters: params, data: data);
       } else if (method == Method.DELETE) {
@@ -119,22 +164,24 @@ class ApiClient {
           queryParameters: params,
         );
       }
-      //Handle Rest based on response json
-      //So please check in json body there is any status_code or code
+      /**
+       * Handle Rest based on response json
+       * So please check in json body there is any status_code or code
+       */
       if (response.statusCode == 200) {
         final Map data = json.decode(response.toString());
 
-        final code = data['status_code'];
+        final code = data['code'];
         if (code == 200) {
-          return response;
+          return onSuccessFunction!(response);
         } else {
           if (code < 500) {
-            List<String> messages = data['error_message'].cast<String>();
+            List<String> messages = data['message'].cast<String>();
 
             switch (code) {
               case 401:
-                // PrefHelper.setString(TOKEN, "").then((value) => GetScreen()
-                //     .pushAndRemoveUntil(Navigation.key.currentContext));
+                PrefHelper.setString(TOKEN, "").then((value) => LoginScreen()
+                    .pushAndRemoveUntil(Navigation.key.currentContext));
 
                 break;
               default:
@@ -152,38 +199,45 @@ class ApiClient {
       } else if (response.statusCode == 500) {
         throw Exception("Server Error");
       } else {
-        throw Exception("Something went wrong");
+        throw Exception("Something went wrongs");
       }
 
-      // Handle Error type if dio catches anything
-    } on d.DioError catch (e) {
+      // Handle Error type if dio catches anything.
+    } on DioError catch (e) {
+      e.log();
       switch (e.type) {
-        case d.DioErrorType.connectTimeout:
+        case DioErrorType.connectTimeout:
           ViewUtil.SSLSnackbar("Time out delay ");
           break;
-        case d.DioErrorType.receiveTimeout:
+        case DioErrorType.receiveTimeout:
           ViewUtil.SSLSnackbar("Server is not responded properly");
           break;
-        case d.DioErrorType.other:
+        case DioErrorType.other:
           if (e.error is SocketException) {
             ViewUtil.SSLSnackbar("Check your Internet Connection");
           }
           break;
-        case d.DioErrorType.response:
+        case DioErrorType.response:
           try {
-            ViewUtil.SSLSnackbar("Internal Response error");
-          } catch (e) {}
-          break;
+            ViewUtil.SSLSnackbar("Internal Responses error");
+          } catch (e) {
+          } finally {
+            throw Exception(e.toString());
+          }
 
         default:
       }
     } catch (e) {
-      throw Exception("Something went wrong");
+      "ex".log();
+      e.log();
+      throw Exception("Something went wrong" + e.toString());
     }
   }
 
-  // error message will give us as a list of string thats why extract it
-  //so check it in your response
+  /**
+   * error message will give us as a list of string thats why extract it
+   * so check it in your response
+   */
   _extractMessages(List<String> messages) {
     var str = "";
 
@@ -194,6 +248,7 @@ class ApiClient {
     return str;
   }
 }
+
 
 """);
     await _createFile(
@@ -513,6 +568,11 @@ class Errors {
 """,
     );
 
+    await _createFile(
+      directoryCreator.globalDir.path + '/widget',
+      'temp_widget',
+    );
+
     //localization file
     await _createFile(
       directoryCreator.l10nDir.path,
@@ -567,7 +627,7 @@ class ViewsName extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Container(child: Text("Project Setup"),)));
+    return Scaffold(body: Center(child: Container(child: Text("Project Setup"),),),);
   }
 }
 
@@ -579,27 +639,101 @@ class ViewsName extends StatelessWidget {
 
 //Utils file
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_assets',
-        content: """class KAssets {
-  static const _rootPath = 'assets';
-  static const _svgDir = '\$_rootPath/svg';
-  static const _imageDir = '\$_rootPath/images';
+        content: """enum KAssetName {
+  oil,
+  close_bottom,
 }
+
+extension AssetsExtention on KAssetName {
+  String get imagePath {
+    String _rootPath = 'assets';
+    String _svgDir = '\$_rootPath/svg';
+    String _imageDir = '\$_rootPath/images';
+
+    switch (this) {
+      case KAssetName.oil:
+        return "\$_imageDir/oil.png";
+      case KAssetName.close_bottom:
+        return "\$_svgDir/close_bottom.svg";
+
+      default:
+        return "";
+    }
+  }
+}
+
 """);
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_colors',
         content: """import 'package:flutter/material.dart';
 
-class KColors {
-  static const primary = Color(0xFF299E8D);
-  static const accent = Color(0x1F299E8D);
-  static const darkAccent = Color(0xFF2C4251);
-  static const white = Colors.white;
-  static const black = Colors.black;
-  static const charcoal = Color(0xFF264654);
-  static final lightCharcoal = charcoal.withOpacity(.12);
-  static const spaceCadet = Color(0xFF2C3549);
-  static final lightRed = Colors.red[100];
-  static const red = Colors.red;
-  static const transparent = Colors.transparent;
+
+enum KColor {
+  primary,
+  secondary,
+  accent,
+  red,
+  white,
+  black,
+  grey,
+  divider,
+  fill,
+  transparent,
+  enableBorder,
+  fromText,
+  statusBar,
+  addbtn,
+  formtextFill,
+  dashBack,
+  drawerHeader,
+  dropDownfill,
+  bookingText,
+}
+
+extension KColorExtention on KColor {
+  Color get color {
+    switch (this) {
+      case KColor.primary:
+        return Colors.blue;
+      case KColor.secondary:
+        return Color(0xff5EA7FF);
+      case KColor.accent:
+        return Colors.blue;
+      case KColor.red:
+        return Color(0xffE42B2B);
+      case KColor.grey:
+        return Color.fromARGB(255, 157, 157, 157);
+      case KColor.addbtn:
+        return Color(0xFFA8CFFF);
+      case KColor.black:
+        return Colors.black;
+      case KColor.divider:
+        return Color(0xffE6E6E6);
+      case KColor.enableBorder:
+        return Color(0xffE0E0E0);
+      case KColor.fill:
+        return Color.fromARGB(255, 247, 246, 246);
+      case KColor.fromText:
+        return Color(0xff7B7A7A);
+      case KColor.white:
+        return Colors.white;
+      case KColor.statusBar:
+        return Color(0xff3E95FF);
+      case KColor.transparent:
+        return Colors.transparent;
+      case KColor.formtextFill:
+        return Color(0xffFCFCFC);
+      case KColor.drawerHeader:
+        return Color(0xFF5EA7FF);
+      case KColor.dropDownfill:
+        return Color(0xFFFCFCFC);
+      case KColor.dashBack:
+        return Color(0xffF8F8F8);
+      case KColor.bookingText:
+        return Color(0xff808080);
+      default:
+        return Colors.blue;
+    }
+  }
 }
 """);
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_size',
@@ -704,7 +838,7 @@ enum CART_STATUS {
   DECREMENT,
 }
 
-enum Method { POST, GET, PUT, DELETE, PATCH }""");
+enum Method { POST, GET, PUT, DELETE, PATCH, }""");
 
     await _createFile(directoryCreator.utilsDir.path, 'extention', content: """
 // import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -712,6 +846,8 @@ import 'package:$projectName/data_provider/pref_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart'
     show AppLocalizations;
+import 'dart:developer' as darttools show log;
+
 
 extension ConvertNum on String {
   static const english = [
@@ -806,6 +942,27 @@ extension validationExtention on String {
   bool get isMobileNumberValid =>
       RegExp(r'(^(?:[+0]9)?[0-9]{10,12}\$)').hasMatch(this);
 }
+extension NumGenericExtensions<T extends String> on T {
+  double parseToDouble() {
+    try {
+      return double.parse(this);
+    } catch (e) {
+      e.log;
+
+      return 0.0;
+    }
+  }
+
+  String parseToString() {
+    try {
+      return this.toString();
+    } catch (e) {
+      e.log();
+
+      return "";
+    }
+  }
+}
 
 extension WidgetExtention on Widget {
   Widget centerCircularProgress({Color? progressColor}) => Center(
@@ -816,6 +973,11 @@ extension WidgetExtention on Widget {
           ),
         ),
       );
+}
+
+
+extension Log on Object {
+  void log() => darttools.log(toString());
 }
 """);
     await _createFile(directoryCreator.utilsDir.path, 'navigation_service',
@@ -894,14 +1056,71 @@ extension Navigation on Widget {
   }
 }
 """);
+    await _createFile(directoryCreator.utilsDir.path, 'network_connection',
+        content: """import 'dart:async';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
+import 'package:$projectName/utils/enum.dart';
+import 'package:$projectName/utils/view_util.dart';
+
+
+class NetworkConnection {
+  static NetworkConnection? _instance;
+
+  NetworkConnection._();
+
+  static NetworkConnection get instance => _instance ??= NetworkConnection._();
+  bool isInternet = true;
+
+  InternetAvailable() async {
+    StreamSubscription<ConnectivityResult> subscription;
+
+    subscription = await Connectivity()
+        .onConnectivityChanged
+        .listen((ConnectivityResult result) {
+      // Got a new connectivity status!
+      if (result == ConnectivityResult.none) {
+        isInternet = false;
+        ViewUtil.SSLSnackbar("Internet is not Available");
+      } else {
+        isInternet = true;
+      }
+    });
+  }
+
+  List<APIParams> apiStack = [];
+}
+
+//check api params for calling the api while internet will be available
+class APIParams {
+  String url;
+  Method method;
+  Map<String, dynamic> variables;
+  Function? Function(Response<dynamic>)? onSuccessFunction;
+
+  APIParams(
+      {required this.url,
+      required this.method,
+      required this.variables,
+      required this.onSuccessFunction});
+}
+
+""");
     await _createFile(directoryCreator.utilsDir.path, 'view_util',
         content: """import 'package:flutter/material.dart';
+import 'package:$projectName/global/widget/global_bottom_sheet.dart';
+import 'package:$projectName/utils/enum.dart';
+import 'package:$projectName/utils/extention.dart';
 import 'package:$projectName/utils/navigation_service.dart';
+import 'package:$projectName/utils/styles/styles.dart';
 
 class ViewUtil {
   static SSLSnackbar(String msg) {
-    //Using ScaffoldMessenger we can easily access
-//this snackbar from anywhere
+    /**
+     * Using ScaffoldMessenger we can easily access
+     * this snackbar from anywhere
+     */
+
     return ScaffoldMessenger.of(Navigation.key.currentContext!).showSnackBar(
       SnackBar(
         content: Text(msg),
@@ -913,7 +1132,108 @@ class ViewUtil {
       ),
     );
   }
+
+  // this varialble is for internet connection check.
+  static bool isPresentedDialog = false;
+  static showInternetDialog({
+    required VoidCallback onPressed,
+  }) async {
+    // flutter defined function.
+    await showDialog(
+      context: Navigation.key.currentContext!,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        // return object of type Dialog.
+        return AlertDialog(
+          title: Text("Connection Error"),
+          content: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Internet is not available"),
+              TextButton(child: Text("Try Again"), onPressed: onPressed),
+            ],
+          ),
+          actions: [
+            // usually buttons at the bottom of the dialog.
+            TextButton(
+              child: Text("Close"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+// global alert dialog
+  static showAlertDialog(
+      {String? title,
+      required Widget content,
+      List<Widget>? actions,
+      Color? alertBackgroundColor,
+      bool? barrierDismissible,
+      BorderRadius? borderRadius}) async {
+    // flutter defined function.
+    await showDialog(
+      context: Navigation.key.currentContext!,
+      barrierDismissible: barrierDismissible ?? true,
+      builder: (BuildContext context) {
+        // return object of type Dialog.
+        return AlertDialog(
+            backgroundColor: alertBackgroundColor,
+            shape: RoundedRectangleBorder(
+                borderRadius:
+                    borderRadius ?? BorderRadius.all(Radius.circular(8.w))),
+            title: title == null ? null : Text(title),
+            content: content,
+            actions: actions);
+      },
+    );
+  }
+
+  // Global bottomSheet function.
+  static bottomSheetFunction({
+    required BuildContext context,
+    required String title,
+    required List<dynamic> bottomSheetList,
+    required int textControllerIndex,
+    required controller,
+    BottomSheetOpenFor? bottomSheetOpenFor,
+    CreateDynamic? createDynamic,
+  }) =>
+      showModalBottomSheet(
+        constraints: BoxConstraints.loose(
+          Size(
+            context.width,
+            context.height * 0.85,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(16.w),
+            topRight: Radius.circular(16.w),
+          ),
+        ),
+        isScrollControlled: true,
+        context: context,
+        builder: (context) {
+          return GlobalBottomSheet(
+            title: title,
+            searchController: TextEditingController(),
+            textControllerIndex: textControllerIndex,
+            bottomSheetList: bottomSheetList,
+            controller: controller,
+            createDynamic: createDynamic,
+            bottomSheetOpenFor: bottomSheetOpenFor,
+          );
+        },
+      );
 }
+
 """);
     await _createFile(
       'lib',
@@ -981,19 +1301,19 @@ class MyApp extends StatelessWidget {
         //globally handle progress color using themeData class
         progressIndicatorTheme: ProgressIndicatorThemeData(color: Colors.green),
         textTheme: GoogleFonts.robotoMonoTextTheme(),
-        primaryColor: KColors.primary,
+        primaryColor:KColor.primary.color,
         visualDensity: VisualDensity.adaptivePlatformDensity,
         colorScheme: ThemeData().colorScheme.copyWith(
-              secondary: KColors.accent,
+              secondary:KColor.secondary.color,
             ),
-        primarySwatch: Colors.blue,
+        primarySwatch: KColor.primary.color as MaterialColor,
         appBarTheme: AppBarTheme(
           iconTheme: IconThemeData(size: 16),
           actionsIconTheme: IconThemeData(size: 16),
-          backgroundColor: KColors.white,
+          backgroundColor: KColor.white.color,
           elevation: 0,
           titleTextStyle: GoogleFonts.poppins(
-            color: KColors.charcoal,
+            color: KColor.divider.color,
             fontWeight: FontWeight.w500,
           ),
         ),
