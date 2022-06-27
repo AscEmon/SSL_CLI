@@ -121,9 +121,9 @@ class ApiClient {
 
   _initDio() {
     _header = {
-      HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON,
+      HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON.key,
       HttpHeaders.authorizationHeader:
-          "\${AppConstant.BEARER} \${PrefHelper.getString(
+          "\${AppConstant.BEARER.key} \${PrefHelper.getString(
         AppConstant.TOKEN.key,
       )}"
     };
@@ -141,18 +141,18 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          print(
+          debugPrint(
               'REQUEST[\${options.method}] => PATH: \${AppUrl.Base.url}\${options.path} '
               '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => HEADERS: \${options.headers}');
           return handler.next(options);
         },
         onResponse: (response, handler) {
-          print(
+         debugPrint(
               'RESPONSE[\${response.statusCode}] => DATA: \${response.data} URL: \${response.requestOptions.baseUrl}\${response.requestOptions.path}');
           return handler.next(response);
         },
         onError: (err, handler) {
-          print(
+          debugPrint(
               'ERROR[\${err.response?.statusCode}] => DATA: \${err.response?.data} Message: \${err.message} URL: \${err.response?.requestOptions.baseUrl}\${err.response?.requestOptions.path}');
           return handler.next(err);
         },
@@ -167,7 +167,7 @@ class ApiClient {
     Map<String, dynamic>? params,
     Map<String, File>? files,
   ) async {
-    _header[Headers.contentTypeHeader] = AppConstant.MULTIPART_FORM_DATA;
+    _header[Headers.contentTypeHeader] = AppConstant.MULTIPART_FORM_DATA.key;
     _initDio();
 
     Map<String, MultipartFile> fileMap = {};
@@ -180,7 +180,7 @@ class ApiClient {
     params?.addAll(fileMap);
     final data = FormData.fromMap(params!);
 
-    print(data.fields.toString());
+    debugPrint(data.fields.toString());
     // Handle and check all the status.
     return clientHandle(
       url,
@@ -355,6 +355,8 @@ class ApiClient {
 
 
 
+
+
 """);
     await _createFile(
       directoryCreator.dataProviderDir.path,
@@ -375,15 +377,15 @@ class ApiClient {
 
   Map<String, dynamic> _header = {};
 
-  _initDio({String baseUrl = AppUrl.BASE_URL}) {
+  _initDio() {
     _header = {
-      HttpHeaders.contentTypeHeader: "application/json",
-      HttpHeaders.authorizationHeader: "Bearer \${PrefHelper.getString(TOKEN)}"
+      HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON.key,
+      HttpHeaders.authorizationHeader: "\${AppConstant.BEARER.key} \${PrefHelper.getString(AppConstant.TOKEN.key)}"
     };
 
     _dio = d.Dio(
       d.BaseOptions(
-        baseUrl: baseUrl,
+        baseUrl: AppUrl.Base.url,
         headers: _header,
         connectTimeout: 1000 * 30,
         sendTimeout: 1000 * 10,
@@ -394,16 +396,16 @@ class ApiClient {
 
   void _initInterceptors() {
     _dio.interceptors.add(d.InterceptorsWrapper(onRequest: (options, handler) {
-      print(
-          'REQUEST[\${options.method}] => PATH: \${AppUrl.BASE_URL}\${options.path} '
+     debugPrint(
+          'REQUEST[\${options.method}] => PATH: \${AppUrl.Base.url}\${options.path} '
           '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => HEADERS: \${options.headers}');
       return handler.next(options);
     }, onResponse: (response, handler) {
-      print(
+      debugPrint(
           'RESPONSE[\${response.statusCode}] => DATA: \${response.data} URL: \${response.requestOptions.baseUrl}\${response.requestOptions.path}');
       return handler.next(response);
     }, onError: (err, handler) {
-      print(
+      debugPrint(
           'ERROR[\${err.response?.statusCode}] => DATA: \${err.response?.data} Message: \${err.message} URL: \${err.response?.requestOptions.baseUrl}\${err.response?.requestOptions.path}');
       return handler.next(err);
     }));
@@ -419,7 +421,7 @@ class ApiClient {
 
       d.Response response;
       _header[d.Headers.contentTypeHeader] = 'multipart/form-data';
-      _initDio(baseUrl: AppUrl.BASE_URL);
+      _initDio();
 
       Map<String, d.MultipartFile> fileMap = {};
       if (files != null) {
@@ -462,7 +464,7 @@ class ApiClient {
     if (isLoaderShowing) const CircularProgressIndicator();
 
     d.Response response;
-    _initDio(baseUrl: AppUrl.BASE_URL);
+    _initDio();
 
     try {
       String paramJson =
@@ -511,7 +513,7 @@ class ApiClient {
           }
         }
       }
-    } 
+    } catch(e){}
   }
 
 // Handle Error type if dio catches anything
@@ -552,6 +554,7 @@ class ApiClient {
   }
 }
 
+ 
  """,
     );
 
@@ -616,19 +619,20 @@ class PrefHelper {
   }
 
   static getLanguage() {
-    return _prefsInstance?.getInt(LANGUAGE) ?? 1;
+    return _prefsInstance?.getInt(AppConstant.LANGUAGE.key) ?? 1;
   }
 
   static void logout() {
     final languageValue = getLanguage();
     _prefsInstance?.clear();
-    _prefsInstance?.setInt(LANGUAGE, languageValue);
+    _prefsInstance?.setInt(AppConstant.LANGUAGE.key, languageValue);
   }
 
   static bool isLoggedIn() {
-    return (_prefsInstance?.getInt(USER_ID) ?? -1) > 0;
+    return (_prefsInstance?.getInt(AppConstant.USER_ID.key) ?? -1) > 0;
   }
 }
+
 """);
 
 //global model folder
@@ -1213,12 +1217,12 @@ enum UrlLink {
 """);
 
     await _createFile(directoryCreator.utilsDir.path, 'extention', content: """
-import 'package:$projectName/DataProvider/PrefHelper.dart';
-import 'package:$projectName/Util/Constant.dart';
-import 'package:$projectName/Util/Enums.dart';
+
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
 import 'dart:developer' as darttools show log;
+import 'package:$projectName/constant/constant_key.dart';
+import 'package:$projectName/data_provider/pref_helper.dart';
 
 extension ConvertNum on String {
   static const english = [
@@ -1238,7 +1242,7 @@ extension ConvertNum on String {
 
   String changeNum() {
     String input = this;
-    int _lanIndex = PrefHelper.getInt(IS_SWITCHED);
+    int _lanIndex = PrefHelper.getInt(AppConstant.IS_SWITCHED.key);
     if (_lanIndex == 1) {
       for (int i = 0; i < english.length; i++) {
         input = input.replaceAll(english[i], bangla[i]);
@@ -1271,11 +1275,7 @@ extension PhoneValid on String {
   }
 }
 
-extension ParseToString on PaymentType {
-  String toShortString() {
-    return this.toString().split('.').last;
-  }
-}
+
 
 extension VersionCheck on String {
   bool isVersionGreaterThan(String currentVersion) {
@@ -1398,13 +1398,13 @@ extension NumberFormatExtention on num {
 
 // It will formate the date which will show in our application.
 extension FormatedDateExtention on DateTime {
-  String get formattedDate => DateFormat(D_MMM_Y).format(this);
+  String get formattedDate => DateFormat(AppConstant.D_MMM_Y.key).format(this);
 }
 
 extension FormatedDateExtentionString on String {
   String formattedDate() {
     DateTime parsedDate = DateTime.parse(this);
-    return DateFormat(D_MMM_Y).format(parsedDate);
+    return DateFormat(AppConstant.D_MMM_Y.key).format(parsedDate);
   }
 }
 
@@ -1427,7 +1427,7 @@ extension GetValueFromString on String {
    * */
   Map get splitTextMap {
     //Get integer value form the list
-    String value = this.replaceAll(new RegExp(r'[^0-9]'), '');
+    String value = replaceAll(new RegExp(r'[^0-9]'), '');
     //After get the value we split the String and return this list of String.
     Map<String, dynamic> splittedText = {
       "value": value,
@@ -1436,6 +1436,7 @@ extension GetValueFromString on String {
     return splittedText;
   }
 }
+
 
 """);
     await _createFile(directoryCreator.utilsDir.path, 'navigation_service',
@@ -1560,7 +1561,7 @@ class APIParams {
       {required this.url,
       required this.method,
       required this.variables,
-      required this.onSuccessFunction},);
+      required this.onSuccessFunction,});
 }
 
 """);
@@ -1588,12 +1589,13 @@ class ViewUtil {
       ),
     );
   }
-  static RemoveSnackBar() {
+
+  static SSLRemoveSnackBar() {
     /**
      * Using ScaffoldMessenger we can easily remove
      * this snackbar from anywhere
      */
-    return ScaffoldMessenger.of(NavigatorService.currentContext!)
+    return ScaffoldMessenger.of(Navigation.key.currentContext!)
         .removeCurrentSnackBar();
   }
 
@@ -1649,17 +1651,19 @@ class ViewUtil {
         return AlertDialog(
             backgroundColor: alertBackgroundColor,
             shape: RoundedRectangleBorder(
-                borderRadius:
-                    borderRadius ?? BorderRadius.all(Radius.circular(8.w))),
+              borderRadius: borderRadius ??
+                  BorderRadius.all(
+                    Radius.circular(8.w),
+                  ),
+            ),
             title: title == null ? null : Text(title),
             content: content,
-            actions: actions);
+            actions: actions,);
       },
     );
   }
-
- 
 }
+
 
 """);
     await _createFile(

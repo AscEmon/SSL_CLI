@@ -210,3 +210,12 @@
  - globalTextformfield,globalbutton and global appbar added
  - remove snackbar added
  - extention update
+
+
+ ## 1.2.4
+ - prefhelper constant change 
+ - context issue resolve in viewutil
+ - debugPrint added in api client
+ - extention  constantkey error resolved
+ - key issue resolved in apiclient
+ - graph client updated for constant key
