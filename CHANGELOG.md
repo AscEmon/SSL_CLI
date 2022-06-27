@@ -199,3 +199,14 @@
 - constant key added for date
 - color added in main file
 - readme update
+
+
+ ## 1.2.3
+ - readme update
+ - AppUrl and enum  update
+ - global response and global paginator added
+ - constant file convert to enum
+ - api client update for using constant
+ - globalTextformfield,globalbutton and global appbar added
+ - remove snackbar added
+ - extention update
