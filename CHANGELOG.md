@@ -219,3 +219,7 @@
  - extention  constantkey error resolved
  - key issue resolved in apiclient
  - graph client updated for constant key
+
+ ## 1.2.5
+ - prefhelper constant key added 
+  

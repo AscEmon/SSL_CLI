@@ -67,6 +67,7 @@ extension AppUrlExtention on AppUrl {
   APPLICATION_JSON,
   BEARER,
   MULTIPART_FORM_DATA,
+  IS_SWITCHED,
 }
 
 extension AppConstantExtention on AppConstant {
@@ -90,11 +91,14 @@ extension AppConstantExtention on AppConstant {
         return "Bearer";
       case AppConstant.MULTIPART_FORM_DATA:
         return "multipart/form-data";
+      case AppConstant.IS_SWITCHED:
+        return "IS_SWITCHED";
       default:
         return "";
     }
   }
 }
+
 
 """,
     );
@@ -710,7 +714,7 @@ class Errors {
 """,
     );
 
-      //global model folder
+    //global model folder
     await _createFile(
       directoryCreator.globalDir.path + '/model',
       'global_paginator',
@@ -743,11 +747,9 @@ class Errors {
 """,
     );
 
-
     await _createFile(
-      directoryCreator.globalDir.path + '/widget',
-      'global_appbar',
-      content: '''
+        directoryCreator.globalDir.path + '/widget', 'global_appbar',
+        content: '''
   import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../utils/styles/styles.dart';
@@ -789,13 +791,11 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 
- '''
-    );
+ ''');
 
-   await _createFile(
-      directoryCreator.globalDir.path + '/widget',
-      'global_button',
-      content: '''
+    await _createFile(
+        directoryCreator.globalDir.path + '/widget', 'global_button',
+        content: '''
 import 'package:flutter/material.dart';
 import 'package:$projectName/utils/styles/styles.dart';
 
@@ -834,12 +834,10 @@ class GlobalButton extends StatelessWidget {
 }
 
 
- '''
-    );
-     await _createFile(
-      directoryCreator.globalDir.path + '/widget',
-      'global_textformfield',
-      content: '''
+ ''');
+    await _createFile(
+        directoryCreator.globalDir.path + '/widget', 'global_textformfield',
+        content: '''
 import 'package:flutter/material.dart';
 import 'package:$projectName/utils/styles/k_text_style.dart';
 import 'package:$projectName/utils/styles/styles.dart';
@@ -973,9 +971,7 @@ class GlobalTextFormField extends StatelessWidget {
 }
 
 
- '''
-    );
-  
+ ''');
 
     //localization file
     await _createFile(
@@ -1565,8 +1561,7 @@ class APIParams {
 }
 
 """);
-    await _createFile(directoryCreator.utilsDir.path, 'view_util',
-        content: """
+    await _createFile(directoryCreator.utilsDir.path, 'view_util', content: """
 import 'package:flutter/material.dart';
 import 'package:$projectName/utils/navigation_service.dart';
 import 'package:$projectName/utils/styles/styles.dart';
