@@ -186,3 +186,40 @@
 - Api Client Change for network connection
 - constant key added for date
 - color added in main file
+
+
+ ## 1.2.2
+- extention added for log
+- Readme file updated ..added for documentation
+- parseToString and parseToDouble extention create
+- Kasset Structure change to enum
+- KColor Structure change to enum
+- Network connection added using connectivity_plus
+- Api Client Change for network connection
+- constant key added for date
+- color added in main file
+- readme update
+
+
+ ## 1.2.3
+ - readme update
+ - AppUrl and enum  update
+ - global response and global paginator added
+ - constant file convert to enum
+ - api client update for using constant
+ - globalTextformfield,globalbutton and global appbar added
+ - remove snackbar added
+ - extention update
+
+
+ ## 1.2.4
+ - prefhelper constant change 
+ - context issue resolve in viewutil
+ - debugPrint added in api client
+ - extention  constantkey error resolved
+ - key issue resolved in apiclient
+ - graph client updated for constant key
+
+ ## 1.2.5
+ - prefhelper constant key added 
+  

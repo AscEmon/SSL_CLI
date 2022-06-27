@@ -14,20 +14,92 @@ class ImplFileCreator implements IFileCreator {
     await _createFile(
       directoryCreator.constantDir.path,
       'app_url',
-      content: """class AppUrl {
-  static const BASE_URL = "";
-}""",
+      content: """import 'package:$projectName/utils/enum.dart';
+
+enum AppUrl {
+  Base,
+}
+
+extension AppUrlExtention on AppUrl {
+  static String _baseUrl = "";
+
+  static void setUrl(UrlLink urlLink) {
+    switch (urlLink) {
+      case UrlLink.isLive:
+        _baseUrl = "";
+
+        break;
+
+      case UrlLink.isDev:
+        _baseUrl = "";
+
+        break;
+
+      case UrlLink.isLocalServer:
+        // set up your local server ip address.
+        _baseUrl = "";
+        break;
+    }
+  }
+
+  String get url {
+    switch (this) {
+      case AppUrl.Base:
+        return "\$_baseUrl";
+
+      default:
+        return "";
+    }
+  }
+}
+""",
     );
     await _createFile(
       directoryCreator.constantDir.path,
       'constant_key',
-      content: """const String USER_UID = 'USER_UID';
-const String TOKEN = 'TOKEN';  
-const String LANGUAGE = "LANGUAGE";
-const String USER_ID = "USER_ID";
-const String YYYY_MM_DD = "yyyy-MM-dd";
-const String DD_MM_YYYY = "dd-MM-yyyy";
-const String D_MMM_Y = "d MMMM y";
+      content: """enum AppConstant {
+  USER_ID,
+  TOKEN,
+  LANGUAGE,
+  YYYY_MM_DD,
+  DD_MM_YYYY,
+  D_MMM_Y,
+  APPLICATION_JSON,
+  BEARER,
+  MULTIPART_FORM_DATA,
+  IS_SWITCHED,
+}
+
+extension AppConstantExtention on AppConstant {
+  String get key {
+    switch (this) {
+      case AppConstant.USER_ID:
+        return "USER_ID";
+      case AppConstant.TOKEN:
+        return "TOKEN";
+      case AppConstant.LANGUAGE:
+        return "LANGUAGE";
+      case AppConstant.DD_MM_YYYY:
+        return "DD_MM_YYYY";
+      case AppConstant.D_MMM_Y:
+        return "D_MMM_Y";
+      case AppConstant.YYYY_MM_DD:
+        return "YYYY_MM_DD";
+      case AppConstant.APPLICATION_JSON:
+        return "application/json";
+      case AppConstant.BEARER:
+        return "Bearer";
+      case AppConstant.MULTIPART_FORM_DATA:
+        return "multipart/form-data";
+      case AppConstant.IS_SWITCHED:
+        return "IS_SWITCHED";
+      default:
+        return "";
+    }
+  }
+}
+
+
 """,
     );
 
@@ -40,7 +112,6 @@ import 'package:flutter/material.dart';
 import 'package:$projectName/constant/app_url.dart';
 import 'package:$projectName/constant/constant_key.dart';
 import 'package:$projectName/data_provider/pref_helper.dart';
-import 'package:$projectName/mvc/login_module/views/login_screen.dart';
 import 'package:$projectName/utils/enum.dart';
 import 'package:$projectName/utils/extention.dart';
 import 'package:$projectName/utils/navigation_service.dart';
@@ -54,8 +125,11 @@ class ApiClient {
 
   _initDio() {
     _header = {
-      HttpHeaders.contentTypeHeader: "application/json",
-      HttpHeaders.authorizationHeader: "Bearer \${PrefHelper.getString(TOKEN)}"
+      HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON.key,
+      HttpHeaders.authorizationHeader:
+          "\${AppConstant.BEARER.key} \${PrefHelper.getString(
+        AppConstant.TOKEN.key,
+      )}"
     };
 
     _dio = Dio(BaseOptions(
@@ -68,26 +142,36 @@ class ApiClient {
   }
 
   void _initInterceptors() {
-    _dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
-      print(
-          'REQUEST[\${options.method}] => PATH: \${AppUrl.Base.url}\${options.path} '
-          '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => HEADERS: \${options.headers}');
-      return handler.next(options);
-    }, onResponse: (response, handler) {
-      print(
-          'RESPONSE[\${response.statusCode}] => DATA: \${response.data} URL: \${response.requestOptions.baseUrl}\${response.requestOptions.path}');
-      return handler.next(response);
-    }, onError: (err, handler) {
-      print(
-          'ERROR[\${err.response?.statusCode}] => DATA: \${err.response?.data} Message: \${err.message} URL: \${err.response?.requestOptions.baseUrl}\${err.response?.requestOptions.path}');
-      return handler.next(err);
-    }));
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          debugPrint(
+              'REQUEST[\${options.method}] => PATH: \${AppUrl.Base.url}\${options.path} '
+              '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => HEADERS: \${options.headers}');
+          return handler.next(options);
+        },
+        onResponse: (response, handler) {
+         debugPrint(
+              'RESPONSE[\${response.statusCode}] => DATA: \${response.data} URL: \${response.requestOptions.baseUrl}\${response.requestOptions.path}');
+          return handler.next(response);
+        },
+        onError: (err, handler) {
+          debugPrint(
+              'ERROR[\${err.response?.statusCode}] => DATA: \${err.response?.data} Message: \${err.message} URL: \${err.response?.requestOptions.baseUrl}\${err.response?.requestOptions.path}');
+          return handler.next(err);
+        },
+      ),
+    );
   }
 
   // Image or file upload using Rest handle.
-  Future requestFormData(String url, Method method,
-      Map<String, dynamic>? params, Map<String, File>? files) async {
-    _header[Headers.contentTypeHeader] = 'multipart/form-data';
+  Future requestFormData(
+    String url,
+    Method method,
+    Map<String, dynamic>? params,
+    Map<String, File>? files,
+  ) async {
+    _header[Headers.contentTypeHeader] = AppConstant.MULTIPART_FORM_DATA.key;
     _initDio();
 
     Map<String, MultipartFile> fileMap = {};
@@ -100,55 +184,78 @@ class ApiClient {
     params?.addAll(fileMap);
     final data = FormData.fromMap(params!);
 
-    print(data.fields.toString());
+    debugPrint(data.fields.toString());
     // Handle and check all the status.
-    return clientHandle(url, method, params, data: data);
+    return clientHandle(
+      url,
+      method,
+      params,
+      data: data,
+    );
   }
 
   // Normal Rest API  handle.
-  Future request(
-      {required String url,
-      required Method method,
-      Map<String, dynamic>? params,
-      Function? onSuccessFunction(Response response)?}) async {
+  Future request({
+    required String url,
+    required Method method,
+    Map<String, dynamic>? params,
+    Function? onSuccessFunction(Response response)?,
+  }) async {
     if (NetworkConnection.instance.isInternet) {
       _initDio();
       // Handle and check all the status.
-      return clientHandle(url, method, params,
-          onSuccessFunction: onSuccessFunction);
+      return clientHandle(
+        url,
+        method,
+        params,
+        onSuccessFunction: onSuccessFunction,
+      );
     } else {
-      NetworkConnection.instance.apiStack.add(APIParams(
-          url: url,
-          method: method,
-          variables: params ?? {},
-          onSuccessFunction: onSuccessFunction));
+      NetworkConnection.instance.apiStack.add(
+        APIParams(
+            url: url,
+            method: method,
+            variables: params ?? {},
+            onSuccessFunction: onSuccessFunction),
+      );
       if (ViewUtil.isPresentedDialog == false) {
         ViewUtil.isPresentedDialog = true;
-        WidgetsBinding.instance!.addPostFrameCallback((_) {
-          ViewUtil.showInternetDialog(onPressed: () {
-            if (NetworkConnection.instance.isInternet == true) {
-              Navigator.of(Navigation.key.currentState!.overlay!.context,
-                      rootNavigator: true)
-                  .pop();
-              ViewUtil.isPresentedDialog = false;
-              NetworkConnection.instance.apiStack.forEach((element) {
-                request(
-                    url: element.url,
-                    method: element.method,
-                    params: element.variables,
-                    onSuccessFunction: element.onSuccessFunction);
-              });
-              NetworkConnection.instance.apiStack = [];
-            }
-          });
-        });
+        WidgetsBinding.instance!.addPostFrameCallback(
+          (_) {
+            ViewUtil.showInternetDialog(
+              onPressed: () {
+                if (NetworkConnection.instance.isInternet == true) {
+                  Navigator.of(Navigation.key.currentState!.overlay!.context,
+                          rootNavigator: true)
+                      .pop();
+                  ViewUtil.isPresentedDialog = false;
+                  NetworkConnection.instance.apiStack.forEach(
+                    (element) {
+                      request(
+                          url: element.url,
+                          method: element.method,
+                          params: element.variables,
+                          onSuccessFunction: element.onSuccessFunction);
+                    },
+                  );
+                  NetworkConnection.instance.apiStack = [];
+                }
+              },
+            );
+          },
+        );
       }
     }
   }
 
 // Handle all the method and error.
-  Future clientHandle(String url, Method method, Map<String, dynamic>? params,
-      {dynamic data, Function? onSuccessFunction(Response response)?}) async {
+  Future clientHandle(
+    String url,
+    Method method,
+    Map<String, dynamic>? params, {
+    dynamic data,
+    Function? onSuccessFunction(Response response)?,
+  }) async {
     Response response;
     try {
       // Handle response code from api.
@@ -180,8 +287,8 @@ class ApiClient {
 
             switch (code) {
               case 401:
-                PrefHelper.setString(TOKEN, "").then((value) => LoginScreen()
-                    .pushAndRemoveUntil(Navigation.key.currentContext));
+                // PrefHelper.setString(TOKEN, "").then((value) => LoginScreen()
+                //     .pushAndRemoveUntil(Navigation.key.currentContext));
 
                 break;
               default:
@@ -215,6 +322,7 @@ class ApiClient {
         case DioErrorType.other:
           if (e.error is SocketException) {
             ViewUtil.SSLSnackbar("Check your Internet Connection");
+            throw SocketException("Not in Online");
           }
           break;
         case DioErrorType.response:
@@ -250,6 +358,9 @@ class ApiClient {
 }
 
 
+
+
+
 """);
     await _createFile(
       directoryCreator.dataProviderDir.path,
@@ -270,15 +381,15 @@ class ApiClient {
 
   Map<String, dynamic> _header = {};
 
-  _initDio({String baseUrl = AppUrl.BASE_URL}) {
+  _initDio() {
     _header = {
-      HttpHeaders.contentTypeHeader: "application/json",
-      HttpHeaders.authorizationHeader: "Bearer \${PrefHelper.getString(TOKEN)}"
+      HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON.key,
+      HttpHeaders.authorizationHeader: "\${AppConstant.BEARER.key} \${PrefHelper.getString(AppConstant.TOKEN.key)}"
     };
 
     _dio = d.Dio(
       d.BaseOptions(
-        baseUrl: baseUrl,
+        baseUrl: AppUrl.Base.url,
         headers: _header,
         connectTimeout: 1000 * 30,
         sendTimeout: 1000 * 10,
@@ -289,16 +400,16 @@ class ApiClient {
 
   void _initInterceptors() {
     _dio.interceptors.add(d.InterceptorsWrapper(onRequest: (options, handler) {
-      print(
-          'REQUEST[\${options.method}] => PATH: \${AppUrl.BASE_URL}\${options.path} '
+     debugPrint(
+          'REQUEST[\${options.method}] => PATH: \${AppUrl.Base.url}\${options.path} '
           '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => HEADERS: \${options.headers}');
       return handler.next(options);
     }, onResponse: (response, handler) {
-      print(
+      debugPrint(
           'RESPONSE[\${response.statusCode}] => DATA: \${response.data} URL: \${response.requestOptions.baseUrl}\${response.requestOptions.path}');
       return handler.next(response);
     }, onError: (err, handler) {
-      print(
+      debugPrint(
           'ERROR[\${err.response?.statusCode}] => DATA: \${err.response?.data} Message: \${err.message} URL: \${err.response?.requestOptions.baseUrl}\${err.response?.requestOptions.path}');
       return handler.next(err);
     }));
@@ -314,7 +425,7 @@ class ApiClient {
 
       d.Response response;
       _header[d.Headers.contentTypeHeader] = 'multipart/form-data';
-      _initDio(baseUrl: AppUrl.BASE_URL);
+      _initDio();
 
       Map<String, d.MultipartFile> fileMap = {};
       if (files != null) {
@@ -357,7 +468,7 @@ class ApiClient {
     if (isLoaderShowing) const CircularProgressIndicator();
 
     d.Response response;
-    _initDio(baseUrl: AppUrl.BASE_URL);
+    _initDio();
 
     try {
       String paramJson =
@@ -406,7 +517,7 @@ class ApiClient {
           }
         }
       }
-    } catch (e) {}
+    } catch(e){}
   }
 
 // Handle Error type if dio catches anything
@@ -447,6 +558,7 @@ class ApiClient {
   }
 }
 
+ 
  """,
     );
 
@@ -511,19 +623,20 @@ class PrefHelper {
   }
 
   static getLanguage() {
-    return _prefsInstance?.getInt(LANGUAGE) ?? 1;
+    return _prefsInstance?.getInt(AppConstant.LANGUAGE.key) ?? 1;
   }
 
   static void logout() {
     final languageValue = getLanguage();
     _prefsInstance?.clear();
-    _prefsInstance?.setInt(LANGUAGE, languageValue);
+    _prefsInstance?.setInt(AppConstant.LANGUAGE.key, languageValue);
   }
 
   static bool isLoggedIn() {
-    return (_prefsInstance?.getInt(USER_ID) ?? -1) > 0;
+    return (_prefsInstance?.getInt(AppConstant.USER_ID.key) ?? -1) > 0;
   }
 }
+
 """);
 
 //global model folder
@@ -567,11 +680,298 @@ class Errors {
 }
 """,
     );
+    //global model folder
+    await _createFile(
+      directoryCreator.globalDir.path + '/model',
+      'global_response',
+      content: """class GlobalResponse {
+  GlobalResponse({
+    this.status,
+    this.code,
+    this.message,
+  });
+
+  String? status;
+  int? code;
+  List<String>? message;
+
+  factory GlobalResponse.fromJson(Map<String, dynamic> json) => GlobalResponse(
+        status: json["status"] == null ? null : json["status"],
+        code: json["code"] == null ? null : json["code"],
+        message: json["message"] == null
+            ? null
+            : List<String>.from(json["message"].map((x) => x)),
+      );
+
+  Map<String, dynamic> toJson() => {
+        "status": status == null ? null : status,
+        "code": code == null ? null : code,
+        "message":
+            message == null ? null : List<dynamic>.from(message!.map((x) => x)),
+      };
+}
+
+""",
+    );
+
+    //global model folder
+    await _createFile(
+      directoryCreator.globalDir.path + '/model',
+      'global_paginator',
+      content: """class GlobalPaginator {
+  GlobalPaginator({
+    this.currentPage,
+    this.totalPages,
+    this.recordPerPage,
+  });
+
+  int? currentPage;
+  int? totalPages;
+  int? recordPerPage;
+
+  factory GlobalPaginator.fromJson(Map<String, dynamic> json) =>
+      GlobalPaginator(
+        currentPage: json["current_page"] == null ? null : json["current_page"],
+        totalPages: json["total_pages"] == null ? null : json["total_pages"],
+        recordPerPage:
+            json["record_per_page"] == null ? null : json["record_per_page"],
+      );
+
+  Map<String, dynamic> toJson() => {
+        "current_page": currentPage == null ? null : currentPage,
+        "total_pages": totalPages == null ? null : totalPages,
+        "record_per_page": recordPerPage == null ? null : recordPerPage,
+      };
+}
+
+""",
+    );
 
     await _createFile(
-      directoryCreator.globalDir.path + '/widget',
-      'temp_widget',
+        directoryCreator.globalDir.path + '/widget', 'global_appbar',
+        content: '''
+  import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../utils/styles/styles.dart';
+
+class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final Color backgroundColor = KColor.secondary.color;
+  final String title;
+  final bool? centerTitle;
+  final List<Widget>? actions;
+
+  GlobalAppBar({
+    Key? key,
+    required this.title,
+    this.centerTitle,
+    this.actions,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      elevation: 0,
+      centerTitle: centerTitle,
+      backgroundColor: backgroundColor,
+      title: Text(
+        title,
+        style: GoogleFonts.poppins(
+          color: KColor.white.color,
+          fontSize: 16.sp,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.1,
+        ),
+      ),
+      actions: actions,
     );
+  }
+
+  @override
+  Size get preferredSize => new Size.fromHeight(56.h);
+}
+
+
+ ''');
+
+    await _createFile(
+        directoryCreator.globalDir.path + '/widget', 'global_button',
+        content: '''
+import 'package:flutter/material.dart';
+import 'package:$projectName/utils/styles/styles.dart';
+
+class GlobalButton extends StatelessWidget {
+  const GlobalButton({
+    Key? key,
+    required this.onPressed,
+    required this.btnName,
+  }) : super(key: key);
+  final void Function() onPressed;
+  final String btnName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      height: 65.h,
+      decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          color: KColor.secondary.color),
+      child: TextButton(
+        style: TextButton.styleFrom(
+          primary: Colors.white,
+        ),
+        onPressed: onPressed,
+        child: Text(
+          btnName,
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+ ''');
+    await _createFile(
+        directoryCreator.globalDir.path + '/widget', 'global_textformfield',
+        content: '''
+import 'package:flutter/material.dart';
+import 'package:$projectName/utils/styles/k_text_style.dart';
+import 'package:$projectName/utils/styles/styles.dart';
+
+class GlobalTextFormField extends StatelessWidget {
+  final bool? obscureText;
+  final TextInputType? textInputType;
+  final TextEditingController? controller;
+  final String? Function(String?)? validator;
+  final Widget? suffixIcon;
+  final Widget? prefixIcon;
+  final int? maxlength;
+  final AutovalidateMode? autovalidateMode;
+  final bool? readOnly;
+  final Color? fillColor;
+  final String? hintText;
+  final String? labelText;
+  final TextStyle? hintStyle;
+  final TextStyle? labelStyle;
+  final bool? mandatoryLabel;
+  final TextStyle? style;
+  final int? line;
+  final String? initialValue;
+  final TextInputAction? textInputAction;
+  final Function(String)? onChanged;
+
+  const GlobalTextFormField({
+    Key? key,
+    this.obscureText,
+    this.textInputType,
+    this.controller,
+    this.validator,
+    this.fillColor,
+    this.suffixIcon,
+    this.prefixIcon,
+    this.maxlength,
+    this.initialValue,
+    this.autovalidateMode,
+    this.readOnly,
+    this.hintText,
+    this.labelText,
+    this.hintStyle,
+    this.mandatoryLabel,
+    this.labelStyle,
+    this.line = 1,
+    this.style,
+    this.onChanged,
+    this.textInputAction = TextInputAction.done,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      initialValue: initialValue,
+      maxLines: line,
+      style: style == null ? KTextStyle.customTextStyle() : style,
+      autovalidateMode: autovalidateMode,
+      obscureText: obscureText ?? false,
+      obscuringCharacter: '*',
+      controller: controller,
+      textInputAction: textInputAction,
+      cursorColor: KColor.black.color,
+      keyboardType: textInputType ?? TextInputType.text,
+      onChanged: onChanged,
+      maxLength: maxlength,
+      onEditingComplete: () => FocusScope.of(context).nextFocus(),
+      decoration: InputDecoration(
+        contentPadding: EdgeInsets.only(
+          top: 24.h,
+          bottom: 24.h,
+          left: 14.w,
+        ),
+        prefixIcon: prefixIcon,
+
+        hintText: hintText,
+        label: mandatoryLabel == true
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Text(labelText ?? "", style: KTextStyle.customTextStyle()),
+                  const Text('*', style: TextStyle(color: Colors.red)),
+                ],
+              )
+            : Text(labelText ?? "", style: KTextStyle.customTextStyle()),
+        // labelText: labelText,
+        labelStyle: labelStyle,
+        filled: true,
+        counterText: "",
+
+        fillColor: KColor.formtextFill.color,
+        suffixIcon: suffixIcon,
+        hintStyle: hintStyle == null
+            ? KTextStyle.customTextStyle(fontSize: 13.sp)
+            : hintStyle,
+        border: OutlineInputBorder(
+          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.all(
+            Radius.circular(8),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: KColor.primary.color, width: 1.w),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: KColor.red.color, width: 1.w),
+          borderRadius: BorderRadius.all(
+            Radius.circular(
+              8,
+            ),
+          ),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: KColor.red.color, width: 1.w),
+          borderRadius: BorderRadius.all(
+            Radius.circular(
+              8,
+            ),
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide(color: Color(0xffE0E0E0), width: 1.w),
+        ),
+      ),
+      validator: validator,
+      readOnly: readOnly ?? false,
+    );
+  }
+}
+
+
+ ''');
 
     //localization file
     await _createFile(
@@ -770,52 +1170,16 @@ extension KSizes on num {
         directoryCreator.utilsDir.path + '/styles', 'k_text_style',
         content: """import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:$projectName/utils/styles/styles.dart';
+import 'styles.dart';
 
 class KTextStyle {
-  static TextStyle headLine3 = GoogleFonts.quicksand(
-    fontSize: 42.sp,
-    fontWeight: FontWeight.w500,
-  );
-
-  static TextStyle headLine4 = GoogleFonts.quicksand(
-    fontSize: 32.sp,
-    fontWeight: FontWeight.w500,
-  );
-
-  static TextStyle buttonText({fontWeight = FontWeight.normal}) => GoogleFonts.quicksand(
-        fontSize:20.sp,
+  static TextStyle customTextStyle(
+          {double fontSize = 12, fontWeight = FontWeight.normal}) =>
+      GoogleFonts.poppins(
+        color: KColor.fromText.color,
+        fontSize: fontSize.sp,
         fontWeight: fontWeight,
       );
-
-  /// Normal Texts
-  static TextStyle bodyText1() => GoogleFonts.quicksand(
-        fontSize: 27.sp,
-        fontWeight: FontWeight.normal,
-      );
-
-  static TextStyle bodyText2() => GoogleFonts.quicksand(
-        fontSize: 24.sp,
-        fontWeight: FontWeight.w500,
-      );
-
-  static TextStyle bodyText3() => GoogleFonts.quicksand(
-        fontSize: 22.sp,
-        fontWeight: FontWeight.normal,
-      );
-
-  /// Subtitles
-  static TextStyle subtitle1 =const TextStyle(
-    fontSize: 16,
-    fontWeight: FontWeight.w400,
-    letterSpacing: 0.15,
-  );
-
-  static TextStyle subtitle2 =const TextStyle(
-    fontSize: 14,
-    fontWeight: FontWeight.w500,
-    letterSpacing: 0.1,
-  );
 }
 """);
 
@@ -838,16 +1202,23 @@ enum CART_STATUS {
   DECREMENT,
 }
 
-enum Method { POST, GET, PUT, DELETE, PATCH, }""");
+enum Method { POST, GET, PUT, DELETE, PATCH, }
+enum UrlLink {
+  isLive,
+  isDev,
+  isLocalServer,
+}
+
+
+""");
 
     await _createFile(directoryCreator.utilsDir.path, 'extention', content: """
-// import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:$projectName/data_provider/pref_helper.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart'
-    show AppLocalizations;
-import 'dart:developer' as darttools show log;
 
+import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
+import 'dart:developer' as darttools show log;
+import 'package:$projectName/constant/constant_key.dart';
+import 'package:$projectName/data_provider/pref_helper.dart';
 
 extension ConvertNum on String {
   static const english = [
@@ -867,7 +1238,8 @@ extension ConvertNum on String {
 
   String changeNum() {
     String input = this;
-    if (PrefHelper.getLanguage() == 2) {
+    int _lanIndex = PrefHelper.getInt(AppConstant.IS_SWITCHED.key);
+    if (_lanIndex == 1) {
       for (int i = 0; i < english.length; i++) {
         input = input.replaceAll(english[i], bangla[i]);
       }
@@ -899,6 +1271,22 @@ extension PhoneValid on String {
   }
 }
 
+
+
+extension VersionCheck on String {
+  bool isVersionGreaterThan(String currentVersion) {
+    String newVersion = this;
+    List<String> currentV = currentVersion.split(".");
+    List<String> newV = newVersion.split(".");
+    bool a = false;
+    for (var i = 0; i <= 2; i++) {
+      a = int.parse(newV[i]) > int.parse(currentV[i]);
+      if (int.parse(newV[i]) != int.parse(currentV[i])) break;
+    }
+    return a;
+  }
+}
+
 extension StringFormat on String {
   String format(List<String> args, List<dynamic> values) {
     String input = this;
@@ -912,7 +1300,7 @@ extension StringFormat on String {
 extension Context on BuildContext {
 //this extention is for localization
 //its a shorter version of AppLocalizations
-  AppLocalizations get loc => AppLocalizations.of(this)!;
+  // AppLocalizations get loc => AppLocalizations.of(this)!;
 
   //get media query
   MediaQueryData get mediaQuery => MediaQuery.of(this);
@@ -920,6 +1308,10 @@ extension Context on BuildContext {
   double get height => MediaQuery.of(this).size.height;
   //get width
   double get width => MediaQuery.of(this).size.width;
+
+  //Bottom Notch Check
+  bool get bottomNotch =>
+      MediaQuery.of(this).viewPadding.bottom > 0 ? true : false;
 
 //Customly call a provider for read method only
 //It will be helpful for us for calling the read function
@@ -935,13 +1327,29 @@ extension Context on BuildContext {
 extension validationExtention on String {
   //Check email is valid or not
   bool get isValidEmail => RegExp(
-          r"^[a-zA-Z0-9.a-zA-Z0-9.!#\$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+\.[a-zA-Z]+")
+          r"^[a-zA-Z0-9.a-zA-Z0-9.!#\$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+.[a-zA-Z]+")
       .hasMatch(this);
 
   //check mobile number contain special character or not
   bool get isMobileNumberValid =>
       RegExp(r'(^(?:[+0]9)?[0-9]{10,12}\$)').hasMatch(this);
 }
+
+extension WidgetExtention on Object {
+  Widget centerCircularProgress({Color? progressColor}) => Center(
+        child: Container(
+          //using adaptive we can easily show platfrom base indicator
+          child: CircularProgressIndicator.adaptive(
+            backgroundColor: progressColor,
+          ),
+        ),
+      );
+}
+
+extension Log on Object {
+  void log() => darttools.log(toString());
+}
+
 extension NumGenericExtensions<T extends String> on T {
   double parseToDouble() {
     try {
@@ -964,21 +1372,68 @@ extension NumGenericExtensions<T extends String> on T {
   }
 }
 
-extension WidgetExtention on Widget {
-  Widget centerCircularProgress({Color? progressColor}) => Center(
-        child: Container(
-          //using adaptive we can easily show platfrom base indicator
-          child: CircularProgressIndicator.adaptive(
-            backgroundColor: progressColor,
-          ),
-        ),
-      );
+// TextEditing controller empty check and set the value in hint text.
+extension EditingEmptyCheck on String {
+  String validateEmptyCheck(TextEditingController tempTextControleller) =>
+      tempTextControleller.text.isEmpty ? this : tempTextControleller.text;
+}
+
+// TextEditing controller mandatory check and set the value mandatory or not.
+extension EditingMadatoryCheck on bool {
+  bool mandatoryCheck(TextEditingController tempTextControleller) =>
+      tempTextControleller.text.isEmpty ? this : false;
+}
+
+// This extention is convert the number to k.
+// such as 1000 to show 1k.
+extension NumberFormatExtention on num {
+  String get formattedNumber => NumberFormat.compactCurrency(
+        decimalDigits: 0,
+      ).format(this).substring(3);
+}
+
+// It will formate the date which will show in our application.
+extension FormatedDateExtention on DateTime {
+  String get formattedDate => DateFormat(AppConstant.D_MMM_Y.key).format(this);
+}
+
+extension FormatedDateExtentionString on String {
+  String formattedDate() {
+    DateTime parsedDate = DateTime.parse(this);
+    return DateFormat(AppConstant.D_MMM_Y.key).format(parsedDate);
+  }
+}
+
+//It will capitalize the first letter of the String.
+extension CapitalizeExtention on String {
+  String toCapitalized() =>
+      length > 0 ? '\${this[0].toUpperCase()}\${substring(1).toLowerCase()}' : '';
+  String toTitleCase() => replaceAll(RegExp(' +'), ' ')
+      .split(' ')
+      .map((str) => str.toCapitalized())
+      .join(' ');
+}
+
+extension GetValueFromString on String {
+  /**
+   * "You will get 60 tk discount"
+   * example : here replace all find the 60 value
+   * then split get the list of this string such as ["You will get","tk discount"]
+   * After that we return full value using map
+   * */
+  Map get splitTextMap {
+    //Get integer value form the list
+    String value = replaceAll(new RegExp(r'[^0-9]'), '');
+    //After get the value we split the String and return this list of String.
+    Map<String, dynamic> splittedText = {
+      "value": value,
+      "splittedList": this.split(value.toString())
+    };
+    return splittedText;
+  }
 }
 
 
-extension Log on Object {
-  void log() => darttools.log(toString());
-}
 """);
     await _createFile(directoryCreator.utilsDir.path, 'navigation_service',
         content: """import 'package:flutter/material.dart';
@@ -1102,15 +1557,12 @@ class APIParams {
       {required this.url,
       required this.method,
       required this.variables,
-      required this.onSuccessFunction});
+      required this.onSuccessFunction,});
 }
 
 """);
-    await _createFile(directoryCreator.utilsDir.path, 'view_util',
-        content: """import 'package:flutter/material.dart';
-import 'package:$projectName/global/widget/global_bottom_sheet.dart';
-import 'package:$projectName/utils/enum.dart';
-import 'package:$projectName/utils/extention.dart';
+    await _createFile(directoryCreator.utilsDir.path, 'view_util', content: """
+import 'package:flutter/material.dart';
 import 'package:$projectName/utils/navigation_service.dart';
 import 'package:$projectName/utils/styles/styles.dart';
 
@@ -1131,6 +1583,15 @@ class ViewUtil {
         ),
       ),
     );
+  }
+
+  static SSLRemoveSnackBar() {
+    /**
+     * Using ScaffoldMessenger we can easily remove
+     * this snackbar from anywhere
+     */
+    return ScaffoldMessenger.of(Navigation.key.currentContext!)
+        .removeCurrentSnackBar();
   }
 
   // this varialble is for internet connection check.
@@ -1185,54 +1646,19 @@ class ViewUtil {
         return AlertDialog(
             backgroundColor: alertBackgroundColor,
             shape: RoundedRectangleBorder(
-                borderRadius:
-                    borderRadius ?? BorderRadius.all(Radius.circular(8.w))),
+              borderRadius: borderRadius ??
+                  BorderRadius.all(
+                    Radius.circular(8.w),
+                  ),
+            ),
             title: title == null ? null : Text(title),
             content: content,
-            actions: actions);
+            actions: actions,);
       },
     );
   }
-
-  // Global bottomSheet function.
-  static bottomSheetFunction({
-    required BuildContext context,
-    required String title,
-    required List<dynamic> bottomSheetList,
-    required int textControllerIndex,
-    required controller,
-    BottomSheetOpenFor? bottomSheetOpenFor,
-    CreateDynamic? createDynamic,
-  }) =>
-      showModalBottomSheet(
-        constraints: BoxConstraints.loose(
-          Size(
-            context.width,
-            context.height * 0.85,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(16.w),
-            topRight: Radius.circular(16.w),
-          ),
-        ),
-        isScrollControlled: true,
-        context: context,
-        builder: (context) {
-          return GlobalBottomSheet(
-            title: title,
-            searchController: TextEditingController(),
-            textControllerIndex: textControllerIndex,
-            bottomSheetList: bottomSheetList,
-            controller: controller,
-            createDynamic: createDynamic,
-            bottomSheetOpenFor: bottomSheetOpenFor,
-          );
-        },
-      );
 }
+
 
 """);
     await _createFile(
@@ -1246,6 +1672,8 @@ import 'package:$projectName/data_provider/pref_helper.dart';
 import 'package:$projectName/mvc/module_name/views/views_name.dart';
 import 'package:$projectName/utils/navigation_service.dart';
 import 'package:$projectName/utils/styles/styles.dart';
+import 'package:$projectName/constant/app_url.dart';
+import 'package:$projectName/utils/enum.dart';
 //localization
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -1279,6 +1707,10 @@ void main() async {
 /// Make sure you always init shared pref first. It has token and token is need
 /// to make API call
 initServices() async {
+   AppUrlExtention.setUrl(
+    UrlLink.isDev,
+  );
+
   await PrefHelper.init();
 }
 
@@ -1288,7 +1720,7 @@ class MyApp extends StatelessWidget {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
 
     return MaterialApp(
-      title: '',
+      title: '$projectName',
       navigatorKey: Navigation.key,
       debugShowCheckedModeBanner: false,
 //localization
