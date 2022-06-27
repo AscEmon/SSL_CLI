@@ -186,3 +186,16 @@
 - Api Client Change for network connection
 - constant key added for date
 - color added in main file
+
+
+ ## 1.2.2
+- extention added for log
+- Readme file updated ..added for documentation
+- parseToString and parseToDouble extention create
+- Kasset Structure change to enum
+- KColor Structure change to enum
+- Network connection added using connectivity_plus
+- Api Client Change for network connection
+- constant key added for date
+- color added in main file
+- readme update
