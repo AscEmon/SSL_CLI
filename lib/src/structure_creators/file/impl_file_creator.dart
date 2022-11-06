@@ -195,7 +195,7 @@ import 'package:$projectName/data_provider/pref_helper.dart';
 import 'package:$projectName/global/widget/error_dialog.dart';
 import 'package:$projectName/utils/app_routes.dart';
 import 'package:$projectName/utils/enum.dart';
-import 'package:$projectName/utils/extension/extension.dart';
+import 'package:$projectName/utils/extension.dart';
 import 'package:$projectName/utils/navigation.dart';
 import 'package:$projectName/utils/network_connection.dart';
 import 'package:$projectName/utils/view_util.dart';
@@ -1000,41 +1000,72 @@ class ErrorDialog extends StatelessWidget {
         directoryCreator.globalDir.path + '/widget', 'global_button',
         content: '''
 import 'package:flutter/material.dart';
-import 'package:$projectName/utils/styles/styles.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:$projectName/global/widget/global_text.dart';
+
+import '../../utils/styles/styles.dart';
 
 class GlobalButton extends StatelessWidget {
-  const GlobalButton({
+  final VoidCallback? onPressed;
+  final String buttonText;
+  final bool isRounded;
+  final double? btnHeight;
+  final int roundedBorderRadius;
+  final Color? btnBackgroundActiveColor;
+  final double? textFontSize;
+
+  GlobalButton({
     Key? key,
     required this.onPressed,
-    required this.btnName,
+    required this.buttonText,
+    this.isRounded = true,
+    this.btnHeight,
+    this.roundedBorderRadius = 17,
+    this.btnBackgroundActiveColor,
+    this.textFontSize,
   }) : super(key: key);
-  final void Function() onPressed;
-  final String btnName;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      height: 65.h,
-      decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          color: KColor.secondary.color),
-      child: TextButton(
-        style: TextButton.styleFrom(
-          primary: Colors.white,
+    Color btnColor = btnBackgroundActiveColor ?? KColor.button.color;
+
+    return ElevatedButton(
+      style: ButtonStyle(
+        shape: MaterialStateProperty.resolveWith<OutlinedBorder>(
+          (states) {
+            return RoundedRectangleBorder(
+              borderRadius: isRounded
+                  ? BorderRadius.circular(
+                      roundedBorderRadius.r,
+                    )
+                  : BorderRadius.zero,
+            );
+          },
         ),
-        onPressed: onPressed,
-        child: Text(
-          btnName,
-          style: TextStyle(
-            fontSize: 16.sp,
-            fontWeight: FontWeight.bold,
+        backgroundColor: MaterialStateProperty.resolveWith<Color>(
+          (Set<MaterialState> states) =>
+              onPressed != null ? btnColor : KColor.divider.color,
+        ),
+        elevation: MaterialStateProperty.resolveWith(
+          (states) => 0.0,
+        ),
+      ),
+      onPressed: onPressed,
+      child: Container(
+        height: btnHeight ?? 76.h,
+        child: Center(
+          child: GlobalText(
+            str: buttonText,
+            fontWeight: FontWeight.w500,
+            fontSize: textFontSize ?? 14,
+            color: KColor.white.color,
           ),
         ),
       ),
     );
   }
 }
+
 
 
  ''');
@@ -1334,7 +1365,7 @@ class GlobalLoader extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        CircularProgressIndicator.adaptive(),
+      const  CircularProgressIndicator.adaptive(),
         SizedBox(width: 10.w),
         Text(text ?? "")
       ],
@@ -1351,7 +1382,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:$projectName/utils/enum.dart';
-import 'package:$projectName/utils/extension/extension.dart';
+import 'package:$projectName/utils/extension.dart';
 
 class GlobalSvgLoader extends StatelessWidget {
   const GlobalSvgLoader({
@@ -1484,12 +1515,12 @@ class GlobalImageLoader extends StatelessWidget {
     );
     await _createFile(
         directoryCreator.moduleDir.path + '/module_name' + '/views',
-        'views_name',
+        'screen_name',
         content: """
 import 'package:flutter/material.dart';
 
-class ViewsName extends StatelessWidget {
-  const ViewsName({Key? key}) : super(key: key);
+class DashboardScreen extends StatelessWidget {
+  const DashboardScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -1508,8 +1539,7 @@ class ViewsName extends StatelessWidget {
 
 //Utils file
 
-    await _createFile(
-        directoryCreator.utilsDir.path, 'extension',
+    await _createFile(directoryCreator.utilsDir.path, 'extension',
         content: """import 'dart:developer' as darttools show log;
 
 import 'package:flutter/material.dart';
@@ -1838,6 +1868,7 @@ export 'k_assets.dart';
 """);
     await _createFile(directoryCreator.utilsDir.path, 'app_routes',
         content: """import 'package:flutter/material.dart';
+        import 'package:$projectName/module/module_name/views/screen_name.dart';
 
 enum AppRoutes {
   dashboard,
@@ -1859,7 +1890,7 @@ extension AppRoutesExtention on AppRoutes {
     await _createFile(directoryCreator.utilsDir.path, 'app_version',
         content: """import 'package:$projectName/constant/constant_key.dart';
 import 'package:$projectName/data_provider/pref_helper.dart';
-import 'package:$projectName/utils/extension/extension.dart';
+import 'package:$projectName/utils/extension.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class AppVersion {
@@ -2266,7 +2297,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:$projectName/constant/app_url.dart';
 import 'package:$projectName/constant/constant_key.dart';
 import 'package:$projectName/data_provider/pref_helper.dart';
-import 'package:$projectName/module/module_name/views/views_name.dart';
+import 'package:$projectName/module/module_name/views/screen_name.dart';
 import 'package:$projectName/utils/app_version.dart';
 import 'package:$projectName/utils/enum.dart';
 import 'package:$projectName/utils/navigation.dart';
@@ -2333,7 +2364,7 @@ class MyApp extends StatelessWidget {
           home: child,
         );
       },
-      child: ViewsName()
+      child: DashboardScreen()
     );
   }
 }
