@@ -243,3 +243,5 @@
 
 ## 1.2.8
  - module directory issue resolved
+ ## 1.2.9
+ - extension folder remove to file
