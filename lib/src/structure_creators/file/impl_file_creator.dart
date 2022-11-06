@@ -1507,8 +1507,9 @@ class ViewsName extends StatelessWidget {
     );
 
 //Utils file
+
     await _createFile(
-        directoryCreator.utilsDir.path + '/extension', 'extension',
+        directoryCreator.utilsDir.path, 'extension',
         content: """import 'dart:developer' as darttools show log;
 
 import 'package:flutter/material.dart';
