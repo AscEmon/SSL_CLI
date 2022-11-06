@@ -222,4 +222,18 @@
 
  ## 1.2.5
  - prefhelper constant key added 
+
+ ## 1.2.6
+ 
+- constant file convert static to enum 
+- app url file convert static to enum
+- Api client update adding List of  fromData
+- KSize remove
+- add flutter screenUtil mandatory in packages
+- add package info plus package for version check mandatory
+- enum file update
+- Update navigation class 
+- network connection class update
+- View Util class update
+- readme Update
   

@@ -31,6 +31,8 @@ After that,Go to root of this project and open your terminal.
  > - dio: 
  > - shared_preferences:
  > - connectivity_plus:
+ > - flutter_screenutil:
+ > - package_info_plus:
 
 
 ##### 4. As we generate localization using this cli thats why we need some configuration.
