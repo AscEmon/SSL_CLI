@@ -44,7 +44,7 @@ class ImplDirectoryCreator implements IDirectoryCreator {
 
   @override
   // TODO: implement moduleDir
-  Directory get moduleDir => throw UnimplementedError();
+  Directory get moduleDir => Directory('$basePath/$_module');
 
   @override
   // TODO: implement utils

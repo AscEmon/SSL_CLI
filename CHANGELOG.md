@@ -236,4 +236,9 @@
 - network connection class update
 - View Util class update
 - readme Update
+
+
+ ## 1.2.7
+ - Directory issue create resolved
+
   
