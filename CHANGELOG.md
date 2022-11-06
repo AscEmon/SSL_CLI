@@ -241,4 +241,5 @@
  ## 1.2.7
  - Directory issue create resolved
 
-  
+## 1.2.8
+ - module directory issue resolved
