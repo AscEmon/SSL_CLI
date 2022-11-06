@@ -418,12 +418,12 @@ class ApiClient {
             "response data is \${response.data}".log();
           }
         } else if (code == 401) {
-          PrefHelper.setString(AppConstant.TOKEN.key, "").then(
-            (value) => Navigation.pushAndRemoveUntil(
-              Navigation.key.currentContext,
-              appRoutes: AppRoutes.login,
-            ),
-          );
+          // PrefHelper.setString(AppConstant.TOKEN.key, "").then(
+          //   (value) => Navigation.pushAndRemoveUntil(
+          //     Navigation.key.currentContext,
+          //     appRoutes: AppRoutes.login,
+          //   ),
+          // );
         } else {
           //Where error occured then pop the global dialog
           response.statusCode?.log();
@@ -873,6 +873,7 @@ class Errors {
   import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../utils/styles/styles.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color backgroundColor = KColor.secondary.color;
@@ -941,16 +942,11 @@ class ErrorDialog extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            InkWell(
+              InkWell(
               onTap: () {
                 Navigation.pop(Navigation.key.currentContext);
               },
-              child: SvgPicture.asset(
-                KAssetName.fileClose.imagePath,
-                height: 24,
-                width: 24,
-                fit: BoxFit.scaleDown,
-              ),
+              child: const Icon(Icons.close),
             ),
           ],
         ),
@@ -979,7 +975,6 @@ class ErrorDialog extends StatelessWidget {
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w500,
                         color: Color(0xff999999),
-                        fontFamily: AppConstant.AROBIA_BOOK.key,
                         letterSpacing: 0.2,
                       ),
                     ),
@@ -1027,7 +1022,7 @@ class GlobalButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color btnColor = btnBackgroundActiveColor ?? KColor.button.color;
+    Color btnColor = btnBackgroundActiveColor ?? KColor.accent.color;
 
     return ElevatedButton(
       style: ButtonStyle(
@@ -1075,6 +1070,7 @@ class GlobalButton extends StatelessWidget {
 import 'package:flutter/material.dart';
 import 'package:$projectName/utils/styles/k_text_style.dart';
 import 'package:$projectName/utils/styles/styles.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class GlobalTextFormField extends StatelessWidget {
   final bool? obscureText;
@@ -1275,9 +1271,6 @@ class GlobalText extends StatelessWidget {
         content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:$projectName/global/widget/global_svg_loader.dart';
-import 'package:$projectName/global/widget/global_text.dart';
-import 'package:$projectName/utils/enum.dart';
 
 import '../../utils/styles/styles.dart';
 
@@ -1298,55 +1291,48 @@ class GlobalDropdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField(
-      menuMaxHeight: 300,
+      menuMaxHeight: 200,
       validator: validator,
-      elevation: 0,
-      isDense: true,
-      dropdownColor: KColor.textFill.color,
-      isExpanded: false,
-      icon: GlobalSvgLoader(
-        imagePath: KAssetName.arrowDropdown.imagePath,
-        svgFor: SvgFor.asset,
+      icon: Icon(
+        Icons.keyboard_arrow_down_rounded,
+        color: Color(0xff9ea1a6),
       ),
       decoration: InputDecoration(
-        contentPadding: EdgeInsets.only(
-          top: 30.h,
-          bottom: 30.h,
-          left: 25.w,
-          right: 30.w,
-        ),
         filled: true,
-        fillColor: KColor.textFill.color,
+        fillColor: KColor.fill.color,
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(17.r),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(color: KColor.enableBorder.color, width: 1.w),
         ),
         errorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: KColor.red.color, width: 1.w),
-          borderRadius: BorderRadius.circular(17.r),
+          borderRadius: BorderRadius.circular(12.r),
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: KColor.red.color, width: 1.w),
-          borderRadius: BorderRadius.circular(17.r),
+          borderRadius: BorderRadius.circular(12.r),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(17.r),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12.r),
+          borderSide: BorderSide(color: KColor.divider.color, width: 1.w),
         ),
       ),
-      hint: GlobalText(
-        str: "\$hintText",
-        color: Color(0xffBBBBBB),
-        fontSize: 20,
-        fontWeight: FontWeight.w500,
-        fontStyle: FontStyle.normal,
-        letterSpacing: 0.2,
+      isExpanded: true,
+      hint: Text(
+        "\$hintText",
+        style: TextStyle(
+          color: KColor.grey.color,
+          fontSize: 18.sp,
+          fontWeight: FontWeight.w400,
+          fontStyle: FontStyle.normal,
+        ),
       ),
       onChanged: onChanged,
       items: items,
     );
   }
 }
+
 
  ''');
 

@@ -249,3 +249,7 @@
  - globalbutton update
  - Extension folder remove
  - views name to screen name
+
+ ## 1.3.1
+ - close button remove in error dialog
+ - Global dropdown changed
