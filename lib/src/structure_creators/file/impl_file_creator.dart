@@ -17,24 +17,28 @@ class ImplFileCreator implements IFileCreator {
       content: """import 'package:$projectName/utils/enum.dart';
 
 enum AppUrl {
-  Base,
+  base,
+  baseImage,
+
 }
 
 extension AppUrlExtention on AppUrl {
   static String _baseUrl = "";
+  static String _baseImageUrl = "";
 
   static void setUrl(UrlLink urlLink) {
     switch (urlLink) {
       case UrlLink.isLive:
         _baseUrl = "";
+        _baseImageUrl = "";
 
         break;
 
       case UrlLink.isDev:
         _baseUrl = "";
+        _baseImageUrl = "";
 
         break;
-
       case UrlLink.isLocalServer:
         // set up your local server ip address.
         _baseUrl = "";
@@ -44,14 +48,17 @@ extension AppUrlExtention on AppUrl {
 
   String get url {
     switch (this) {
-      case AppUrl.Base:
+      case AppUrl.base:
         return "\$_baseUrl";
-
+      case AppUrl.baseImage:
+        return "\$_baseImageUrl";
+     
       default:
-        return "";
     }
+    return "";
   }
 }
+
 """,
     );
     await _createFile(
@@ -63,11 +70,35 @@ extension AppUrlExtention on AppUrl {
   LANGUAGE,
   YYYY_MM_DD,
   DD_MM_YYYY,
+  DD_MM_YYYY_SLASH,
+  D_MMM_Y_HM,
   D_MMM_Y,
+  D_MM_Y,
+  YYYY_MM,
+  MMM,
+  MMMM,
+  MMMM_Y,
   APPLICATION_JSON,
   BEARER,
   MULTIPART_FORM_DATA,
   IS_SWITCHED,
+  DEVICE_ID,
+  DEVICE_OS,
+  USER_AGENT,
+  APP_VERSION,
+  BUILD_NUMBER,
+  ANDROID,
+  IOS,
+  IPN_URL,
+  STORE_ID,
+  STORE_PASSWORD,
+  MOBILE,
+  EMAIL,
+  PUSH_ID,
+  EN,
+  BN,
+  FONTFAMILY,
+  
 }
 
 extension AppConstantExtention on AppConstant {
@@ -78,13 +109,27 @@ extension AppConstantExtention on AppConstant {
       case AppConstant.TOKEN:
         return "TOKEN";
       case AppConstant.LANGUAGE:
-        return "LANGUAGE";
+        return "language";
       case AppConstant.DD_MM_YYYY:
-        return "DD_MM_YYYY";
+        return "dd-MM-yyyy";
+      case AppConstant.DD_MM_YYYY_SLASH:
+        return "dd/MM/yyyy hh:mm a";
+      case AppConstant.D_MMM_Y_HM:
+        return "d MMMM y hh:mm a";
+      case AppConstant.D_MM_Y:
+        return "d MMM y";
       case AppConstant.D_MMM_Y:
-        return "D_MMM_Y";
+        return "d MMMM y";
+      case AppConstant.MMMM_Y:
+        return "MMMM y";
+      case AppConstant.MMM:
+        return "MMM";
+      case AppConstant.MMM:
+        return "MMMM";
+      case AppConstant.YYYY_MM:
+        return 'yyyy-MM';
       case AppConstant.YYYY_MM_DD:
-        return "YYYY_MM_DD";
+        return "yyyy-MM-dd";
       case AppConstant.APPLICATION_JSON:
         return "application/json";
       case AppConstant.BEARER:
@@ -93,11 +138,46 @@ extension AppConstantExtention on AppConstant {
         return "multipart/form-data";
       case AppConstant.IS_SWITCHED:
         return "IS_SWITCHED";
+      case AppConstant.USER_AGENT:
+        return "user-agent";
+      case AppConstant.BUILD_NUMBER:
+        return "build";
+      case AppConstant.DEVICE_ID:
+        return "device-id";
+      case AppConstant.APP_VERSION:
+        return "app-version";
+      case AppConstant.DEVICE_OS:
+        return "device-os";
+      case AppConstant.PUSH_ID:
+        return "push-id";
+      case AppConstant.ANDROID:
+        return "android";
+      case AppConstant.IOS:
+        return "ios";
+      case AppConstant.IPN_URL:
+        return "ipn_url";
+      case AppConstant.STORE_ID:
+        return "store_id";
+      case AppConstant.STORE_PASSWORD:
+        return "store_password";
+      case AppConstant.MOBILE:
+        return "mobile";
+      case AppConstant.EMAIL:
+        return "email";
+      case AppConstant.EN:
+        return 'en';
+      case AppConstant.BN:
+        return 'bn';
+      case AppConstant.FONTFAMILY:
+        return 'Arboria';
+    
+
       default:
         return "";
     }
   }
 }
+
 
 
 """,
@@ -112,115 +192,149 @@ import 'package:flutter/material.dart';
 import 'package:$projectName/constant/app_url.dart';
 import 'package:$projectName/constant/constant_key.dart';
 import 'package:$projectName/data_provider/pref_helper.dart';
+import 'package:$projectName/global/widget/error_dialog.dart';
+import 'package:$projectName/utils/app_routes.dart';
 import 'package:$projectName/utils/enum.dart';
-import 'package:$projectName/utils/extention.dart';
-import 'package:$projectName/utils/navigation_service.dart';
+import 'package:$projectName/utils/extension/extension.dart';
+import 'package:$projectName/utils/navigation.dart';
 import 'package:$projectName/utils/network_connection.dart';
 import 'package:$projectName/utils/view_util.dart';
 
 class ApiClient {
-  late Dio _dio;
+  Dio _dio = Dio();
 
   Map<String, dynamic> _header = {};
 
-  _initDio() {
+  bool? isPopDialog;
+
+  _initDio({Map<String, String>? extraHeader}) async {
+    final DEVISE_OS =
+        Platform.isAndroid ? AppConstant.ANDROID.key : AppConstant.IOS.key;
+
     _header = {
       HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON.key,
       HttpHeaders.authorizationHeader:
-          "\${AppConstant.BEARER.key} \${PrefHelper.getString(
-        AppConstant.TOKEN.key,
-      )}"
+          "\${AppConstant.BEARER.key} \${PrefHelper.getString(AppConstant.TOKEN.key)}",
+      AppConstant.APP_VERSION.key:
+          PrefHelper.getString(AppConstant.APP_VERSION.key),
+      AppConstant.BUILD_NUMBER.key:
+          PrefHelper.getString(AppConstant.BUILD_NUMBER.key),
+      AppConstant.USER_AGENT.key: DEVISE_OS,
+      AppConstant.DEVICE_OS.key: DEVISE_OS,
+      AppConstant.LANGUAGE.key: PrefHelper.getLanguage() == 1
+          ? AppConstant.EN.key
+          : AppConstant.BN.key,
+      extraHeader?.keys.first ?? "": extraHeader?.values.first ?? ""
     };
 
-    _dio = Dio(BaseOptions(
-      baseUrl: AppUrl.Base.url,
+    _dio.options = BaseOptions(
+      baseUrl: AppUrl.base.url,
       headers: _header,
-      connectTimeout: 1000 * 30,
-      sendTimeout: 1000 * 10,
-    ));
+      connectTimeout: 60 * 1000 * 3 * 3, //miliseconds
+      sendTimeout: 60 * 1000 * 2 * 3,
+      receiveTimeout: 60 * 1000 * 2 * 3,
+    );
     _initInterceptors();
   }
 
   void _initInterceptors() {
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          debugPrint(
-              'REQUEST[\${options.method}] => PATH: \${AppUrl.Base.url}\${options.path} '
-              '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => HEADERS: \${options.headers}');
-          return handler.next(options);
-        },
-        onResponse: (response, handler) {
-         debugPrint(
-              'RESPONSE[\${response.statusCode}] => DATA: \${response.data} URL: \${response.requestOptions.baseUrl}\${response.requestOptions.path}');
-          return handler.next(response);
-        },
-        onError: (err, handler) {
-          debugPrint(
-              'ERROR[\${err.response?.statusCode}] => DATA: \${err.response?.data} Message: \${err.message} URL: \${err.response?.requestOptions.baseUrl}\${err.response?.requestOptions.path}');
-          return handler.next(err);
-        },
-      ),
-    );
+    _dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+      print(
+          'REQUEST[\${options.method}] => PATH: \${AppUrl.base.url}\${options.path} '
+          '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => _HEADERS: \${options.headers}');
+      return handler.next(options);
+    }, onResponse: (response, handler) {
+      print(
+          'RESPONSE[\${response.statusCode}] => DATA: \${response.data} URL: \${response.requestOptions.baseUrl}\${response.requestOptions.path}');
+      return handler.next(response);
+    }, onError: (err, handler) {
+      print(
+          'ERROR[\${err.response?.statusCode}] => DATA: \${err.response?.data} Message: \${err.message} URL: \${err.response?.requestOptions.baseUrl}\${err.response?.requestOptions.path}');
+      return handler.next(err);
+    }));
   }
 
   // Image or file upload using Rest handle.
   Future requestFormData(
-    String url,
-    Method method,
-    Map<String, dynamic>? params,
-    Map<String, File>? files,
-  ) async {
-    _header[Headers.contentTypeHeader] = AppConstant.MULTIPART_FORM_DATA.key;
-    _initDio();
+      {required String url,
+      required Method method,
+      Map<String, dynamic>? params,
+      bool? isPopGlobalDialog,
+      String? token,
+      Options? options,
+      void Function(int, int)? onReceiveProgress,
+      String? savePath,
+      List<File>? files,
+      String? fileKeyName,
+      required onSuccessFunction(
+        Response response,
+      )}) async {
+    final tokenHeader = <String, String>{
+      HttpHeaders.contentTypeHeader: AppConstant.MULTIPART_FORM_DATA.key
+    };
+    _initDio(extraHeader: tokenHeader);
 
-    Map<String, MultipartFile> fileMap = {};
     if (files != null) {
-      for (MapEntry fileEntry in files.entries) {
-        File file = fileEntry.value;
-        fileMap[fileEntry.key] = await MultipartFile.fromFile(file.path);
-      }
+      params?.addAll({
+        "\${fileKeyName}": files
+            .map((item) => MultipartFile.fromFileSync(item.path,
+                filename: item.path.split('/').last))
+            .toList()
+      });
     }
-    params?.addAll(fileMap);
-    final data = FormData.fromMap(params!);
 
-    debugPrint(data.fields.toString());
+    final data = FormData.fromMap(params!);
+    data.log();
     // Handle and check all the status.
     return clientHandle(
       url,
       method,
       params,
       data: data,
+      onSuccessFunction: onSuccessFunction,
     );
   }
 
   // Normal Rest API  handle.
-  Future request({
-    required String url,
-    required Method method,
-    Map<String, dynamic>? params,
-    Function? onSuccessFunction(Response response)?,
-  }) async {
+  Future request(
+      {required String url,
+      required Method method,
+      Map<String, dynamic>? params,
+      bool? isPopGlobalDialog,
+      String? token,
+      Options? options,
+      void Function(int, int)? onReceiveProgress,
+      String? savePath,
+      required onSuccessFunction(
+        Response response,
+      )}) async {
+    final tokenHeader = <String, String>{AppConstant.PUSH_ID.key: token ?? ""};
+
     if (NetworkConnection.instance.isInternet) {
-      _initDio();
       // Handle and check all the status.
+      isPopDialog = isPopGlobalDialog;
+      _initDio(extraHeader: tokenHeader);
       return clientHandle(
         url,
         method,
         params,
+        options: options,
+        savePath: savePath,
+        onReceiveProgress: onReceiveProgress,
         onSuccessFunction: onSuccessFunction,
       );
     } else {
       NetworkConnection.instance.apiStack.add(
         APIParams(
-            url: url,
-            method: method,
-            variables: params ?? {},
-            onSuccessFunction: onSuccessFunction),
+          url: url,
+          method: method,
+          variables: params ?? {},
+          onSuccessFunction: onSuccessFunction,
+        ),
       );
       if (ViewUtil.isPresentedDialog == false) {
         ViewUtil.isPresentedDialog = true;
-        WidgetsBinding.instance!.addPostFrameCallback(
+        WidgetsBinding.instance?.addPostFrameCallback(
           (_) {
             ViewUtil.showInternetDialog(
               onPressed: () {
@@ -232,10 +346,11 @@ class ApiClient {
                   NetworkConnection.instance.apiStack.forEach(
                     (element) {
                       request(
-                          url: element.url,
-                          method: element.method,
-                          params: element.variables,
-                          onSuccessFunction: element.onSuccessFunction);
+                        url: element.url,
+                        method: element.method,
+                        params: element.variables,
+                        onSuccessFunction: element.onSuccessFunction,
+                      );
                     },
                   );
                   NetworkConnection.instance.apiStack = [];
@@ -254,21 +369,38 @@ class ApiClient {
     Method method,
     Map<String, dynamic>? params, {
     dynamic data,
-    Function? onSuccessFunction(Response response)?,
+    Options? options,
+    String? savePath,
+    void Function(int, int)? onReceiveProgress,
+    required onSuccessFunction(Response response)?,
   }) async {
     Response response;
     try {
       // Handle response code from api.
       if (method == Method.POST) {
-        response = await _dio.post(url, queryParameters: params, data: data);
+        response = await _dio.post(
+          url,
+          queryParameters: params,
+          data: data,
+        );
       } else if (method == Method.DELETE) {
         response = await _dio.delete(url);
       } else if (method == Method.PATCH) {
         response = await _dio.patch(url);
+      } else if (method == Method.DOWNLOAD) {
+        response = await _dio.download(
+          url,
+          savePath,
+          queryParameters: params,
+          options: options,
+          onReceiveProgress: onReceiveProgress,
+        );
       } else {
         response = await _dio.get(
           url,
           queryParameters: params,
+          options: options,
+          onReceiveProgress: onReceiveProgress,
         );
       }
       /**
@@ -277,88 +409,76 @@ class ApiClient {
        */
       if (response.statusCode == 200) {
         final Map data = json.decode(response.toString());
-
-        final code = data['code'];
+        final verifycode = data['code'];
+        int code = int.tryParse(verifycode.toString()) ?? 0;
         if (code == 200) {
-          return onSuccessFunction!(response);
-        } else {
-          if (code < 500) {
-            List<String> messages = data['message'].cast<String>();
-
-            switch (code) {
-              case 401:
-                // PrefHelper.setString(TOKEN, "").then((value) => LoginScreen()
-                //     .pushAndRemoveUntil(Navigation.key.currentContext));
-
-                break;
-              default:
-                ViewUtil.SSLSnackbar(_extractMessages(messages));
-
-                throw Exception(_extractMessages(messages));
-            }
+          if (response.data != null) {
+            return onSuccessFunction!(response);
           } else {
-            ViewUtil.SSLSnackbar("Server Error");
+            "response data is \${response.data}".log();
+          }
+        } else if (code == 401) {
+          PrefHelper.setString(AppConstant.TOKEN.key, "").then(
+            (value) => Navigation.pushAndRemoveUntil(
+              Navigation.key.currentContext,
+              appRoutes: AppRoutes.login,
+            ),
+          );
+        } else {
+          //Where error occured then pop the global dialog
+          response.statusCode?.log();
+          code.log();
+          isPopDialog?.log();
+
+          List<String>? erroMsg;
+          erroMsg = List<String>.from(data["errors"]?.map((x) => x));
+          ViewUtil.showAlertDialog(
+            barrierDismissible: false,
+            content: ErrorDialog(
+              erroMsg: erroMsg,
+            ),
+          ).then((value) {
+            if (isPopDialog == true || isPopDialog == null) {
+              Navigator.pop(Navigation.key.currentContext!);
+            }
+          });
+          if (isPopDialog == false) {
             throw Exception();
           }
         }
-      } else if (response.statusCode == 401) {
-        throw Exception("Unauthorized");
-      } else if (response.statusCode == 500) {
-        throw Exception("Server Error");
-      } else {
-        throw Exception("Something went wrongs");
       }
 
       // Handle Error type if dio catches anything.
     } on DioError catch (e) {
       e.log();
+
       switch (e.type) {
         case DioErrorType.connectTimeout:
           ViewUtil.SSLSnackbar("Time out delay ");
-          break;
+          throw Exception();
         case DioErrorType.receiveTimeout:
           ViewUtil.SSLSnackbar("Server is not responded properly");
-          break;
+          throw Exception();
         case DioErrorType.other:
           if (e.error is SocketException) {
-            ViewUtil.SSLSnackbar("Check your Internet Connection");
-            throw SocketException("Not in Online");
+            throw SocketException("No Internat Available");
+          } else {
+            ViewUtil.SSLSnackbar("Server is not responded properly");
+            throw Exception();
           }
-          break;
         case DioErrorType.response:
-          try {
-            ViewUtil.SSLSnackbar("Internal Responses error");
-          } catch (e) {
-          } finally {
-            throw Exception(e.toString());
-          }
-
+          ViewUtil.SSLSnackbar("Internal Responses error");
+          throw Exception(e.toString());
         default:
+          ViewUtil.SSLSnackbar("Something went wrong");
+          throw Exception("Something went wrong" + e.toString());
       }
     } catch (e) {
-      "ex".log();
-      e.log();
+      "dioErrorCatch \$e".log();
       throw Exception("Something went wrong" + e.toString());
     }
   }
-
-  /**
-   * error message will give us as a list of string thats why extract it
-   * so check it in your response
-   */
-  _extractMessages(List<String> messages) {
-    var str = "";
-
-    messages.forEach((element) {
-      str += element;
-    });
-
-    return str;
-  }
 }
-
-
-
 
 
 """);
@@ -686,28 +806,28 @@ class Errors {
       'global_response',
       content: """class GlobalResponse {
   GlobalResponse({
-    this.status,
-    this.code,
     this.message,
+    this.errors,
+    this.code,
   });
 
-  String? status;
+  String? message;
+  List<String>? errors;
   int? code;
-  List<String>? message;
 
   factory GlobalResponse.fromJson(Map<String, dynamic> json) => GlobalResponse(
-        status: json["status"] == null ? null : json["status"],
-        code: json["code"] == null ? null : json["code"],
-        message: json["message"] == null
+        message: json["message"],
+        errors: json["errors"] == null
             ? null
-            : List<String>.from(json["message"].map((x) => x)),
+            : List<String>.from(json["errors"].map((x) => x)),
+        code: json["code"],
       );
 
   Map<String, dynamic> toJson() => {
-        "status": status == null ? null : status,
-        "code": code == null ? null : code,
-        "message":
-            message == null ? null : List<dynamic>.from(message!.map((x) => x)),
+        "message": message,
+        "errors":
+            errors == null ? null : List<dynamic>.from(errors!.map((x) => x)),
+        "code": code,
       };
 }
 
@@ -790,6 +910,89 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => new Size.fromHeight(56.h);
 }
 
+
+ ''');
+    await _createFile(
+        directoryCreator.globalDir.path + '/widget', 'error_dialog',
+        content: '''
+  import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/svg.dart';
+import 'package:$projectName/constant/constant_key.dart';
+import 'package:$projectName/global/widget/global_text.dart';
+import 'package:$projectName/utils/navigation.dart';
+
+import '../../utils/styles/styles.dart';
+
+class ErrorDialog extends StatelessWidget {
+  const ErrorDialog({
+    Key? key,
+    required this.erroMsg,
+  }) : super(key: key);
+
+  final List<String> erroMsg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            InkWell(
+              onTap: () {
+                Navigation.pop(Navigation.key.currentContext);
+              },
+              child: SvgPicture.asset(
+                KAssetName.fileClose.imagePath,
+                height: 24,
+                width: 24,
+                fit: BoxFit.scaleDown,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(
+          height: 10.h,
+        ),
+        Container(
+          width: double.infinity,
+          padding: EdgeInsets.only(left: 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: List.generate(
+              erroMsg.length,
+              (index) => Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                 
+                  Flexible(
+                    child: Container(
+                      padding: EdgeInsets.only(right: 30..w),
+                      child: GlobalText(
+                        str: "\${erroMsg[index].toString()}",
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.start,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xff999999),
+                        fontFamily: AppConstant.AROBIA_BOOK.key,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        )
+      ],
+    );
+  }
+}
 
  ''');
 
@@ -973,6 +1176,268 @@ class GlobalTextFormField extends StatelessWidget {
 
  ''');
 
+    await _createFile(
+        directoryCreator.globalDir.path + '/widget', 'global_text',
+        content: '''
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:$projectName/constant/constant_key.dart';
+
+class GlobalText extends StatelessWidget {
+  final String str;
+  final FontWeight fontWeight;
+  final double? fontSize;
+  final Color? color;
+  final FontStyle? fontStyle;
+  final double? letterSpacing;
+  final TextDecoration? decoration;
+  final int? maxLines;
+  final TextOverflow? overflow;
+  final TextAlign? textAlign;
+  final bool? softwrap;
+  final double? height;
+  final String? fontFamily;
+
+  const GlobalText({
+    Key? key,
+    required this.str,
+    required this.fontWeight,
+    this.fontSize,
+    this.fontStyle,
+    this.color,
+    this.letterSpacing,
+    this.decoration,
+    this.maxLines,
+    this.textAlign,
+    this.overflow,
+    this.softwrap,
+    this.height,
+    this.fontFamily,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      str,
+      maxLines: maxLines,
+      overflow: overflow,
+      textAlign: textAlign,
+      softWrap: softwrap,
+      style: TextStyle(
+        color: color ?? Colors.black,
+        fontSize: fontSize?.sp,
+        fontWeight: fontWeight,
+        letterSpacing: letterSpacing,
+        decoration: decoration,
+        height: height,
+        fontStyle: fontStyle,
+        fontFamily: fontFamily ?? AppConstant.FONTFAMILY.key,
+      ),
+    );
+  }
+}
+
+ ''');
+
+    await _createFile(
+        directoryCreator.globalDir.path + '/widget', 'global_dropdown',
+        content: '''
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:$projectName/global/widget/global_svg_loader.dart';
+import 'package:$projectName/global/widget/global_text.dart';
+import 'package:$projectName/utils/enum.dart';
+
+import '../../utils/styles/styles.dart';
+
+class GlobalDropdown extends StatelessWidget {
+  const GlobalDropdown({
+    Key? key,
+    required this.validator,
+    required this.hintText,
+    required this.onChanged,
+    required this.items,
+  }) : super(key: key);
+
+  final String? Function(Object?)? validator;
+  final String? hintText;
+  final void Function(Object?)? onChanged;
+  final List<DropdownMenuItem<Object>>? items;
+
+  @override
+  Widget build(BuildContext context) {
+    return DropdownButtonFormField(
+      menuMaxHeight: 300,
+      validator: validator,
+      elevation: 0,
+      isDense: true,
+      dropdownColor: KColor.textFill.color,
+      isExpanded: false,
+      icon: GlobalSvgLoader(
+        imagePath: KAssetName.arrowDropdown.imagePath,
+        svgFor: SvgFor.asset,
+      ),
+      decoration: InputDecoration(
+        contentPadding: EdgeInsets.only(
+          top: 30.h,
+          bottom: 30.h,
+          left: 25.w,
+          right: 30.w,
+        ),
+        filled: true,
+        fillColor: KColor.textFill.color,
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(17.r),
+          borderSide: BorderSide.none,
+        ),
+        errorBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: KColor.red.color, width: 1.w),
+          borderRadius: BorderRadius.circular(17.r),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: KColor.red.color, width: 1.w),
+          borderRadius: BorderRadius.circular(17.r),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(17.r),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      hint: GlobalText(
+        str: "\$hintText",
+        color: Color(0xffBBBBBB),
+        fontSize: 20,
+        fontWeight: FontWeight.w500,
+        fontStyle: FontStyle.normal,
+        letterSpacing: 0.2,
+      ),
+      onChanged: onChanged,
+      items: items,
+    );
+  }
+}
+
+ ''');
+
+    await _createFile(
+        directoryCreator.globalDir.path + '/widget', 'global_loader',
+        content: '''
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+class GlobalLoader extends StatelessWidget {
+  const GlobalLoader({Key? key, this.text = "Loading..."}) : super(key: key);
+  final String? text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        CircularProgressIndicator.adaptive(),
+        SizedBox(width: 10.w),
+        Text(text ?? "")
+      ],
+    );
+  }
+}
+
+ ''');
+
+    await _createFile(
+        directoryCreator.globalDir.path + '/widget', 'global_svg_loader',
+        content: '''
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:$projectName/utils/enum.dart';
+import 'package:$projectName/utils/extension/extension.dart';
+
+class GlobalSvgLoader extends StatelessWidget {
+  const GlobalSvgLoader({
+    Key? key,
+    required this.imagePath,
+    this.height,
+    this.width,
+    this.fit,
+    this.color,
+    required this.svgFor,
+  }) : super(key: key);
+  final String imagePath;
+  final double? height;
+  final double? width;
+  final BoxFit? fit;
+  final SvgFor svgFor;
+  final Color? color;
+  @override
+  Widget build(BuildContext context) {
+    if (svgFor == SvgFor.network) {
+      return SvgPicture.network(
+        imagePath,
+        height: height,
+        width: width,
+        fit: fit ?? BoxFit.scaleDown,
+        color: color,
+        placeholderBuilder: (BuildContext context) => centerCircularProgress(),
+      );
+    } else {
+      return SvgPicture.asset(
+        imagePath,
+        height: height,
+        width: width,
+        fit: fit ?? BoxFit.cover,
+        color: color,
+      );
+    }
+  }
+}
+
+ ''');
+
+    await _createFile(
+        directoryCreator.globalDir.path + '/widget', 'global_image_loader',
+        content: '''
+import 'package:flutter/material.dart';
+import 'package:$projectName/utils/enum.dart';
+
+class GlobalImageLoader extends StatelessWidget {
+  const GlobalImageLoader({
+    Key? key,
+    required this.imagePath,
+    required this.imageFor,
+    this.height,
+    this.width,
+    this.fit,
+  }) : super(key: key);
+  final String imagePath;
+  final double? height;
+  final double? width;
+  final BoxFit? fit;
+  final ImageFor imageFor;
+  @override
+  Widget build(BuildContext context) {
+    if (imageFor == ImageFor.network) {
+      return Image.network(
+        imagePath,
+        height: height,
+        width: width,
+        fit: fit,
+        errorBuilder: (context, exception, stackTrace) => const Text('😢'),
+      );
+    } else {
+      return Image.asset(
+        imagePath,
+        height: height,
+        width: width,
+        fit: fit,
+        errorBuilder: (context, exception, stackTrace) => const Text('😢'),
+      );
+    }
+  }
+}
+
+ ''');
+
     //localization file
     await _createFile(
       directoryCreator.l10nDir.path,
@@ -1010,15 +1475,16 @@ class GlobalTextFormField extends StatelessWidget {
 
     //MVC  module file
     await _createFile(
-      directoryCreator.mvcDir.path + '/module_name' + '/controller',
+      directoryCreator.moduleDir.path + '/module_name' + '/controller',
       'controller_name',
     );
     await _createFile(
-      directoryCreator.mvcDir.path + '/module_name' + '/model',
+      directoryCreator.moduleDir.path + '/module_name' + '/model',
       'model_class_name',
     );
     await _createFile(
-        directoryCreator.mvcDir.path + '/module_name' + '/views', 'views_name',
+        directoryCreator.moduleDir.path + '/module_name' + '/views',
+        'views_name',
         content: """
 import 'package:flutter/material.dart';
 
@@ -1033,11 +1499,220 @@ class ViewsName extends StatelessWidget {
 
 """);
     await _createFile(
-      directoryCreator.mvcDir.path + '/module_name' + '/views' + '/components',
+      directoryCreator.moduleDir.path +
+          '/module_name' +
+          '/views' +
+          '/components',
       'widget_name',
     );
 
 //Utils file
+    await _createFile(
+        directoryCreator.utilsDir.path + '/extension', 'extension',
+        content: """import 'dart:developer' as darttools show log;
+
+import 'package:flutter/material.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart'
+    show AppLocalizations;
+//import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:$projectName/constant/constant_key.dart';
+import 'package:$projectName/data_provider/pref_helper.dart';
+import 'package:intl/intl.dart';
+
+extension ConvertNum on String {
+  static const english = [
+    '0',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '.'
+  ];
+  static const bangla = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯', '.'];
+
+  String changeNum() {
+    String input = this;
+    if (PrefHelper.getLanguage() == 2) {
+      for (int i = 0; i < english.length; i++) {
+        input = input.replaceAll(english[i], bangla[i]);
+      }
+    } else {
+      for (int i = 0; i < english.length; i++) {
+        input = input.replaceAll(bangla[i], english[i]);
+      }
+    }
+    return input;
+  }
+}
+
+extension PhoneValid on String {
+  bool phoneValid(String number) {
+    if (number.isNotEmpty && number.length == 11) {
+      var prefix = number.substring(0, 3);
+      if (prefix == "017" ||
+          prefix == "016" ||
+          prefix == "018" ||
+          prefix == "015" ||
+          prefix == "019" ||
+          prefix == "013" ||
+          prefix == "014") {
+        return true;
+      }
+      return false;
+    }
+    return false;
+  }
+}
+
+extension StringFormat on String {
+  String format(List<String> args, List<dynamic> values) {
+    String input = this;
+    for (int i = 0; i < args.length; i++) {
+      input = input.replaceAll(args[i], "\${values[i]}");
+    }
+    return input;
+  }
+}
+
+extension Context on BuildContext {
+//this extention is for localization
+//its a shorter version of AppLocalizations
+  AppLocalizations get loc => AppLocalizations.of(this)!;
+
+  //get media query
+  MediaQueryData get mediaQuery => MediaQuery.of(this);
+
+  //get height
+  double get height => MediaQuery.of(this).size.height;
+
+  //get width
+  double get width => MediaQuery.of(this).size.width;
+
+  //Bottom Notch Check
+  bool get bottomNotch =>
+      MediaQuery.of(this).viewPadding.bottom > 0 ? true : false;
+
+//Customly call a provider for read method only
+//It will be helpful for us for calling the read function
+//without Consumer,ConsumerWidget or ConsumerStatefulWidget
+//Incase if you face any issue using this then please wrap your widget
+//with consumer and then call your provider
+
+  // T read<T>(ProviderBase<T> provider) {
+  //   return ProviderScope.containerOf(this, listen: false).read(provider);
+  // }
+}
+
+extension validationExtention on String {
+  //Check email is valid or not
+  bool get isValidEmail => RegExp(
+          r"[a-z0-9!#\$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#\$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?")
+      .hasMatch(this);
+
+  //check mobile number contain special character or not
+  bool get isMobileNumberValid =>
+      RegExp(r'(^(?:[+0]9)?[0-9]{10,12}\$)').hasMatch(this);
+}
+
+extension NumGenericExtensions<T extends String> on T {
+  double parseToDouble() {
+    try {
+      return double.parse(this);
+    } catch (e) {
+      e.log;
+
+      return 0.0;
+    }
+  }
+
+  String parseToString() {
+    try {
+      return this.toString();
+    } catch (e) {
+      e.log();
+
+      return "";
+    }
+  }
+}
+
+extension VersionCheck on String {
+  bool isVersionGreaterThan(String currentVersion) {
+    String serverVersion = this;
+    String currentV = "\${currentVersion}".replaceAll(".", "");
+    String serverV = "\${serverVersion}".replaceAll(".", "");
+    debugPrint("serverV \${serverV}");
+    debugPrint("currentV \${currentV}");
+    return int.parse(serverV) > int.parse(currentV);
+  }
+}
+
+extension WidgetExtention on Widget {
+  Widget centerCircularProgress({Color? progressColor}) => Center(
+        child: Container(
+          //using adaptive we can easily show platfrom base indicator
+          child: CircularProgressIndicator.adaptive(
+            backgroundColor: progressColor,
+          ),
+        ),
+      );
+}
+
+extension Log on Object {
+  void log() => darttools.log(toString());
+}
+
+// It will formate the date which will show in our application.
+extension FormatedDateExtention on DateTime {
+  String get formattedDate => DateFormat(AppConstant.MMM.key).format(this);
+}
+
+extension FormatedDateExtentionString on String {
+  String formattedDate(String format) {
+    DateTime parsedDate = DateTime.parse(this);
+    return DateFormat(format).format(parsedDate);
+  }
+}
+
+extension FormattedYearMonthDate on String? {
+  DateTime fomateDateFromString({String? dateFormat}) {
+    return DateFormat(dateFormat ?? AppConstant.YYYY_MM.key).parse(this ?? "");
+  }
+}
+
+//This extention sum the value from List<Map<String,dynamic>>
+extension StringToDoubleFoldExtention<T extends List<Map<String, dynamic>>>
+    on T {
+  String? get listOfMapStringSum => this
+          .map((e) => double.tryParse(e.values.first?.toString() ?? ""))
+          .toList()
+          .fold("0", (previous, current) {
+        var sum = double.parse(previous?.toString() ?? "0") +
+            double.parse(current?.toString() ?? "0");
+        return sum.toString().parseToDouble().toStringAsFixed(3);
+      });
+}
+
+//It will capitalize the first letter of the String.
+extension CapitalizeExtention on String {
+  String toCapitalized() =>
+      length > 0 ? '\${this[0].toUpperCase()}\${substring(1).toLowerCase()}' : '';
+  String toTitleCase() => replaceAll(RegExp(' +'), ' ')
+      .split(' ')
+      .map((str) => str.toCapitalized())
+      .join(' ');
+}
+
+extension LastPathComponent on String {
+  String get lastPathComponent => this.split('/').last.replaceAll("_", "");
+}
+
+""");
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_assets',
         content: """enum KAssetName {
   oil,
@@ -1136,40 +1811,12 @@ extension KColorExtention on KColor {
   }
 }
 """);
-    await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_size',
-        content: """import 'package:flutter/material.dart';
-import 'package:$projectName/utils/navigation_service.dart';
 
-//zeplin size
-// width 414
-// height 896
-extension KSizes on num {
-  static Size get screenSize =>
-      MediaQuery.of(Navigation.key.currentContext!).size;
-
-  //height
-  double get h =>
-      (this / 896) * (screenSize.height > 896 ? 896 : screenSize.height);
-
-  //Width
-  double get w =>
-      (this / 414) * (screenSize.width > 414 ? 414 : screenSize.width);
-
-  //fontSize    
-  double get sp {
-    // For small devices.
-    if (screenSize.height < 600) {
-      return 0.7 * this;
-    }
-    // For normal device
-    return 1.0 * this;
-  }
-}
-""");
     await _createFile(
         directoryCreator.utilsDir.path + '/styles', 'k_text_style',
         content: """import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'styles.dart';
 
 class KTextStyle {
@@ -1185,9 +1832,76 @@ class KTextStyle {
 
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'styles',
         content: """export 'k_colors.dart';
-export 'k_size.dart';
 export 'k_text_style.dart';
 export 'k_assets.dart';
+""");
+    await _createFile(directoryCreator.utilsDir.path, 'app_routes',
+        content: """import 'package:flutter/material.dart';
+
+enum AppRoutes {
+  dashboard,
+  
+}
+
+extension AppRoutesExtention on AppRoutes {
+  Widget buildWidget<T extends Object>({T? arguments}) {
+    switch (this) {
+      case AppRoutes.dashboard:
+        return DashboardScreen();
+    
+    }
+  }
+}
+
+""");
+
+    await _createFile(directoryCreator.utilsDir.path, 'app_version',
+        content: """import 'package:$projectName/constant/constant_key.dart';
+import 'package:$projectName/data_provider/pref_helper.dart';
+import 'package:$projectName/utils/extension/extension.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
+class AppVersion {
+  static String currentVersion = "";
+  static String versionCode = "";
+  static Future<void> getVersion() async {
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    currentVersion = packageInfo.version;
+    versionCode = packageInfo.buildNumber;
+    await PrefHelper.setString(AppConstant.APP_VERSION.key, currentVersion);
+    await PrefHelper.setString(AppConstant.BUILD_NUMBER.key, versionCode);
+    "Current version is  \${currentVersion.toString()}".log();
+    "App version Code is  \${versionCode.toString()}".log();
+  }
+}
+
+
+""");
+
+    await _createFile(directoryCreator.utilsDir.path, 'date_util',
+        content: """import 'package:flutter/material.dart';
+import 'package:$projectName/utils/navigation.dart';
+
+class DateUtil {
+  static DateTime? fromDate;
+  static bool isToShowPreviousDate = true;
+  static Future<DateTime?> showDatePickerDialog() async {
+    final picked = await showDatePicker(
+      context: Navigation.key.currentContext!,
+      initialDate: DateTime.now(),
+      //use to show the previous month
+      firstDate: isToShowPreviousDate == true
+          ? DateTime(2020, DateTime.december)
+          : DateTime.now(),
+      lastDate: DateTime.now(),
+    );
+
+    fromDate = picked;
+    return picked;
+  }
+}
+
+
 """);
 
     await _createFile(directoryCreator.utilsDir.path, 'enum',
@@ -1196,249 +1910,40 @@ export 'k_assets.dart';
   English,
 }
 
-enum CART_STATUS {
-  INCREMENT,
-  REMOVE,
-  DECREMENT,
+
+
+enum Method {
+  POST,
+  GET,
+  PUT,
+  DELETE,
+  PATCH,
+  DOWNLOAD,
 }
 
-enum Method { POST, GET, PUT, DELETE, PATCH, }
 enum UrlLink {
   isLive,
   isDev,
   isLocalServer,
 }
 
-
-""");
-
-    await _createFile(directoryCreator.utilsDir.path, 'extention', content: """
-
-import 'package:intl/intl.dart';
-import 'package:flutter/material.dart';
-import 'dart:developer' as darttools show log;
-import 'package:$projectName/constant/constant_key.dart';
-import 'package:$projectName/data_provider/pref_helper.dart';
-
-extension ConvertNum on String {
-  static const english = [
-    '0',
-    '1',
-    '2',
-    '3',
-    '4',
-    '5',
-    '6',
-    '7',
-    '8',
-    '9',
-    '.'
-  ];
-  static const bangla = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯', '.'];
-
-  String changeNum() {
-    String input = this;
-    int _lanIndex = PrefHelper.getInt(AppConstant.IS_SWITCHED.key);
-    if (_lanIndex == 1) {
-      for (int i = 0; i < english.length; i++) {
-        input = input.replaceAll(english[i], bangla[i]);
-      }
-    } else {
-      for (int i = 0; i < english.length; i++) {
-        input = input.replaceAll(bangla[i], english[i]);
-      }
-    }
-    return input;
-  }
+enum ImageFor {
+  asset,
+  network,
 }
-
-extension PhoneValid on String {
-  bool phoneValid(String number) {
-    if (number.isNotEmpty && number.length == 11) {
-      var prefix = number.substring(0, 3);
-      if (prefix == "017" ||
-          prefix == "016" ||
-          prefix == "018" ||
-          prefix == "015" ||
-          prefix == "019" ||
-          prefix == "013" ||
-          prefix == "014") {
-        return true;
-      }
-      return false;
-    }
-    return false;
-  }
-}
-
-
-
-extension VersionCheck on String {
-  bool isVersionGreaterThan(String currentVersion) {
-    String newVersion = this;
-    List<String> currentV = currentVersion.split(".");
-    List<String> newV = newVersion.split(".");
-    bool a = false;
-    for (var i = 0; i <= 2; i++) {
-      a = int.parse(newV[i]) > int.parse(currentV[i]);
-      if (int.parse(newV[i]) != int.parse(currentV[i])) break;
-    }
-    return a;
-  }
-}
-
-extension StringFormat on String {
-  String format(List<String> args, List<dynamic> values) {
-    String input = this;
-    for (int i = 0; i < args.length; i++) {
-      input = input.replaceAll(args[i], "\${values[i]}");
-    }
-    return input;
-  }
-}
-
-extension Context on BuildContext {
-//this extention is for localization
-//its a shorter version of AppLocalizations
-  // AppLocalizations get loc => AppLocalizations.of(this)!;
-
-  //get media query
-  MediaQueryData get mediaQuery => MediaQuery.of(this);
-  //get height
-  double get height => MediaQuery.of(this).size.height;
-  //get width
-  double get width => MediaQuery.of(this).size.width;
-
-  //Bottom Notch Check
-  bool get bottomNotch =>
-      MediaQuery.of(this).viewPadding.bottom > 0 ? true : false;
-
-//Customly call a provider for read method only
-//It will be helpful for us for calling the read function
-//without Consumer,ConsumerWidget or ConsumerStatefulWidget
-//Incase if you face any issue using this then please wrap your widget
-//with consumer and then call your provider
-
-  // T read<T>(ProviderBase<T> provider) {
-  //   return ProviderScope.containerOf(this, listen: false).read(provider);
-  // }
-}
-
-extension validationExtention on String {
-  //Check email is valid or not
-  bool get isValidEmail => RegExp(
-          r"^[a-zA-Z0-9.a-zA-Z0-9.!#\$%&'*+-/=?^_`{|}~]+@[a-zA-Z0-9]+.[a-zA-Z]+")
-      .hasMatch(this);
-
-  //check mobile number contain special character or not
-  bool get isMobileNumberValid =>
-      RegExp(r'(^(?:[+0]9)?[0-9]{10,12}\$)').hasMatch(this);
-}
-
-extension WidgetExtention on Object {
-  Widget centerCircularProgress({Color? progressColor}) => Center(
-        child: Container(
-          //using adaptive we can easily show platfrom base indicator
-          child: CircularProgressIndicator.adaptive(
-            backgroundColor: progressColor,
-          ),
-        ),
-      );
-}
-
-extension Log on Object {
-  void log() => darttools.log(toString());
-}
-
-extension NumGenericExtensions<T extends String> on T {
-  double parseToDouble() {
-    try {
-      return double.parse(this);
-    } catch (e) {
-      e.log;
-
-      return 0.0;
-    }
-  }
-
-  String parseToString() {
-    try {
-      return this.toString();
-    } catch (e) {
-      e.log();
-
-      return "";
-    }
-  }
-}
-
-// TextEditing controller empty check and set the value in hint text.
-extension EditingEmptyCheck on String {
-  String validateEmptyCheck(TextEditingController tempTextControleller) =>
-      tempTextControleller.text.isEmpty ? this : tempTextControleller.text;
-}
-
-// TextEditing controller mandatory check and set the value mandatory or not.
-extension EditingMadatoryCheck on bool {
-  bool mandatoryCheck(TextEditingController tempTextControleller) =>
-      tempTextControleller.text.isEmpty ? this : false;
-}
-
-// This extention is convert the number to k.
-// such as 1000 to show 1k.
-extension NumberFormatExtention on num {
-  String get formattedNumber => NumberFormat.compactCurrency(
-        decimalDigits: 0,
-      ).format(this).substring(3);
-}
-
-// It will formate the date which will show in our application.
-extension FormatedDateExtention on DateTime {
-  String get formattedDate => DateFormat(AppConstant.D_MMM_Y.key).format(this);
-}
-
-extension FormatedDateExtentionString on String {
-  String formattedDate() {
-    DateTime parsedDate = DateTime.parse(this);
-    return DateFormat(AppConstant.D_MMM_Y.key).format(parsedDate);
-  }
-}
-
-//It will capitalize the first letter of the String.
-extension CapitalizeExtention on String {
-  String toCapitalized() =>
-      length > 0 ? '\${this[0].toUpperCase()}\${substring(1).toLowerCase()}' : '';
-  String toTitleCase() => replaceAll(RegExp(' +'), ' ')
-      .split(' ')
-      .map((str) => str.toCapitalized())
-      .join(' ');
-}
-
-extension GetValueFromString on String {
-  /**
-   * "You will get 60 tk discount"
-   * example : here replace all find the 60 value
-   * then split get the list of this string such as ["You will get","tk discount"]
-   * After that we return full value using map
-   * */
-  Map get splitTextMap {
-    //Get integer value form the list
-    String value = replaceAll(new RegExp(r'[^0-9]'), '');
-    //After get the value we split the String and return this list of String.
-    Map<String, dynamic> splittedText = {
-      "value": value,
-      "splittedList": this.split(value.toString())
-    };
-    return splittedText;
-  }
+enum SvgFor {
+  asset,
+  network,
 }
 
 
 """);
-    await _createFile(directoryCreator.utilsDir.path, 'navigation_service',
+
+    await _createFile(directoryCreator.utilsDir.path, 'navigation',
         content: """import 'package:flutter/material.dart';
+import 'package:$projectName/utils/app_routes.dart';
 
-extension Navigation on Widget {
+class Navigation {
   static GlobalKey<NavigatorState> key = GlobalKey<NavigatorState>();
 
   /// Holds the information about parent context
@@ -1446,54 +1951,89 @@ extension Navigation on Widget {
   /// we can access context of Screen A from Screen B to check if it
   /// came from Screen A. So we can trigger different logic depending on
   /// which screen we navigated from.
-    
 
   //it will navigate you to one screen to another
-  Future push(context) {
+  static Future push<T extends Object>(
+    context, {
+    required AppRoutes appRoutes,
+    String? routeName,
+    T? arguments,
+  }) {
     return Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => this),
+      MaterialPageRoute(
+        settings: RouteSettings(name: routeName),
+        builder: (context) => appRoutes.buildWidget(
+          arguments: arguments,
+        ),
+      ),
     );
   }
-   
 
   //it will pop all the screen  and take you to the new screen
-  //E:g : when you will goto the login to home page then you will use this 
-  Future pushAndRemoveUntil(context) {
+  //E:g : when you will goto the login to home page then you will use this
+  static Future pushAndRemoveUntil<T extends Object>(
+    context, {
+    required AppRoutes appRoutes,
+    String? routeName,
+    T? arguments,
+  }) {
     return Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => this),
+      MaterialPageRoute(
+        settings: RouteSettings(name: routeName),
+        builder: (context) => appRoutes.buildWidget(
+          arguments: arguments,
+        ),
+      ),
       (route) => false,
     );
   }
 
-
-
-  //It will replace the screen with current screen 
-  //E:g :  screen A 
+  //It will replace the screen with current screen
+  //E:g :  screen A
   //  GestureDetector(
-        // onTap: (){
-        //   ScreenB().pushReplacement
-        // },
+  // onTap: (){
+  //   ScreenB().pushReplacement
+  // },
   // it means screen B replace in screen A .
   //if you pressed back then you will not find screen A. it remove from stack
 
-  Future pushReplacement(context, {String? routeName}) {
+  static Future pushReplacement<T extends Object>(
+    context, {
+    required AppRoutes appRoutes,
+    String? routeName,
+    T? arguments,
+  }) {
     return Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-          settings: RouteSettings(name: routeName),
-          builder: (BuildContext context) => this),
+        settings: RouteSettings(name: routeName),
+        builder: (BuildContext context) => appRoutes.buildWidget(
+          arguments: arguments,
+        ),
+      ),
     );
   }
 
   //it will pop all the screen and take you to the first screen of the stack
   //that means you will go to the Home page
-  Future pushAndRemoveSpecificScreen(context) {
+  static Future pushAndRemoveSpecificScreen<T extends Object>(
+    context, {
+    required AppRoutes appRoutes,
+    String? routeName,
+    T? arguments,
+  }) {
     return Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => this),
-        (route) => route.isFirst);
+      context,
+      MaterialPageRoute(
+        settings: RouteSettings(name: routeName),
+        builder: (context) => appRoutes.buildWidget(
+          arguments: arguments,
+        ),
+      ),
+      (route) => route.isFirst,
+    );
   }
 
   // when you remove previous x count of  route
@@ -1510,14 +2050,13 @@ extension Navigation on Widget {
     return Navigator.pop(context);
   }
 }
+
 """);
     await _createFile(directoryCreator.utilsDir.path, 'network_connection',
         content: """import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:$projectName/utils/enum.dart';
-import 'package:$projectName/utils/view_util.dart';
-
 
 class NetworkConnection {
   static NetworkConnection? _instance;
@@ -1536,7 +2075,6 @@ class NetworkConnection {
       // Got a new connectivity status!
       if (result == ConnectivityResult.none) {
         isInternet = false;
-        ViewUtil.SSLSnackbar("Internet is not Available");
       } else {
         isInternet = true;
       }
@@ -1551,23 +2089,32 @@ class APIParams {
   String url;
   Method method;
   Map<String, dynamic> variables;
-  Function? Function(Response<dynamic>)? onSuccessFunction;
+  Function(Response<dynamic>) onSuccessFunction;
 
-  APIParams(
-      {required this.url,
-      required this.method,
-      required this.variables,
-      required this.onSuccessFunction,});
+  APIParams({
+    required this.url,
+    required this.method,
+    required this.variables,
+    required this.onSuccessFunction,
+  });
 }
+
 
 """);
     await _createFile(directoryCreator.utilsDir.path, 'view_util', content: """
 import 'package:flutter/material.dart';
-import 'package:$projectName/utils/navigation_service.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:$projectName/global/widget/global_button.dart';
+import 'package:$projectName/global/widget/global_text.dart';
+import 'package:$projectName/utils/navigation.dart';
 import 'package:$projectName/utils/styles/styles.dart';
 
 class ViewUtil {
-  static SSLSnackbar(String msg) {
+  static SSLSnackbar(
+    String msg, {
+    String? btnName,
+    void Function()? onPressed,
+  }) {
     /**
      * Using ScaffoldMessenger we can easily access
      * this snackbar from anywhere
@@ -1575,23 +2122,18 @@ class ViewUtil {
 
     return ScaffoldMessenger.of(Navigation.key.currentContext!).showSnackBar(
       SnackBar(
-        content: Text(msg),
+        content: GlobalText(
+          str: msg,
+          fontWeight: FontWeight.w500,
+          color: KColor.white.color,
+        ),
         action: SnackBarAction(
-          label: '',
-          textColor: Colors.transparent,
-          onPressed: () {},
+          label: btnName ?? "",
+          textColor: btnName == null ? Colors.transparent : KColor.white.color,
+          onPressed: onPressed ?? () {},
         ),
       ),
     );
-  }
-
-  static SSLRemoveSnackBar() {
-    /**
-     * Using ScaffoldMessenger we can easily remove
-     * this snackbar from anywhere
-     */
-    return ScaffoldMessenger.of(Navigation.key.currentContext!)
-        .removeCurrentSnackBar();
   }
 
   // this varialble is for internet connection check.
@@ -1602,41 +2144,50 @@ class ViewUtil {
     // flutter defined function.
     await showDialog(
       context: Navigation.key.currentContext!,
-      barrierDismissible: true,
+      barrierDismissible: false,
       builder: (BuildContext context) {
         // return object of type Dialog.
         return AlertDialog(
-          title: Text("Connection Error"),
+          title: GlobalText(
+            str: "Connection Error",
+            fontWeight: FontWeight.w500,
+          ),
           content: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Internet is not available"),
-              TextButton(child: Text("Try Again"), onPressed: onPressed),
+              GlobalText(
+                str: "Your internet connection appears to be offline",
+                textAlign: TextAlign.center,
+                fontWeight: FontWeight.w500,
+              ),
+              SizedBox(
+                height: 25.h,
+              ),
+              GlobalButton(
+                btnHeight: 25.h,
+                onPressed: onPressed,
+                buttonText: "Try Again",
+                textFontSize: 12,
+              )
             ],
           ),
-          actions: [
-            // usually buttons at the bottom of the dialog.
-            TextButton(
-              child: Text("Close"),
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-            ),
-          ],
         );
       },
     );
   }
 
 // global alert dialog
-  static showAlertDialog(
-      {String? title,
-      required Widget content,
-      List<Widget>? actions,
-      Color? alertBackgroundColor,
-      bool? barrierDismissible,
-      BorderRadius? borderRadius}) async {
+  static Future showAlertDialog({
+    Widget? title,
+    required Widget content,
+    List<Widget>? actions,
+    Color? alertBackgroundColor,
+    bool? barrierDismissible,
+    BorderRadius? borderRadius,
+    EdgeInsetsGeometry? contentPadding,
+  }) async {
     // flutter defined function.
     await showDialog(
       context: Navigation.key.currentContext!,
@@ -1644,17 +2195,58 @@ class ViewUtil {
       builder: (BuildContext context) {
         // return object of type Dialog.
         return AlertDialog(
-            backgroundColor: alertBackgroundColor,
-            shape: RoundedRectangleBorder(
-              borderRadius: borderRadius ??
-                  BorderRadius.all(
-                    Radius.circular(8.w),
-                  ),
-            ),
-            title: title == null ? null : Text(title),
-            content: content,
-            actions: actions,);
+          backgroundColor: alertBackgroundColor,
+          contentPadding: contentPadding ??
+              EdgeInsets.fromLTRB(
+                24.0,
+                20.0,
+                24.0,
+                24.0,
+              ),
+          shape: RoundedRectangleBorder(
+            borderRadius: borderRadius ??
+                BorderRadius.all(
+                  Radius.circular(8.w),
+                ),
+          ),
+          title: title,
+          content: content,
+          actions: actions,
+        );
       },
+    );
+  }
+
+  static bottomSheet({
+    required BuildContext context,
+    bool? isDismissable,
+    required Widget content,
+    BoxConstraints? boxConstraints,
+  }) {
+    return showModalBottomSheet(
+      backgroundColor: Colors.transparent,
+      constraints: boxConstraints,
+      isScrollControlled: true,
+      context: context,
+      isDismissible: isDismissable ?? true,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(16.r),
+            topRight: Radius.circular(16.r),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0x1a000000),
+              offset: Offset(0, 1),
+              blurRadius: 3.r,
+              spreadRadius: 0,
+            )
+          ],
+          color: const Color(0xffffffff),
+        ),
+        child: content,
+      ),
     );
   }
 }
@@ -1667,51 +2259,42 @@ class ViewUtil {
       content: """
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:$projectName/data_provider/pref_helper.dart';
-import 'package:$projectName/mvc/module_name/views/views_name.dart';
-import 'package:$projectName/utils/navigation_service.dart';
-import 'package:$projectName/utils/styles/styles.dart';
-import 'package:$projectName/constant/app_url.dart';
-import 'package:$projectName/utils/enum.dart';
 //localization
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
-//iOS localization is required to add this below
-//code in dict tag in info.plist
-
-// <key>CFBundleLocalizations</key>
-// 	<array>
-// 		<string>en</string>
-// 		<string>sv</string>
-// 	</array>
-
-//Add this line in pubspec.yaml
-
-//This line is added for localization 
- // flutter_localizations:
-  //  sdk: flutter
-   
-//pls check pubspec.yaml
-// generate: true
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:$projectName/constant/app_url.dart';
+import 'package:$projectName/constant/constant_key.dart';
+import 'package:$projectName/data_provider/pref_helper.dart';
+import 'package:$projectName/module/module_name/views/views_name.dart';
+import 'package:$projectName/utils/app_version.dart';
+import 'package:$projectName/utils/enum.dart';
+import 'package:$projectName/utils/navigation.dart';
+import 'package:$projectName/utils/network_connection.dart';
+import 'package:$projectName/utils/styles/k_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initServices();
+  await initServices();                                                                                                                                                                                                                                                           
   //Set Potraite Mode only
   await SystemChrome.setPreferredOrientations(
-      [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown]);
+    [
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ],
+  );
   runApp(MyApp());
 }
 
 /// Make sure you always init shared pref first. It has token and token is need
 /// to make API call
 initServices() async {
-   AppUrlExtention.setUrl(
+  AppUrlExtention.setUrl(
     UrlLink.isDev,
   );
-
   await PrefHelper.init();
+  await AppVersion.getVersion();
+  await NetworkConnection.instance.InternetAvailable();
 }
 
 class MyApp extends StatelessWidget {
@@ -1719,38 +2302,37 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
 
-    return MaterialApp(
-      title: '$projectName',
-      navigatorKey: Navigation.key,
-      debugShowCheckedModeBanner: false,
-//localization
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      locale: (PrefHelper.getLanguage() == 1)
-          ? const Locale('en', 'US')
-          : const Locale('bn', 'BD'),
-      theme: ThemeData(
-        //globally handle progress color using themeData class
-        progressIndicatorTheme: ProgressIndicatorThemeData(color: Colors.green),
-        textTheme: GoogleFonts.robotoMonoTextTheme(),
-        primaryColor:KColor.primary.color,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-        colorScheme: ThemeData().colorScheme.copyWith(
-              secondary:KColor.secondary.color,
+    return ScreenUtilInit(
+      //Change the height and Width based on design 
+      designSize: const Size(360, 800),
+      minTextAdapt: true,
+      builder: (ctx, child) {
+        return MaterialApp(
+          title: '$projectName',
+          navigatorKey: Navigation.key,
+          debugShowCheckedModeBanner: false,
+          //localization
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          locale: (PrefHelper.getLanguage() == 1)
+              ? const Locale('en', 'US')
+              : const Locale('bn', 'BD'),
+          theme: ThemeData(
+            progressIndicatorTheme: ProgressIndicatorThemeData(
+              color: KColor.secondary.color,
             ),
-        primarySwatch: KColor.primary.color as MaterialColor,
-        appBarTheme: AppBarTheme(
-          iconTheme: IconThemeData(size: 16),
-          actionsIconTheme: IconThemeData(size: 16),
-          backgroundColor: KColor.white.color,
-          elevation: 0,
-          titleTextStyle: GoogleFonts.poppins(
-            color: KColor.divider.color,
-            fontWeight: FontWeight.w500,
+            textTheme: GoogleFonts.poppinsTextTheme(),
+            primaryColor: KColor.primary.color,
+            visualDensity: VisualDensity.adaptivePlatformDensity,
+            colorScheme: ThemeData().colorScheme.copyWith(
+                  secondary: KColor.secondary.color,
+                ),
+            primarySwatch: KColor.primary.color as MaterialColor,
           ),
-        ),
-      ),
-      home:ViewsName(),
+          home: child,
+        );
+      },
+      child: ViewsName()
     );
   }
 }

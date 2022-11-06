@@ -6,7 +6,6 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _dataProvider = 'data_provider';
   final _global = 'global';
   final _l10n = 'l10n';
-  final _mvc = 'mvc';
   final _utils = 'utils';
   final _model = 'model';
   final _widget = 'widget';
@@ -15,9 +14,11 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _controller = 'controller';
   final _styles = 'styles';
   final _components = 'components';
-  final _assets='assets';
-  final _images='images';
-  final _svg='svg';
+  final _assets = 'assets';
+  final _images = 'images';
+  final _svg = 'svg';
+  final _module = 'module';
+  final _fonts ='fonts';
 
   final String projectName;
   ImplDirectoryCreator(this.projectName);
@@ -42,8 +43,8 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   Directory get l10nDir => Directory('$basePath/$_l10n');
 
   @override
-  // TODO: implement mvc
-  Directory get mvcDir => Directory('$basePath/$_mvc');
+  // TODO: implement moduleDir
+  Directory get moduleDir => throw UnimplementedError();
 
   @override
   // TODO: implement utils
@@ -53,7 +54,6 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   Future<bool> createDirectories() async {
     try {
       final libDir = Directory("lib");
-      
 
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
@@ -66,18 +66,18 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       final absDataProviderPath = dataProviderDir.absolute.path;
       final absGlobalPath = globalDir.absolute.path;
       final absl10nPath = l10nDir.absolute.path;
-      final absMvcPath = mvcDir.absolute.path;
+      final absMvcPath = moduleDir.absolute.path;
       final absUtilsPath = utilsDir.absolute.path;
-      final assetPath=Directory(Directory.current.path).absolute.path;
+      final assetPath = Directory(Directory.current.path).absolute.path;
 
       print('creating directories...\n');
-      
-      //create aaset folder 
+
+      //create aaset folder
       print('creating asset directory...');
       await Directory('$assetPath/$_assets').create();
+      await Directory('$assetPath/$_assets/$_fonts').create();
       await Directory('$assetPath/$_assets/$_images').create();
       await Directory('$assetPath/$_assets/$_svg').create();
-
 
       //constant directory
       print('creating constant directory...');
@@ -98,9 +98,9 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       await Directory(absl10nPath).create();
 
       //MVC directory
-      print('creating mvc directory...');
+      print('creating module directory...');
       await Directory(absMvcPath).create();
-      await Directory('$absMvcPath/$_module_name').create();
+      await Directory('$absMvcPath/$_module').create();
 
       await Directory('$absMvcPath/$_module_name/$_controller').create();
       await Directory('$absMvcPath/$_module_name/$_model').create();
