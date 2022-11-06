@@ -245,3 +245,7 @@
  - module directory issue resolved
  ## 1.2.9
  - extension folder remove to file
+## 1.3.0
+ - globalbutton update
+ - Extension folder remove
+ - views name to screen name
