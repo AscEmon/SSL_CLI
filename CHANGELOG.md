@@ -1,11 +1,11 @@
 ## 1.0.0
 
 - Initial version.
+
 ## 1.0.1
 
 - change readme file.
 - bin folder added.
-
 
 ## 1.0.3
 
@@ -46,22 +46,26 @@
 
 - content type list added
 
-
 ## 1.0.11
 
-- crate module in  mvc
+- crate module in mvc
+
 ## 1.0.12
 
 - create multiline problem
+
 ## 1.0.13
 
--apiclient create 
+-apiclient create
+
 ## 1.0.14
 
--apiclient create test using comment 
+-apiclient create test using comment
+
 ## 1.0.15
 
--model and util file not generate issue 
+-model and util file not generate issue
+
 ## 1.0.16
 
 -multiline content create for data_provider
@@ -73,9 +77,11 @@
 ## 1.0.18
 
 -nested folder file create error
+
 ## 1.0.19
 
 -nested folder file create issue find
+
 ## 1.0.20
 
 -minor bug
@@ -96,15 +102,19 @@
 ## 1.0.24
 
 -command split issue create
+
 ## 1.0.25
 
 -command split issue create for space
+
 ## 1.0.26
 
 -project name find issue
+
 ## 1.0.27
 
 -project name argument generate issue
+
 ## 1.0.28
 
 -multiple argument pass issue
@@ -112,71 +122,79 @@
 ## 1.1.0
 
 -file create under project
+
 ## 1.1.1
 
--remove riverpod import and l10n file create issue 
+-remove riverpod import and l10n file create issue
+
 ## 1.1.2
 
--minor bug issue 
+-minor bug issue
+
 ## 1.1.3
 
 -constant file added
--graphclient refactor 
-
-
+-graphclient refactor
 
 ## 1.1.4
 
 -create components folder and file create
+
 - added base path in project name
+
 ## 1.1.5
 
 -required projet name remove
+
 ## 1.1.6
 
 -project folder path structure prroblem
+
 ## 1.1.7
 
 -lib folder create issue
+
 ## 1.1.8
 
--nested folder create issue  
+-nested folder create issue
 
 ## 1.1.9
 
--Asset folder create under project 
+-Asset folder create under project
 
 ## 1.1.10
 
--Asset folder create under project 
+-Asset folder create under project
 
 ## 1.1.11
 
 -Asset folder path issue fix
 
- ## 1.1.12
+## 1.1.12
 
 -Asset folder create path issue fix
- ## 1.1.13
+
+## 1.1.13
 
 -localization comment added
 -viewName class added
 
- ## 1.1.14
+## 1.1.14
 
 -projectName added in main file
 
- ## 1.1.15
+## 1.1.15
 
 -comment update for flutter localization
 
- ## 1.1.16
+## 1.1.16
 
 - ReadMe update
 - adaptive circular added with param
-- unnecessary error handling 
+- unnecessary error handling
 
- ## 1.2.0
+## 1.2.0
+
 - extention added for log
 - Readme file updated ..added for documentation
 - parseToString and parseToDouble extention create
@@ -187,8 +205,8 @@
 - constant key added for date
 - color added in main file
 
+## 1.2.2
 
- ## 1.2.2
 - extention added for log
 - Readme file updated ..added for documentation
 - parseToString and parseToDouble extention create
@@ -200,56 +218,68 @@
 - color added in main file
 - readme update
 
+## 1.2.3
 
- ## 1.2.3
- - readme update
- - AppUrl and enum  update
- - global response and global paginator added
- - constant file convert to enum
- - api client update for using constant
- - globalTextformfield,globalbutton and global appbar added
- - remove snackbar added
- - extention update
+- readme update
+- AppUrl and enum update
+- global response and global paginator added
+- constant file convert to enum
+- api client update for using constant
+- globalTextformfield,globalbutton and global appbar added
+- remove snackbar added
+- extention update
 
+## 1.2.4
 
- ## 1.2.4
- - prefhelper constant change 
- - context issue resolve in viewutil
- - debugPrint added in api client
- - extention  constantkey error resolved
- - key issue resolved in apiclient
- - graph client updated for constant key
+- prefhelper constant change
+- context issue resolve in viewutil
+- debugPrint added in api client
+- extention constantkey error resolved
+- key issue resolved in apiclient
+- graph client updated for constant key
 
- ## 1.2.5
- - prefhelper constant key added 
+## 1.2.5
 
- ## 1.2.6
- 
-- constant file convert static to enum 
+- prefhelper constant key added
+
+## 1.2.6
+
+- constant file convert static to enum
 - app url file convert static to enum
-- Api client update adding List of  fromData
+- Api client update adding List of fromData
 - KSize remove
 - add flutter screenUtil mandatory in packages
 - add package info plus package for version check mandatory
 - enum file update
-- Update navigation class 
+- Update navigation class
 - network connection class update
 - View Util class update
 - readme Update
 
+## 1.2.7
 
- ## 1.2.7
- - Directory issue create resolved
+- Directory issue create resolved
 
 ## 1.2.8
- - module directory issue resolved
- ## 1.2.9
- - extension folder remove to file
-## 1.3.0
- - globalbutton update
- - Extension folder remove
- - views name to screen name
 
- ## 1.3.1
- - close button remove in error dialog
- - Global dropdown changed
+- module directory issue resolved
+
+## 1.2.9
+
+- extension folder remove to file
+
+## 1.3.0
+
+- globalbutton update
+- Extension folder remove
+- views name to screen name
+
+## 1.3.1
+
+- close button remove in error dialog
+- Global dropdown changed
+
+## 1.4.0
+
+- module create for mvc and repository pattern
+- api client refactor
