@@ -283,3 +283,9 @@
 
 - module create for mvc and repository pattern
 - api client refactor
+
+## 1.4.1
+
+- graph client refactor
+- api client refactor
+- repository refactor 

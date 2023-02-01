@@ -33,6 +33,7 @@ After that,Go to root of this project and open your terminal.
  > - connectivity_plus:
  > - flutter_screenutil:
  > - package_info_plus:
+ > - flutter_svg:
 
 
 ##### 4. As we generate localization using this cli thats why we need some configuration.

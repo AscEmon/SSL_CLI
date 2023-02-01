@@ -192,7 +192,6 @@ extension AppConstantExtention on AppConstant {
 
 import 'dart:convert';
 import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -200,15 +199,14 @@ import 'package:$projectName/constant/app_url.dart';
 import 'package:$projectName/constant/constant_key.dart';
 import 'package:$projectName/data_provider/pref_helper.dart';
 import 'package:$projectName/global/widget/error_dialog.dart';
-import 'package:$projectName/utils/app_routes.dart';
 import 'package:$projectName/utils/enum.dart';
-import 'package:$projectName/utils/extension/extension.dart';
+import 'package:$projectName/utils/extension.dart';
 import 'package:$projectName/utils/navigation.dart';
 import 'package:$projectName/utils/network_connection.dart';
 import 'package:$projectName/utils/view_util.dart';
 
 class ApiClient {
-  Dio _dio = Dio();
+  final Dio _dio = Dio();
   Map<String, dynamic> _header = {};
   bool? isPopDialog;
 
@@ -227,6 +225,7 @@ class ApiClient {
     );
     _initInterceptors();
   }
+
 
   void _initInterceptors() {
     _dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
@@ -257,9 +256,10 @@ class ApiClient {
     String? savePath,
     List<File>? files,
     String? fileKeyName,
-    required onSuccessFunction(
+    required Function(
       Response response,
-    ),
+    )
+        onSuccessFunction,
   }) async {
     final tokenHeader = <String, String>{
       HttpHeaders.contentTypeHeader: AppConstant.MULTIPART_FORM_DATA.key
@@ -298,13 +298,11 @@ class ApiClient {
     void Function(int, int)? onReceiveProgress,
     String? savePath,
     Map<String, String>? extraHeaders,
-    required onSuccessFunction(
-      Response response,
-    ),
+    required Function(Response response) onSuccessFunction,
   }) async {
+    //use this for extra header
     final tokenHeader = <String, String>{
-      AppConstant.SESSION_ID.key:
-          PrefHelper.getString(AppConstant.SESSION_ID.key),
+      //  AppConstant.PUSH_ID.key: PrefHelper.getString(AppConstant.DEVICE_ID.key),
     };
 
     if (extraHeaders != null) {
@@ -333,7 +331,6 @@ class ApiClient {
           variables: params ?? {},
           onSuccessFunction: onSuccessFunction,
         ),
-      
       );
     }
   }
@@ -347,7 +344,7 @@ class ApiClient {
     Options? options,
     String? savePath,
     void Function(int, int)? onReceiveProgress,
-    required onSuccessFunction(Response response)?,
+    required Function(Response response)? onSuccessFunction,
   }) async {
     Response response;
     try {
@@ -394,45 +391,33 @@ class ApiClient {
       rethrow;
     } catch (e) {
       "dioErrorCatch \$e".log();
-      throw Exception("Something went wrong" + e.toString());
+      throw Exception("Something went wrong\$e");
     }
   }
 
   Map<String, String> _getHeaders() {
     final DEVISE_OS =
         Platform.isAndroid ? AppConstant.ANDROID.key : AppConstant.IOS.key;
-    final userAgent = DEVISE_OS +
-        "_" +
-        PrefHelper.getString(AppConstant.APP_NAME.key) +
-        "-" +
-        PrefHelper.getString(AppConstant.APP_VERSION.key) +
-        "(" +
-        PrefHelper.getString(AppConstant.BUILD_NUMBER.key) +
-        ")";
+
     return {
       HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON.key,
-      //HttpHeaders.authorizationHeader:
-        "\${AppConstant.BEARER.key} \${PrefHelper.getString(AppConstant.TOKEN.key)}",
+      HttpHeaders.authorizationHeader:
+          "\${AppConstant.BEARER.key} \${PrefHelper.getString(AppConstant.TOKEN.key)}",
       AppConstant.APP_VERSION.key:
           PrefHelper.getString(AppConstant.APP_VERSION.key),
       AppConstant.BUILD_NUMBER.key:
           PrefHelper.getString(AppConstant.BUILD_NUMBER.key),
-      AppConstant.USER_AGENT.key: userAgent,
       AppConstant.DEVICE_OS.key: DEVISE_OS,
       AppConstant.LANGUAGE.key: PrefHelper.getLanguage() == 1
           ? AppConstant.EN.key
           : AppConstant.BN.key,
       AppConstant.DEVICE_ID.key:
           PrefHelper.getString(AppConstant.DEVICE_ID.key),
-      
-      AppConstant.DEVICE_TYPE.key:
-          PrefHelper.getString(AppConstant.DEVICE_TYPE.key),
     };
   }
 
   void _handleNoInternet({
     required APIParams apiParams,
-   
   }) {
     NetworkConnection.instance.apiStack.add(apiParams);
 
@@ -452,7 +437,6 @@ class ApiClient {
                     request(
                       url: element.url,
                       method: element.method,
-                    
                       params: element.variables,
                       onSuccessFunction: element.onSuccessFunction,
                     );
@@ -487,12 +471,13 @@ class ApiClient {
     }
   }
 
-  void _handleResponse({
+  Future<void> _handleResponse({
     required Response response,
-    required onSuccessFunction(Response response)?,
+    required Function(Response response)? onSuccessFunction,
   }) async {
     if (response.statusCode == 200) {
       final Map data = json.decode(response.toString());
+      // TODO:  please replace this code based on your reponse.
       final verifycode = data['code'];
       int code = int.tryParse(verifycode.toString()) ?? 0;
       if (code == 200) {
@@ -503,11 +488,11 @@ class ApiClient {
           throw Exception("response data is \${response.data}");
         }
       } else if (code == 401) {
-        await PrefHelper.setString(AppConstant.STORE_ID.key, "");
-        Navigation.pushAndRemoveUntil(
-          Navigation.key.currentContext,
-          appRoutes: AppRoutes.login,
-        );
+        await PrefHelper.setString(AppConstant.TOKEN.key, "");
+        // Navigation.pushAndRemoveUntil(
+        //   Navigation.key.currentContext,
+        //   appRoutes: AppRoutes.login,
+        // );
       } else {
         //Where error occured then pop the global dialog
         response.statusCode?.log();
@@ -515,7 +500,7 @@ class ApiClient {
         isPopDialog?.log();
 
         List<String>? erroMsg;
-
+        // TODO:  please replace this message based on your reponse.
         erroMsg = List<String>.from(data["message"]?.map((x) => x));
         erroMsg.toString().log();
         ViewUtil.showAlertDialog(
@@ -541,11 +526,13 @@ class ApiClient {
 }
 
 
+
 """);
     await _createFile(
       directoryCreator.dataProviderDir.path,
       'graph_client',
       content: """import 'dart:convert';
+import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart' as d;
 import 'package:flutter/material.dart';
@@ -553,7 +540,7 @@ import 'package:$projectName/constant/app_url.dart';
 import 'package:$projectName/constant/constant_key.dart';
 import 'package:$projectName/data_provider/pref_helper.dart';
 import 'package:$projectName/global/model/graph_ql_error_response.dart';
-import 'package:$projectName/utils/navigation_service.dart';
+import 'package:$projectName/utils/navigation.dart';
 import 'package:$projectName/utils/view_util.dart';
 
 class ApiClient {
@@ -564,12 +551,13 @@ class ApiClient {
   _initDio() {
     _header = {
       HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON.key,
-      HttpHeaders.authorizationHeader: "\${AppConstant.BEARER.key} \${PrefHelper.getString(AppConstant.TOKEN.key)}"
+      HttpHeaders.authorizationHeader:
+          "\${AppConstant.BEARER.key} \${PrefHelper.getString(AppConstant.TOKEN.key)}"
     };
 
     _dio = d.Dio(
       d.BaseOptions(
-        baseUrl: AppUrl.Base.url,
+        baseUrl: AppUrl.base.url,
         headers: _header,
         connectTimeout: 1000 * 30,
         sendTimeout: 1000 * 10,
@@ -578,11 +566,12 @@ class ApiClient {
     _initInterceptors();
   }
 
+  
   void _initInterceptors() {
-    _dio.interceptors.add(d.InterceptorsWrapper(onRequest: (options, handler) {
-     debugPrint(
-          'REQUEST[\${options.method}] => PATH: \${AppUrl.Base.url}\${options.path} '
-          '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => HEADERS: \${options.headers}');
+    _dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
+      debugPrint(
+          'REQUEST[\${options.method}] => PATH: \${AppUrl.base.url}\${options.path} '
+          '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => _HEADERS: \${options.headers}');
       return handler.next(options);
     }, onResponse: (response, handler) {
       debugPrint(
@@ -651,13 +640,13 @@ class ApiClient {
     _initDio();
 
     try {
-      String paramJson =
-          ''' 
+      String paramJson = ''' 
       {
       "query" : "\$body",
       "variables" : \${jsonEncode(variables)}
       }
-      '''.replaceAll("", "");
+      '''
+          .replaceAll("", "");
 
       response = await _dio.post(url, data: paramJson);
 
@@ -697,7 +686,7 @@ class ApiClient {
           }
         }
       }
-    } catch(e){}
+    } catch (e) {}
   }
 
 // Handle Error type if dio catches anything
@@ -1585,7 +1574,6 @@ class ModuleNameApi {
         'module_name_interface',
         content: '''
 import 'package:flutter/material.dart';
-import 'package:$projectName/module/login/model/login_request_model.dart';
 
 @immutable
 abstract class IModuleNameRepository {
@@ -1593,18 +1581,16 @@ abstract class IModuleNameRepository {
 }
 
 
+
+
 ''');
     await _createFile(
         directoryCreator.moduleDir.path + '/module_name' + '/repository',
         'module_name_repository',
         content: '''
-import 'package:$projectName/module/login/repository/login_api.dart';
-import 'package:$projectName/module/login/repository/login_interface.dart';
+import 'package:$projectName/module/module_name/repository/module_name_interface.dart';
 
-
-class ModuleNameRepository implements ILoginRepository {
- 
-}
+class ModuleNameRepository implements IModuleNameRepository {}
 
 
 ''');
@@ -1975,7 +1961,7 @@ extension AppRoutesExtention on AppRoutes {
   Widget buildWidget<T extends Object>({T? arguments}) {
     switch (this) {
       case AppRoutes.dashboard:
-        return DashboardScreen();
+        return const DashboardScreen();
     
     }
   }
@@ -2390,8 +2376,8 @@ import 'package:flutter/services.dart';
 //localization
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:$projectName/constant/app_url.dart';
-import 'package:$projectName/constant/constant_key.dart';
 import 'package:$projectName/data_provider/pref_helper.dart';
 import 'package:$projectName/module/module_name/views/screen_name.dart';
 import 'package:$projectName/utils/app_version.dart';
@@ -2399,11 +2385,10 @@ import 'package:$projectName/utils/enum.dart';
 import 'package:$projectName/utils/navigation.dart';
 import 'package:$projectName/utils/network_connection.dart';
 import 'package:$projectName/utils/styles/k_colors.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await initServices();                                                                                                                                                                                                                                                           
+  await initServices();
   //Set Potraite Mode only
   await SystemChrome.setPreferredOrientations(
     [
@@ -2431,7 +2416,7 @@ class MyApp extends StatelessWidget {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
 
     return ScreenUtilInit(
-      //Change the height and Width based on design 
+      //Change the height and Width based on design
       designSize: const Size(360, 800),
       minTextAdapt: true,
       builder: (ctx, child) {
@@ -2460,7 +2445,7 @@ class MyApp extends StatelessWidget {
           home: child,
         );
       },
-      child: DashboardScreen()
+      child: const DashboardScreen(),
     );
   }
 }
