@@ -20,7 +20,13 @@ class SSLCommandRunner {
           final projectName = arguments[1];
           final isWelcome = welcomeBoard();
           if (isWelcome) {
-            command = CreateCommand(projectName: projectName);
+            final String? patternCheck = formatBoard();
+            if (patternCheck != null) {
+              command = CreateCommand(
+                projectName: projectName,
+                patternNumber: patternCheck,
+              );
+            }
           } else {
             exit(0);
           }
@@ -55,6 +61,20 @@ bool welcomeBoard() {
       answer?.toLowerCase() == 'y' || answer?.toLowerCase() == 'yes';
 
   return answer != null && validator;
+}
+
+String? formatBoard() {
+  String content = '''
+     Please Enter Your Pattern 
+     1 for Mvc 
+     2 for Repository     
+\n''';
+
+  stderr.write(content);
+
+  final answer = stdin.readLineSync();
+
+  return answer;
 }
 
 void _errorAndExit([String? command]) {

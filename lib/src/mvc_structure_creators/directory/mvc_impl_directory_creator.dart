@@ -1,7 +1,7 @@
 import 'dart:io';
-import '../i_creators.dart';
+import '../mvc_i_creators.dart';
 
-class ImplDirectoryCreator implements IDirectoryCreator {
+class MvcImplDirectoryCreator implements IDirectoryCreator {
   final _constant = 'constant';
   final _dataProvider = 'data_provider';
   final _global = 'global';
@@ -10,7 +10,7 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _model = 'model';
   final _widget = 'widget';
   final _views = 'views';
-  final _module_name = 'module_name';
+  final _moduleName = 'module_name';
   final _controller = 'controller';
   final _styles = 'styles';
   final _components = 'components';
@@ -18,36 +18,30 @@ class ImplDirectoryCreator implements IDirectoryCreator {
   final _images = 'images';
   final _svg = 'svg';
   final _module = 'module';
-  final _fonts ='fonts';
+  final _fonts = 'fonts';
 
   final String projectName;
-  ImplDirectoryCreator(this.projectName);
+  MvcImplDirectoryCreator(this.projectName);
 
   late final String basePath;
   late final String projectDirPath;
 
   @override
-  // TODO: implement constantDir
   Directory get constantDir => Directory('$basePath/$_constant');
 
   @override
-  // TODO: implement dataProviderDir
   Directory get dataProviderDir => Directory('$basePath/$_dataProvider');
 
   @override
-  // TODO: implement globalDir
   Directory get globalDir => Directory('$basePath/$_global');
 
   @override
-  // TODO: implement l10nDir
   Directory get l10nDir => Directory('$basePath/$_l10n');
 
   @override
-  // TODO: implement moduleDir
   Directory get moduleDir => Directory('$basePath/$_module');
 
   @override
-  // TODO: implement utils
   Directory get utilsDir => Directory('$basePath/$_utils');
 
   @override
@@ -100,13 +94,12 @@ class ImplDirectoryCreator implements IDirectoryCreator {
       //MVC directory
       print('creating module directory...');
       await Directory(absMvcPath).create();
-      await Directory('$absMvcPath/$_module_name').create();
+      await Directory('$absMvcPath/$_moduleName').create();
 
-      await Directory('$absMvcPath/$_module_name/$_controller').create();
-      await Directory('$absMvcPath/$_module_name/$_model').create();
-      await Directory('$absMvcPath/$_module_name/$_views').create();
-      await Directory('$absMvcPath/$_module_name/$_views/$_components')
-          .create();
+      await Directory('$absMvcPath/$_moduleName/$_controller').create();
+      await Directory('$absMvcPath/$_moduleName/$_model').create();
+      await Directory('$absMvcPath/$_moduleName/$_views').create();
+      await Directory('$absMvcPath/$_moduleName/$_views/$_components').create();
 
       //Utils directory
       print('creating util directory...');

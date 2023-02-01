@@ -1,11 +1,12 @@
 import 'dart:io';
-import 'structure_creators/i_creators.dart';
 
-class ImplSSLCreator implements ISSLCreator {
+import 'package:ssl_cli/src/mvc_structure_creators/mvc_i_creators.dart';
+
+class MvcImplSSLCreator implements MvcISSLCreator {
   final IDirectoryCreator directoryCreator;
   final IFileCreator fileCreator;
 
-  ImplSSLCreator({
+  MvcImplSSLCreator({
     required this.directoryCreator,
     required this.fileCreator,
   });
@@ -20,4 +21,6 @@ class ImplSSLCreator implements ISSLCreator {
       stderr.writeln('File creation cancelled!');
     }
   }
+
+
 }

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-abstract class ISSLCreator {
+abstract class RepoISSLCreator {
   Future<void> create();
 }
 
@@ -12,7 +12,6 @@ abstract class IDirectoryCreator {
   Directory get l10nDir;
   Directory get moduleDir;
   Directory get utilsDir;
- 
 }
 
 abstract class IFileCreator {

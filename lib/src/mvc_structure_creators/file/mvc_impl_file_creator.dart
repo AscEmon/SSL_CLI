@@ -1,10 +1,10 @@
 import 'dart:io';
-import '../i_creators.dart';
+import '../mvc_i_creators.dart';
 
-class ImplFileCreator implements IFileCreator {
+class MvcImplFileCreator implements IFileCreator {
   final IDirectoryCreator directoryCreator;
   final String projectName;
-  ImplFileCreator(this.directoryCreator, this.projectName);
+  MvcImplFileCreator(this.directoryCreator, this.projectName);
 
   @override
   Future<void> createNecessaryFiles() async {
