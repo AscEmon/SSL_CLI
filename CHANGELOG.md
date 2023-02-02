@@ -299,3 +299,6 @@
 ## 1.4.4
 
 - command create added for module
+## 1.4.5
+
+- command create remove for repo module 
