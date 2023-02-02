@@ -27,16 +27,18 @@ class RepoModuleImplDirectoryCreator implements RepoModuleIDirectoryCreator {
 
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
-      } 
+      }
       // else {
       //   final res = await Directory("lib/$_moduleName").create(recursive: true);
       //   basePath = res.absolute.path;
       // }
 
       final absMvcPath = moduleDir.absolute.path;
-
+      print("module directory --- $moduleDir");
+      print("absMvcPath ---- $absMvcPath");
+      print("basePath ---- $basePath");
       print('creating directories...\n');
-      //MVC directory
+      //module directory
       print('creating module directory based on repository pattern...');
       await Directory(absMvcPath).create();
       await Directory('$absMvcPath/$_moduleName').create();
