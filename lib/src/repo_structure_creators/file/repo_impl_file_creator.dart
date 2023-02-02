@@ -1548,9 +1548,18 @@ class GlobalImageLoader extends StatelessWidget {
       'module_name_state',
     );
     await _createFile(
-      directoryCreator.moduleDir.path + '/module_name' + '/controller',
-      'controller_name',
-    );
+        directoryCreator.moduleDir.path + '/module_name' + '/controller',
+        'controller_name',
+        content: '''
+import '../repository/login_interface.dart';
+import '../repository/login_repository.dart';
+class LoginController  {
+  final ILoginRepository _loginRepository = LoginRepository();
+  
+  }
+
+
+''');
     await _createFile(
       directoryCreator.moduleDir.path + '/module_name' + '/model',
       'model_class_name',

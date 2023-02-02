@@ -33,16 +33,10 @@ class SSLCommandRunner {
           }
         } else if (res.command!.name!.startsWith('help')) {
           command = HelpCommand();
-        } else if ( res.command!.name!.contains('module')) {
-          final name = getProjectName();
-          if (name != null) {
-            command = CreateCommand(
-              projectName: name,
-              moduleName: arguments.last,
-            );
-          } else {
-            print(name ?? "project name not found");
-          }
+        } else if (res.command!.name!.contains('module')) {
+          command = CreateCommand(
+            moduleName: arguments.last,
+          );
         } else {
           _errorAndExit(res.command!.name);
         }
@@ -86,14 +80,6 @@ String? formatBoard() {
   final answer = stdin.readLineSync();
 
   return answer;
-}
-
-String? getProjectName() {
-  String content = '''Please Enter Your ProjectName: ''';
-  stderr.write(content);
-  final project = stdin.readLineSync();
-  print("project Name : $project");
-  return project;
 }
 
 void _errorAndExit([String? command]) {

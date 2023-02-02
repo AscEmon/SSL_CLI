@@ -11,19 +11,19 @@ import '../mvc_structure_creators/file/mvc_impl_file_creator.dart';
 import 'i_command.dart';
 
 class CreateCommand implements ICommand {
-  String projectName;
+  String? projectName;
   String? patternNumber;
   String? moduleName;
   CreateCommand({
-    required this.projectName,
+    this.projectName,
     this.patternNumber,
     this.moduleName,
   });
   @override
   Future<void> execute() async {
-    if (patternNumber != null && patternNumber == "1") {
-      final directoryCreator = MvcImplDirectoryCreator(projectName);
-      final fileCreator = MvcImplFileCreator(directoryCreator, projectName);
+    if (projectName != null && patternNumber != null && patternNumber == "1") {
+      final directoryCreator = MvcImplDirectoryCreator(projectName!);
+      final fileCreator = MvcImplFileCreator(directoryCreator, projectName!);
 
       final sslCreator = MvcImplSSLCreator(
         directoryCreator: directoryCreator,
@@ -31,9 +31,9 @@ class CreateCommand implements ICommand {
       );
       return sslCreator.create();
     } else if (moduleName != null) {
-      final directoryCreator = RepoModuleImplDirectoryCreator(projectName);
+      final directoryCreator = RepoModuleImplDirectoryCreator(moduleName!);
       final fileCreator =
-          RepoModuleImplFileCreator(directoryCreator, projectName);
+          RepoModuleImplFileCreator(directoryCreator, moduleName!);
 
       final sslCreator = RepoModuleImplSSLCreator(
         directoryCreator: directoryCreator,
@@ -41,8 +41,9 @@ class CreateCommand implements ICommand {
       );
       return sslCreator.create();
     } else {
-      final directoryCreator = RepoImplDirectoryCreator(projectName);
-      final fileCreator = RepoImplFileCreator(directoryCreator, projectName);
+      final directoryCreator = RepoImplDirectoryCreator(projectName ?? "");
+      final fileCreator =
+          RepoImplFileCreator(directoryCreator, projectName ?? "");
 
       final sslCreator = RepoImplSSLCreator(
         directoryCreator: directoryCreator,

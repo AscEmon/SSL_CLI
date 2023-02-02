@@ -4,15 +4,15 @@ import '../repo_module_i_creators.dart';
 class RepoModuleImplDirectoryCreator implements RepoModuleIDirectoryCreator {
   final _model = 'model';
   final _views = 'views';
-  final _moduleName = 'module_name';
+
   final _controller = 'controller';
   final _components = 'components';
   final _module = 'module';
   final _repository = 'repository';
   final _state = 'state';
 
-  final String projectName;
-  RepoModuleImplDirectoryCreator(this.projectName);
+  final String moduleName;
+  RepoModuleImplDirectoryCreator(this.moduleName);
 
   late final String basePath;
   late final String projectDirPath;
@@ -28,27 +28,21 @@ class RepoModuleImplDirectoryCreator implements RepoModuleIDirectoryCreator {
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
       }
-      // else {
-      //   final res = await Directory("lib/$_moduleName").create(recursive: true);
-      //   basePath = res.absolute.path;
-      // }
 
       final absMvcPath = moduleDir.absolute.path;
-      print("module directory --- $moduleDir");
-      print("absMvcPath ---- $absMvcPath");
-      print("basePath ---- $basePath");
+
       print('creating directories...\n');
       //module directory
       print('creating module directory based on repository pattern...');
       await Directory(absMvcPath).create();
-      await Directory('$absMvcPath/$_moduleName').create();
+      await Directory('$absMvcPath/$moduleName').create();
 
-      await Directory('$absMvcPath/$_moduleName/$_controller').create();
-      await Directory('$absMvcPath/$_moduleName/$_controller/$_state').create();
-      await Directory('$absMvcPath/$_moduleName/$_model').create();
-      await Directory('$absMvcPath/$_moduleName/$_repository').create();
-      await Directory('$absMvcPath/$_moduleName/$_views').create();
-      await Directory('$absMvcPath/$_moduleName/$_views/$_components').create();
+      await Directory('$absMvcPath/$moduleName/$_controller').create();
+      await Directory('$absMvcPath/$moduleName/$_controller/$_state').create();
+      await Directory('$absMvcPath/$moduleName/$_model').create();
+      await Directory('$absMvcPath/$moduleName/$_repository').create();
+      await Directory('$absMvcPath/$moduleName/$_views').create();
+      await Directory('$absMvcPath/$moduleName/$_views/$_components').create();
 
       return true;
     } catch (e, s) {
