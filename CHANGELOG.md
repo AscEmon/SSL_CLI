@@ -317,3 +317,7 @@
 ## 1.4.8
 
 - print added
+
+## 1.4.9
+
+- classname dynamic for repo module generate
