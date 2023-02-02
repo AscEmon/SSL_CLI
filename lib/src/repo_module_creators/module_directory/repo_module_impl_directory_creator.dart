@@ -23,12 +23,12 @@ class RepoModuleImplDirectoryCreator implements RepoModuleIDirectoryCreator {
   @override
   Future<bool> createDirectories() async {
     try {
-      final libDir = Directory(projectName);
+      final libDir = Directory("lib");
 
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
       } else {
-        final res = await Directory(projectName).create(recursive: true);
+        final res = await Directory("lib/$_moduleName").create(recursive: true);
         basePath = res.absolute.path;
       }
 
