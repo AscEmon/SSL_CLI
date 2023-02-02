@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:ssl_cli/src/repo_module_creators/repo_module_i_creators.dart';
-import 'package:ssl_cli/src/repo_structure_creators/repo_i_creators.dart';
+
 class RepoModuleImplSSLCreator implements RepoModuleISSLCreator {
-  final IDirectoryCreator directoryCreator;
-  final IFileCreator fileCreator;
+  final RepoModuleIDirectoryCreator directoryCreator;
+  final RepoModuleIFileCreator fileCreator;
 
   RepoModuleImplSSLCreator({
     required this.directoryCreator,

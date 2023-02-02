@@ -1,3 +1,6 @@
+import 'package:ssl_cli/src/repo_module_creators/file/repo_module_impl_file_creator.dart';
+import 'package:ssl_cli/src/repo_module_creators/module_directory/repo_module_impl_directory_creator.dart';
+import 'package:ssl_cli/src/repo_module_creators/repo_impl_ssl_creator.dart';
 import 'package:ssl_cli/src/repo_structure_creators/directory/repo_impl_directory_creator.dart';
 import 'package:ssl_cli/src/repo_structure_creators/file/repo_impl_file_creator.dart';
 import 'package:ssl_cli/src/repo_structure_creators/repo_impl_ssl_creator.dart';
@@ -28,7 +31,15 @@ class CreateCommand implements ICommand {
       );
       return sslCreator.create();
     } else if (moduleName != null) {
-    
+      final directoryCreator = RepoModuleImplDirectoryCreator(projectName);
+      final fileCreator =
+          RepoModuleImplFileCreator(directoryCreator, projectName);
+
+      final sslCreator = RepoModuleImplSSLCreator(
+        directoryCreator: directoryCreator,
+        fileCreator: fileCreator,
+      );
+      return sslCreator.create();
     } else {
       final directoryCreator = RepoImplDirectoryCreator(projectName);
       final fileCreator = RepoImplFileCreator(directoryCreator, projectName);
