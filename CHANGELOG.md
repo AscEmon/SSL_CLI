@@ -289,3 +289,7 @@
 - graph client refactor
 - api client refactor
 - repository refactor 
+
+## 1.4.2
+
+- repository module create using command
