@@ -288,20 +288,28 @@
 
 - graph client refactor
 - api client refactor
-- repository refactor 
+- repository refactor
 
 ## 1.4.2
 
 - repository module create using command
+
 ## 1.4.3
 
 - create command remove for module create
+
 ## 1.4.4
 
 - command create added for module
+
 ## 1.4.5
 
-- command create remove for repo module 
+- command create remove for repo module
+
 ## 1.4.6
 
 - command runner added for module create
+
+## 1.4.7
+
+- module wise directory create issue resovled

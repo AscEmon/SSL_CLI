@@ -18,19 +18,20 @@ class RepoModuleImplDirectoryCreator implements RepoModuleIDirectoryCreator {
   late final String projectDirPath;
 
   @override
-  Directory get moduleDir => Directory('$basePath/$_module');
+  Directory get moduleDir => Directory(basePath);
 
   @override
   Future<bool> createDirectories() async {
     try {
-      final libDir = Directory("lib");
+      final libDir = Directory("lib/$_module");
 
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
-      } else {
-        final res = await Directory("lib/$_moduleName").create(recursive: true);
-        basePath = res.absolute.path;
-      }
+      } 
+      // else {
+      //   final res = await Directory("lib/$_moduleName").create(recursive: true);
+      //   basePath = res.absolute.path;
+      // }
 
       final absMvcPath = moduleDir.absolute.path;
 
