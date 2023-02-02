@@ -9,6 +9,7 @@ class SSLCommandRunner {
     final argParser = ArgParser();
 
     argParser.addCommand('create');
+    argParser.addCommand('module');
     argParser.addCommand('help');
 
     final res = argParser.parse(arguments);
@@ -32,6 +33,15 @@ class SSLCommandRunner {
           }
         } else if (res.command!.name!.startsWith('help')) {
           command = HelpCommand();
+        } else if (res.command!.name!.startsWith('create') &&
+            res.command!.name!.startsWith('module')) {
+          final name = getProjectName();
+          if (name != null) {
+            command = CreateCommand(
+              projectName: name,
+              moduleName: arguments.last,
+            );
+          }
         } else {
           _errorAndExit(res.command!.name);
         }
@@ -75,6 +85,16 @@ String? formatBoard() {
   final answer = stdin.readLineSync();
 
   return answer;
+}
+
+String? getProjectName() {
+  String content = '''
+     Please Enter Your ProjectName: 
+''';
+
+  stderr.write(content);
+  final project = stdin.readLineSync();
+  return project;
 }
 
 void _errorAndExit([String? command]) {

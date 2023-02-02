@@ -9,14 +9,16 @@ import 'i_command.dart';
 
 class CreateCommand implements ICommand {
   String projectName;
-  String patternNumber;
+  String? patternNumber;
+  String? moduleName;
   CreateCommand({
     required this.projectName,
-    required this.patternNumber,
+    this.patternNumber,
+    this.moduleName,
   });
   @override
   Future<void> execute() async {
-    if (patternNumber == "1") {
+    if (patternNumber != null && patternNumber == "1") {
       final directoryCreator = MvcImplDirectoryCreator(projectName);
       final fileCreator = MvcImplFileCreator(directoryCreator, projectName);
 
@@ -25,6 +27,8 @@ class CreateCommand implements ICommand {
         fileCreator: fileCreator,
       );
       return sslCreator.create();
+    } else if (moduleName != null) {
+    
     } else {
       final directoryCreator = RepoImplDirectoryCreator(projectName);
       final fileCreator = RepoImplFileCreator(directoryCreator, projectName);
