@@ -33,8 +33,7 @@ class SSLCommandRunner {
           }
         } else if (res.command!.name!.startsWith('help')) {
           command = HelpCommand();
-        } else if (res.command!.name!.startsWith('create') &&
-            res.command!.name!.startsWith('module')) {
+        } else if (res.command!.name!.startsWith('module')) {
           final name = getProjectName();
           if (name != null) {
             command = CreateCommand(
