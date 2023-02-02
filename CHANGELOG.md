@@ -296,3 +296,6 @@
 ## 1.4.3
 
 - create command remove for module create
+## 1.4.4
+
+- command create added for module
