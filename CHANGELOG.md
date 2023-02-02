@@ -293,3 +293,6 @@
 ## 1.4.2
 
 - repository module create using command
+## 1.4.3
+
+- create command remove for module create
