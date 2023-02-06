@@ -34,9 +34,10 @@ class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
           '/state',
       '${moduleName}_state',
     );
+
     await _createFile(
-        directoryCreator.moduleDir.path + moduleName + '/controller',
-        '/${moduleName}_name',
+        directoryCreator.moduleDir.path + "/$moduleName" + '/controller',
+        '${moduleName}_name',
         content: '''
 import '../repository/${moduleName}_interface.dart';
 import '../repository/${moduleName}_repository.dart';
