@@ -36,7 +36,7 @@ class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
     );
     await _createFile(
         directoryCreator.moduleDir.path + moduleName + '/controller',
-        '${moduleName}_name',
+        '/${moduleName}_name',
         content: '''
 import '../repository/${moduleName}_interface.dart';
 import '../repository/${moduleName}_repository.dart';
@@ -51,7 +51,7 @@ class ${className}Controller  {
     );
     await _createFile(
         directoryCreator.moduleDir.path + moduleName + '/repository',
-        '${moduleName}_api',
+        '/${moduleName}_api',
         content: '''
 import '/data_provider/api_client.dart';
 class ${className}Api {
@@ -65,7 +65,7 @@ class ${className}Api {
 ''');
     await _createFile(
         directoryCreator.moduleDir.path + moduleName + '/repository',
-        '${moduleName}_interface',
+        '/${moduleName}_interface',
         content: '''
 import 'package:flutter/material.dart';
 
@@ -80,7 +80,7 @@ abstract class I${className}Repository {
 ''');
     await _createFile(
         directoryCreator.moduleDir.path + moduleName + '/repository',
-        '${moduleName}_repository',
+        '/${moduleName}_repository',
         content: '''
 import '/module/$moduleName/repository/${moduleName}_interface.dart';
 
