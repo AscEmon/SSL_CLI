@@ -324,3 +324,7 @@
 ## 1.4.10
 
 - modulename underscore check
+
+## 1.4.11
+
+- error check

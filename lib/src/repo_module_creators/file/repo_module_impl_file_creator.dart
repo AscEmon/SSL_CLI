@@ -12,14 +12,11 @@ class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
   @override
   Future<void> createNecessaryFiles() async {
     print('creating necessary files...');
-    final split;
-    if (moduleName.contains("_")) {
-      split = moduleName.split("_");
-    } else {
-      split = moduleName;
-    }
+    final List<String> split;
+    split = moduleName.split("_");
+    print("After Split: $split");
     var className = split.first.capitalize();
-
+    print("After Capitalize : $className");
     if (split.length > 1) {
       for (var element in split) {
         className += element.capitalize();
