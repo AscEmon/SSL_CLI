@@ -15,23 +15,28 @@ class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
     final List<String> split;
     split = moduleName.split("_");
     print("After Split: $split");
-    var className = split.first.capitalize();
+    String className = "";
     print("After Capitalize : $className");
     if (split.length > 1) {
       for (var element in split) {
         className += element.capitalize();
       }
+    } else {
+      className = split.first.capitalize();
     }
     print("Class nanme : $className");
     print("Module name: $moduleName");
 
     await _createFile(
-      directoryCreator.moduleDir.path + moduleName + '/controller' + '/state',
+      directoryCreator.moduleDir.path +
+          "/$moduleName" +
+          '/controller' +
+          '/state',
       '${moduleName}_state',
     );
     await _createFile(
         directoryCreator.moduleDir.path + moduleName + '/controller',
-        'controller_name',
+        '${moduleName}_name',
         content: '''
 import '../repository/${moduleName}_interface.dart';
 import '../repository/${moduleName}_repository.dart';
