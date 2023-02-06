@@ -4,7 +4,6 @@ import '../repo_module_i_creators.dart';
 class RepoModuleImplDirectoryCreator implements RepoModuleIDirectoryCreator {
   final _model = 'model';
   final _views = 'views';
-
   final _controller = 'controller';
   final _components = 'components';
   final _module = 'module';

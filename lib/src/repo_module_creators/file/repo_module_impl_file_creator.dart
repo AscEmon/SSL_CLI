@@ -14,9 +14,7 @@ class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
     print('creating necessary files...');
     final List<String> split;
     split = moduleName.split("_");
-    print("After Split: $split");
     String className = "";
-    print("After Capitalize : $className");
     if (split.length > 1) {
       for (var element in split) {
         className += element.capitalize();
@@ -24,8 +22,6 @@ class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
     } else {
       className = split.first.capitalize();
     }
-    print("Class nanme : $className");
-    print("Module name: $moduleName");
 
     await _createFile(
       directoryCreator.moduleDir.path +
@@ -37,7 +33,7 @@ class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
 
     await _createFile(
         directoryCreator.moduleDir.path + "/$moduleName" + '/controller',
-        '${moduleName}_name',
+        '${moduleName}_controller',
         content: '''
 import '../repository/${moduleName}_interface.dart';
 import '../repository/${moduleName}_repository.dart';
@@ -92,7 +88,7 @@ class ${className}Repository implements I${className}Repository {}
 
     await _createFile(
         directoryCreator.moduleDir.path + '/$moduleName' + '/views',
-        'screen_name',
+        '${moduleName}_screen',
         content: """
 import 'package:flutter/material.dart';
 
@@ -101,7 +97,7 @@ class ${className}Screen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Container(child: Text("$moduleName Setup"),),),);
+    return Scaffold(body: Center(child: Container(child: Text("$className Setup"),),),);
   }
 }
 
