@@ -47,11 +47,11 @@ class ${className}Controller  {
   }
 ''');
     await _createFile(
-      directoryCreator.moduleDir.path + moduleName + '/model',
+      directoryCreator.moduleDir.path + "/$moduleName" + '/model',
       'model_class_name',
     );
     await _createFile(
-        directoryCreator.moduleDir.path + moduleName + '/repository',
+        directoryCreator.moduleDir.path + "/$moduleName" + '/repository',
         '/${moduleName}_api',
         content: '''
 import '/data_provider/api_client.dart';
@@ -65,7 +65,7 @@ class ${className}Api {
 
 ''');
     await _createFile(
-        directoryCreator.moduleDir.path + moduleName + '/repository',
+        directoryCreator.moduleDir.path + "/$moduleName" + '/repository',
         '/${moduleName}_interface',
         content: '''
 import 'package:flutter/material.dart';
@@ -80,7 +80,7 @@ abstract class I${className}Repository {
 
 ''');
     await _createFile(
-        directoryCreator.moduleDir.path + moduleName + '/repository',
+        directoryCreator.moduleDir.path + "/$moduleName" + '/repository',
         '/${moduleName}_repository',
         content: '''
 import '/module/$moduleName/repository/${moduleName}_interface.dart';
