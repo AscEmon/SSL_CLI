@@ -12,14 +12,22 @@ class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
   @override
   Future<void> createNecessaryFiles() async {
     print('creating necessary files...');
-    final split = moduleName.split("_");
-    var className = split.first.capitalize();
-    if (split.length > 1){
-         for (var element in split) {
-           className += element.capitalize();
-         }
+    final split;
+    if (moduleName.contains("_")) {
+      split = moduleName.split("_");
+    } else {
+      split = moduleName;
     }
-    
+    var className = split.first.capitalize();
+
+    if (split.length > 1) {
+      for (var element in split) {
+        className += element.capitalize();
+      }
+    }
+    print("Class nanme : $className");
+    print("Module name: $moduleName");
+
     await _createFile(
       directoryCreator.moduleDir.path + moduleName + '/controller' + '/state',
       '${moduleName}_state',
@@ -127,16 +135,16 @@ class ${className}Screen extends StatelessWidget {
         writer.write(content);
         writer.close();
       }
-    } catch (_) {
+    } catch (e) {
+      print(e.toString());
       stderr.write('creating $fileName.$fileType failed!');
       exit(2);
     }
   }
 }
 
-
 extension StringExtension on String {
-    String capitalize() {
-      return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
-    }
+  String capitalize() {
+    return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
+  }
 }

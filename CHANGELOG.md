@@ -321,3 +321,6 @@
 ## 1.4.9
 
 - classname dynamic for repo module generate
+## 1.4.10
+
+- modulename underscore check
