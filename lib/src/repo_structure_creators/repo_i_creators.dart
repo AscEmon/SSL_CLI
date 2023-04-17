@@ -10,7 +10,7 @@ abstract class IDirectoryCreator {
   Directory get dataProviderDir;
   Directory get globalDir;
   Directory get l10nDir;
-  Directory get moduleDir;
+  Directory get modulesDir;
   Directory get utilsDir;
 }
 

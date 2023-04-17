@@ -321,6 +321,7 @@
 ## 1.4.9
 
 - classname dynamic for repo module generate
+
 ## 1.4.10
 
 - modulename underscore check
@@ -332,12 +333,19 @@
 ## 1.4.12
 
 - error check
+
 ## 1.4.13
 
 - file create path issue resolved
+
 ## 1.4.15
 
 - file crate path eror resolved
+
 ## 1.5.0
 
-- repo  module create 
+- repo module create
+
+## 1.5.1
+
+- change folder name module to modules

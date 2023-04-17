@@ -1541,14 +1541,14 @@ class GlobalImageLoader extends StatelessWidget {
 
     //module file
     await _createFile(
-      directoryCreator.moduleDir.path +
+      directoryCreator.modulesDir.path +
           '/module_name' +
           '/controller' +
           '/state',
       'module_name_state',
     );
     await _createFile(
-        directoryCreator.moduleDir.path + '/module_name' + '/controller',
+        directoryCreator.modulesDir.path + '/module_name' + '/controller',
         'controller_name',
         content: '''
 import '../repository/login_interface.dart';
@@ -1561,11 +1561,11 @@ class LoginController  {
 
 ''');
     await _createFile(
-      directoryCreator.moduleDir.path + '/module_name' + '/model',
+      directoryCreator.modulesDir.path + '/module_name' + '/model',
       'model_class_name',
     );
     await _createFile(
-        directoryCreator.moduleDir.path + '/module_name' + '/repository',
+        directoryCreator.modulesDir.path + '/module_name' + '/repository',
         'module_name_api',
         content: '''
 import 'package:$projectName/data_provider/api_client.dart';
@@ -1579,7 +1579,7 @@ class ModuleNameApi {
 
 ''');
     await _createFile(
-        directoryCreator.moduleDir.path + '/module_name' + '/repository',
+        directoryCreator.modulesDir.path + '/module_name' + '/repository',
         'module_name_interface',
         content: '''
 import 'package:flutter/material.dart';
@@ -1594,7 +1594,7 @@ abstract class IModuleNameRepository {
 
 ''');
     await _createFile(
-        directoryCreator.moduleDir.path + '/module_name' + '/repository',
+        directoryCreator.modulesDir.path + '/module_name' + '/repository',
         'module_name_repository',
         content: '''
 import 'package:$projectName/module/module_name/repository/module_name_interface.dart';
@@ -1605,7 +1605,7 @@ class ModuleNameRepository implements IModuleNameRepository {}
 ''');
 
     await _createFile(
-        directoryCreator.moduleDir.path + '/module_name' + '/views',
+        directoryCreator.modulesDir.path + '/module_name' + '/views',
         'screen_name',
         content: """
 import 'package:flutter/material.dart';
@@ -1621,7 +1621,7 @@ class DashboardScreen extends StatelessWidget {
 
 """);
     await _createFile(
-      directoryCreator.moduleDir.path +
+      directoryCreator.modulesDir.path +
           '/module_name' +
           '/views' +
           '/components',

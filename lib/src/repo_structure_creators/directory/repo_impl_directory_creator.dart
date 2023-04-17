@@ -17,7 +17,7 @@ class RepoImplDirectoryCreator implements IDirectoryCreator {
   final _assets = 'assets';
   final _images = 'images';
   final _svg = 'svg';
-  final _module = 'module';
+  final _modules = 'modules';
   final _fonts = 'fonts';
   final _repository = 'repository';
   final _state = 'state';
@@ -41,7 +41,7 @@ class RepoImplDirectoryCreator implements IDirectoryCreator {
   Directory get l10nDir => Directory('$basePath/$_l10n');
 
   @override
-  Directory get moduleDir => Directory('$basePath/$_module');
+  Directory get modulesDir => Directory('$basePath/$_modules');
 
   @override
   Directory get utilsDir => Directory('$basePath/$_utils');
@@ -62,7 +62,7 @@ class RepoImplDirectoryCreator implements IDirectoryCreator {
       final absDataProviderPath = dataProviderDir.absolute.path;
       final absGlobalPath = globalDir.absolute.path;
       final absl10nPath = l10nDir.absolute.path;
-      final absMvcPath = moduleDir.absolute.path;
+      final absMvcPath = modulesDir.absolute.path;
       final absUtilsPath = utilsDir.absolute.path;
       final assetPath = Directory(Directory.current.path).absolute.path;
 
