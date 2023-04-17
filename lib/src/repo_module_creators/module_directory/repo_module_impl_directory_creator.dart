@@ -6,7 +6,7 @@ class RepoModuleImplDirectoryCreator implements RepoModuleIDirectoryCreator {
   final _views = 'views';
   final _controller = 'controller';
   final _components = 'components';
-  final _module = 'module';
+  final _modules = 'modules';
   final _repository = 'repository';
   final _state = 'state';
 
@@ -22,7 +22,7 @@ class RepoModuleImplDirectoryCreator implements RepoModuleIDirectoryCreator {
   @override
   Future<bool> createDirectories() async {
     try {
-      final libDir = Directory("lib/$_module");
+      final libDir = Directory("lib/$_modules");
 
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;

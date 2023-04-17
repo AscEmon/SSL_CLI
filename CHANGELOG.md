@@ -349,3 +349,8 @@
 ## 1.5.1
 
 - change folder name module to modules
+
+## 1.5.2
+
+- issue resolved modules name
+
