@@ -1,6 +1,6 @@
 import 'dart:io';
 
-abstract class ISSLCreator {
+abstract class MvcISSLCreator {
   Future<void> create();
 }
 
@@ -10,9 +10,8 @@ abstract class IDirectoryCreator {
   Directory get dataProviderDir;
   Directory get globalDir;
   Directory get l10nDir;
-  Directory get mvcDir;
+  Directory get moduleDir;
   Directory get utilsDir;
- 
 }
 
 abstract class IFileCreator {
