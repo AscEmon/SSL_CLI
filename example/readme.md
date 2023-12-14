@@ -52,11 +52,11 @@ flutter:
 ```
 
 
-### You can effortlessly generate **_k_assets.dart_** file containing all your asset paths using this command. Please remember create this command from root of the project.
+### For the generation of the **_k_assets.dart_** file, containing all your asset paths, use this command.
 
     ssl_cli generate k_assets.dart
 
 
-> **_NOTE :_**  Ensure to rerun this command whenever new assets are added. This updates the **_k_assets.dart_** file with the latest asset paths.
+> **_NOTE :_**  Ensure to re run this command whenever new assets are added. This updates the **_k_assets.dart_** file with the latest asset paths.
     
 

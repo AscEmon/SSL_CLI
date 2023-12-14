@@ -85,4 +85,4 @@ flutter:
     ssl_cli generate k_assets.dart
 
 
-> **_NOTE :_**  Ensure to rerun this command whenever new assets are added. This updates the **_k_assets.dart_** file with the latest asset paths.
+> **_NOTE :_**  Ensure to re run this command whenever new assets are added. This updates the **_k_assets.dart_** file with the latest asset paths.
