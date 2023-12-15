@@ -354,3 +354,10 @@
 
 - issue resolved modules name
 
+## 1.5.4
+
+- networkConnection class update
+- bug issue resolve
+- K_asset file generation command added
+
+
