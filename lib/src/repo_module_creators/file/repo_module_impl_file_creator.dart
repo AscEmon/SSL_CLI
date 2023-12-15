@@ -79,9 +79,10 @@ abstract class I${className}Repository {
         directoryCreator.moduleDir.path + "/$moduleName" + '/repository',
         '/${moduleName}_repository',
         content: '''
-import '/module/$moduleName/repository/${moduleName}_interface.dart';
+import '${moduleName}_interface.dart';
 
 class ${className}Repository implements I${className}Repository {}
+
 
 
 ''');
