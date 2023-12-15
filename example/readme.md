@@ -50,5 +50,13 @@ flutter:
  		<string>sv</string>
  	</array>
 ```
+
+
+### For the generation of the **_k_assets.dart_** file, containing all your asset paths, use this command.
+
+    ssl_cli generate k_assets.dart
+
+
+> **_NOTE :_**  Ensure to re run this command whenever new assets are added. This updates the **_k_assets.dart_** file with the latest asset paths.
     
 

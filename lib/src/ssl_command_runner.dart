@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'package:args/args.dart';
+import 'package:ssl_cli/utils/extension.dart';
+import '../utils/enum.dart';
+import 'command/asset_generation_command.dart';
 import 'command/create_command.dart';
 import 'command/help_command.dart';
 import 'command/i_command.dart';
@@ -10,6 +13,7 @@ class SSLCommandRunner {
 
     argParser.addCommand('create');
     argParser.addCommand('module');
+    argParser.addCommand('generate');
     argParser.addCommand('help');
 
     final res = argParser.parse(arguments);
@@ -31,12 +35,25 @@ class SSLCommandRunner {
           } else {
             exit(0);
           }
-        } else if (res.command!.name!.startsWith('help')) {
-          command = HelpCommand();
         } else if (res.command!.name!.contains('module')) {
           command = CreateCommand(
             moduleName: arguments.last,
           );
+        } else if (res.command!.name!.startsWith('generate')) {
+          final assetName = arguments[1];
+          if (assetName == "k_assets.dart") {
+            command = AssetGenerationCommand();
+          } else {
+            "Wrong Command, please use command".printWithColor(
+              status: PrintType.warning,
+            );
+            "ssl_cli generate k_assets.dart".printWithColor(
+              status: PrintType.success,
+            );
+            exit(0);
+          }
+        } else if (res.command!.name!.startsWith('help')) {
+          command = HelpCommand();
         } else {
           _errorAndExit(res.command!.name);
         }

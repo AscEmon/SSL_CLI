@@ -73,3 +73,16 @@ flutter:
 ### Now, You can easily create repository based module using this below command. Please remember create this command from root of the project.
 
     ssl_cli module <module_name>
+
+### Now, You can easily create repository based module using this below command. Please remember create this command from root of the project.
+
+    ssl_cli module <module_name>
+
+
+## 🌟 New Addition 🌟
+### You can effortlessly generate **_k_assets.dart_** file containing all your asset paths using this command. Please remember create this command from root of the project.
+
+    ssl_cli generate k_assets.dart
+
+
+> **_NOTE :_**  Ensure to re run this command whenever new assets are added. This updates the **_k_assets.dart_** file with the latest asset paths.
