@@ -17,7 +17,8 @@ class RepoImplFileCreator implements IFileCreator {
     await _createFile(
       directoryCreator.constantDir.path,
       'app_url',
-      content: """import 'package:$projectName/utils/enum.dart';
+      content: """
+import 'package:$projectName/utils/enum.dart';
 
 enum AppUrl {
   base,
@@ -51,10 +52,10 @@ extension AppUrlExtention on AppUrl {
 
   String get url {
     switch (this) {
-      case AppUrl.base:
-        return "\$_baseUrl";
+       case AppUrl.base:
+        return _baseUrl;
       case AppUrl.baseImage:
-        return "\$_baseImageUrl";
+        return _baseImageUrl;
      
       default:
     }
@@ -195,15 +196,16 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:$projectName/constant/app_url.dart';
-import 'package:$projectName/constant/constant_key.dart';
-import 'package:$projectName/data_provider/pref_helper.dart';
-import 'package:$projectName/global/widget/error_dialog.dart';
-import 'package:$projectName/utils/enum.dart';
-import 'package:$projectName/utils/extension.dart';
-import 'package:$projectName/utils/navigation.dart';
-import 'package:$projectName/utils/network_connection.dart';
-import 'package:$projectName/utils/view_util.dart';
+import '/constant/app_url.dart';
+import '/constant/constant_key.dart';
+import '/data_provider/pref_helper.dart';
+import '/global/widget/error_dialog.dart';
+import '/utils/enum.dart';
+import '/utils/extension.dart';
+import '/utils/navigation.dart';
+import '/utils/network_connection.dart';
+import '/utils/view_util.dart';
+
 
 class ApiClient {
   final Dio _dio = Dio();
@@ -219,23 +221,22 @@ class ApiClient {
     _dio.options = BaseOptions(
       baseUrl: AppUrl.base.url,
       headers: _header,
-      connectTimeout: 60 * 1000, //miliseconds
-      sendTimeout: 60 * 1000,
-      receiveTimeout: 60 * 1000,
+      connectTimeout: const Duration(milliseconds: 60 * 1000), //miliseconds
+      sendTimeout: const Duration(milliseconds: 60 * 1000),
+      receiveTimeout: const Duration(milliseconds: 60 * 1000),
     );
     _initInterceptors();
   }
-
 
   void _initInterceptors() {
     _dio.interceptors.add(InterceptorsWrapper(onRequest: (options, handler) {
       debugPrint(
           'REQUEST[\${options.method}] => PATH: \${AppUrl.base.url}\${options.path} '
-          '=> Request Values: param: \${options.queryParameters}, DATA: \${options.data}, => _HEADERS: \${options.headers}');
+          '=> Request Values: param: \${options.queryParameters}, => Time : \${DateTime.now()}, DATA: \${options.data}, => _HEADERS: \${options.headers} ');
       return handler.next(options);
     }, onResponse: (response, handler) {
       debugPrint(
-          'RESPONSE[\${response.statusCode}] => DATA: \${response.data} URL: \${response.requestOptions.baseUrl}\${response.requestOptions.path}');
+          'RESPONSE[\${response.statusCode}] => Time : \${DateTime.now()} => DATA: \${response.data} URL: \${response.requestOptions.baseUrl}\${response.requestOptions.path} ');
       return handler.next(response);
     }, onError: (err, handler) {
       debugPrint(
@@ -250,25 +251,25 @@ class ApiClient {
     required Method method,
     Map<String, dynamic>? params,
     bool? isPopGlobalDialog,
-    String? token,
+    Map<String, String>? extraHeaders,
     Options? options,
     void Function(int, int)? onReceiveProgress,
     String? savePath,
     List<File>? files,
     String? fileKeyName,
-    required Function(
-      Response response,
-    )
-        onSuccessFunction,
+    required Function(Response response) onSuccessFunction,
   }) async {
     final tokenHeader = <String, String>{
       HttpHeaders.contentTypeHeader: AppConstant.MULTIPART_FORM_DATA.key
     };
+    if (extraHeaders != null) {
+      tokenHeader.addAll(extraHeaders);
+    }
     _initDio(extraHeader: tokenHeader);
 
     if (files != null) {
       params?.addAll({
-        "\${fileKeyName}": files
+        "\$fileKeyName": files
             .map((item) => MultipartFile.fromFileSync(item.path,
                 filename: item.path.split('/').last))
             .toList()
@@ -276,7 +277,7 @@ class ApiClient {
     }
 
     final data = FormData.fromMap(params!);
-    data.log();
+
     // Handle and check all the status.
     return clientHandle(
       url,
@@ -352,8 +353,8 @@ class ApiClient {
       if (method == Method.POST) {
         response = await _dio.post(
           url,
-          queryParameters: params,
-          data: data,
+          // queryParameters: params,
+          data: data != null ? data : params,
         );
       } else if (method == Method.DELETE) {
         response = await _dio.delete(url);
@@ -385,13 +386,13 @@ class ApiClient {
       );
 
       // Handle Error type if dio catches anything.
-    } on DioError catch (e) {
-      e.log();
+    } on DioException catch (e) {
+      "Error is: \$e".log();
       _handleDioError(e);
       rethrow;
     } catch (e) {
-      "dioErrorCatch \$e".log();
-      throw Exception("Something went wrong\$e");
+      "DioErrorCatch :: \$e".log();
+      throw Exception("Something went wrong \$e");
     }
   }
 
@@ -399,10 +400,8 @@ class ApiClient {
     final DEVISE_OS =
         Platform.isAndroid ? AppConstant.ANDROID.key : AppConstant.IOS.key;
 
-    return {
+    Map<String, String> headers = {
       HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON.key,
-      HttpHeaders.authorizationHeader:
-          "\${AppConstant.BEARER.key} \${PrefHelper.getString(AppConstant.TOKEN.key)}",
       AppConstant.APP_VERSION.key:
           PrefHelper.getString(AppConstant.APP_VERSION.key),
       AppConstant.BUILD_NUMBER.key:
@@ -414,6 +413,16 @@ class ApiClient {
       AppConstant.DEVICE_ID.key:
           PrefHelper.getString(AppConstant.DEVICE_ID.key),
     };
+    String token = PrefHelper.getString(AppConstant.TOKEN.key);
+    if (token.isNotEmpty == true) {
+      Map<String, String> bearerToken = {
+        HttpHeaders.authorizationHeader:
+            "\${AppConstant.BEARER.key} \${PrefHelper.getString(AppConstant.TOKEN.key)}",
+      };
+      headers.addAll(bearerToken);
+    }
+
+    return headers;
   }
 
   void _handleNoInternet({
@@ -432,16 +441,14 @@ class ApiClient {
                         rootNavigator: true)
                     .pop();
                 ViewUtil.isPresentedDialog = false;
-                NetworkConnection.instance.apiStack.forEach(
-                  (element) {
-                    request(
-                      url: element.url,
-                      method: element.method,
-                      params: element.variables,
-                      onSuccessFunction: element.onSuccessFunction,
-                    );
-                  },
-                );
+                for (var element in NetworkConnection.instance.apiStack) {
+                  request(
+                    url: element.url,
+                    method: element.method,
+                    params: element.variables,
+                    onSuccessFunction: element.onSuccessFunction,
+                  );
+                }
                 NetworkConnection.instance.apiStack = [];
               }
             },
@@ -451,20 +458,40 @@ class ApiClient {
     }
   }
 
-  void _handleDioError(DioError error) {
+  void _handleDioError(DioException error) {
     switch (error.type) {
-      case DioErrorType.connectTimeout:
+      case DioExceptionType.connectionTimeout:
         ViewUtil.SSLSnackbar("Time out delay ");
         break;
-      case DioErrorType.receiveTimeout:
+      case DioExceptionType.receiveTimeout:
         ViewUtil.SSLSnackbar("Server is not responded properly");
         break;
-      case DioErrorType.other:
+      case DioExceptionType.unknown:
         ViewUtil.SSLSnackbar("Server is not responded properly");
         break;
-      case DioErrorType.response:
-        ViewUtil.SSLSnackbar("Internal Responses error");
+      case DioExceptionType.connectionError:
+        ViewUtil.SSLSnackbar("Connection error");
         break;
+      case DioExceptionType.cancel:
+        ViewUtil.SSLSnackbar("Connection cancel");
+        break;
+
+      case DioExceptionType.badCertificate:
+        ViewUtil.SSLSnackbar("Incorrect certificate error");
+        break;
+      case DioExceptionType.sendTimeout:
+        ViewUtil.SSLSnackbar("Send timeout error");
+        break;
+      case DioExceptionType.badResponse:
+        final Map data = json.decode(error.response.toString());
+        if (error.response?.statusCode == 502) {
+          ViewUtil.SSLSnackbar("Something went wrong");
+        } else {
+          _tempErrorHandle(data);
+        }
+
+        break;
+
       default:
         ViewUtil.SSLSnackbar("Something went wrong");
         break;
@@ -477,14 +504,12 @@ class ApiClient {
   }) async {
     if (response.statusCode == 200) {
       final Map data = json.decode(response.toString());
-      // TODO:  please replace this code based on your reponse.
-      final verifycode = data['code'];
+      final verifycode = data['status'];
       int code = int.tryParse(verifycode.toString()) ?? 0;
       if (code == 200) {
         if (response.data != null) {
           return onSuccessFunction!(response);
         } else {
-          "response data is \${response.data}".log();
           throw Exception("response data is \${response.data}");
         }
       } else if (code == 401) {
@@ -492,56 +517,37 @@ class ApiClient {
         // Navigation.pushAndRemoveUntil(
         //   Navigation.key.currentContext,
         //   appRoutes: AppRoutes.login,
+        //   arguments: LoginRegisterOpenFor.normal,
         // );
       } else {
         //Where error occured then pop the global dialog
-        response.statusCode?.log();
-        code.log();
-        isPopDialog?.log();
-
-        List<String>? erroMsg;
-        // TODO:  please replace this message based on your reponse.
-        erroMsg = List<String>.from(data["message"]?.map((x) => x));
-        erroMsg.toString().log();
-        ViewUtil.showAlertDialog(
-          barrierDismissible: false,
-          contentPadding: EdgeInsets.zero,
-          borderRadius: BorderRadius.all(
-            Radius.circular(20.r),
-          ),
-          content: ErrorDialog(
-            erroMsg: erroMsg,
-          ),
-        ).then((value) {
-          if (isPopDialog == true || isPopDialog == null) {
-            Navigator.pop(Navigation.key.currentContext!);
-          }
-        });
-        if (isPopDialog == false) {
-          throw Exception();
-        }
+        _tempErrorHandle(data);
       }
     }
   }
+
+  void _tempErrorHandle(dynamic data) async {
+    "data:: \$data".log();
+ }   
 }
-
-
 
 """);
     await _createFile(
       directoryCreator.dataProviderDir.path,
       'graph_client',
-      content: """import 'dart:convert';
+      content: """
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart' as d;
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:$projectName/constant/app_url.dart';
-import 'package:$projectName/constant/constant_key.dart';
-import 'package:$projectName/data_provider/pref_helper.dart';
-import 'package:$projectName/global/model/graph_ql_error_response.dart';
-import 'package:$projectName/utils/navigation.dart';
-import 'package:$projectName/utils/view_util.dart';
+import '/utils/extension.dart';
+import '/constant/app_url.dart';
+import '/constant/constant_key.dart';
+import '/data_provider/pref_helper.dart';
+import '/global/model/graph_ql_error_response.dart';
+import '/utils/navigation.dart';
+import '/utils/view_util.dart';
 
 class ApiClient {
   late d.Dio _dio;
@@ -555,13 +561,12 @@ class ApiClient {
           "\${AppConstant.BEARER.key} \${PrefHelper.getString(AppConstant.TOKEN.key)}"
     };
 
-    _dio = d.Dio(
-      d.BaseOptions(
-        baseUrl: AppUrl.base.url,
-        headers: _header,
-        connectTimeout: 1000 * 30,
-        sendTimeout: 1000 * 10,
-      ),
+   _dio.options = BaseOptions(
+      baseUrl: AppUrl.base.url,
+      headers: _header,
+      connectTimeout: const Duration(milliseconds: 60 * 1000), //miliseconds
+      sendTimeout: const Duration(milliseconds: 60 * 1000),
+      receiveTimeout: const Duration(milliseconds: 60 * 1000),
     );
     _initInterceptors();
   }
@@ -680,7 +685,7 @@ class ApiClient {
           if (result.errors[0].message == "Invalid User" ||
               result.errors[0].message == "User does not exist") {
             PrefHelper.logout();
-            // GetScreen().pushAndRemoveUntil(Navigation.key.currentContext);
+           
           } else {
             _showExceptionSnackBar(result.errors[0].message);
           }
@@ -688,37 +693,44 @@ class ApiClient {
       }
     } catch (e) {}
   }
+void _dioErrorHandler(bool isLoaderShowing, DioException error) {
+ if (isLoaderShowing) Navigation.pop(Navigation.key.currentContext!);
+    switch (error.type) {
+      case DioExceptionType.connectionTimeout:
+        ViewUtil.SSLSnackbar("Time out delay ");
+        break;
+      case DioExceptionType.receiveTimeout:
+        ViewUtil.SSLSnackbar("Server is not responded properly");
+        break;
+      case DioExceptionType.unknown:
+        ViewUtil.SSLSnackbar("Server is not responded properly");
+        break;
+      case DioExceptionType.connectionError:
+        ViewUtil.SSLSnackbar("Connection error");
+        break;
+      case DioExceptionType.cancel:
+        ViewUtil.SSLSnackbar("Connection cancel");
+        break;
 
-// Handle Error type if dio catches anything
-  void _dioErrorHandler(bool isLoaderShowing, d.DioError dioError) {
-    if (isLoaderShowing) Navigation.pop(Navigation.key.currentContext);
-
-    switch (dioError.type) {
-      case d.DioErrorType.response:
-        if (dioError.response != null) {
-          if (dioError.response!.statusCode != null) {
-            if (dioError.response!.statusCode! == 500) {
-              _showExceptionSnackBar("Server Error");
-            }
-          }
+      case DioExceptionType.badCertificate:
+        ViewUtil.SSLSnackbar("Incorrect certificate error");
+        break;
+      case DioExceptionType.sendTimeout:
+        ViewUtil.SSLSnackbar("Send timeout error");
+        break;
+      case DioExceptionType.badResponse:
+        final Map data = json.decode(error.response.toString());
+        if (error.response?.statusCode == 502) {
+          ViewUtil.SSLSnackbar("Something went wrong");
+        } else {
+          data.log();
         }
 
         break;
-      case d.DioErrorType.connectTimeout:
-        _showExceptionSnackBar("Connection failed!. Please refresh");
 
-        break;
-      case d.DioErrorType.sendTimeout:
-        break;
-      case d.DioErrorType.receiveTimeout:
-        break;
-      case d.DioErrorType.other:
-        if (dioError.error is SocketException) {
-          _showExceptionSnackBar("Check your internet connection");
-        }
-        break;
       default:
-        _showExceptionSnackBar("Something went wrong!");
+        ViewUtil.SSLSnackbar("Something went wrong");
+        break;
     }
   }
 
@@ -727,13 +739,17 @@ class ApiClient {
   }
 }
 
+
  
  """,
     );
 
     await _createFile(directoryCreator.dataProviderDir.path, 'pref_helper',
-        content: """import 'package:$projectName/constant/constant_key.dart';
+        content: """
+
+import '/constant/constant_key.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 
 class PrefHelper {
 
@@ -923,6 +939,7 @@ class Errors {
 import 'package:google_fonts/google_fonts.dart';
 import '../../utils/styles/styles.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'global_text.dart';
 
 class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color backgroundColor = KColor.secondary.color;
@@ -943,8 +960,8 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       centerTitle: centerTitle,
       backgroundColor: backgroundColor,
-      title: Text(
-        title,
+      title: GlobalText(
+        str: title,
         style: GoogleFonts.poppins(
           color: KColor.white.color,
           fontSize: 16.sp,
@@ -957,7 +974,7 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => new Size.fromHeight(56.h);
+  Size get preferredSize => Size.fromHeight(56.h);
 }
 
 
@@ -965,14 +982,12 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
     await _createFile(
         directoryCreator.globalDir.path + '/widget', 'error_dialog',
         content: '''
-  import 'package:flutter/material.dart';
+ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:$projectName/constant/constant_key.dart';
-import 'package:$projectName/global/widget/global_text.dart';
-import 'package:$projectName/utils/navigation.dart';
+import '/global/widget/global_text.dart';
+import '/utils/navigation.dart';
 
-import '../../utils/styles/styles.dart';
 
 class ErrorDialog extends StatelessWidget {
   const ErrorDialog({
@@ -991,7 +1006,7 @@ class ErrorDialog extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-              InkWell(
+            InkWell(
               onTap: () {
                 Navigation.pop(Navigation.key.currentContext);
               },
@@ -1004,7 +1019,7 @@ class ErrorDialog extends StatelessWidget {
         ),
         Container(
           width: double.infinity,
-          padding: EdgeInsets.only(left: 0),
+          padding: const EdgeInsets.only(left: 0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: List.generate(
@@ -1012,18 +1027,17 @@ class ErrorDialog extends StatelessWidget {
               (index) => Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                 
                   Flexible(
                     child: Container(
                       padding: EdgeInsets.only(right: 30..w),
                       child: GlobalText(
-                        str: "\${erroMsg[index].toString()}",
+                        str: erroMsg[index].toString(),
                         maxLines: 5,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.start,
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w500,
-                        color: Color(0xff999999),
+                        color: const Color(0xff999999),
                         letterSpacing: 0.2,
                       ),
                     ),
@@ -1037,7 +1051,6 @@ class ErrorDialog extends StatelessWidget {
     );
   }
 }
-
  ''');
 
     await _createFile(
@@ -1095,7 +1108,7 @@ class GlobalButton extends StatelessWidget {
         ),
       ),
       onPressed: onPressed,
-      child: Container(
+      child: SizedBox(
         height: btnHeight ?? 76.h,
         child: Center(
           child: GlobalText(
@@ -1117,9 +1130,9 @@ class GlobalButton extends StatelessWidget {
         directoryCreator.globalDir.path + '/widget', 'global_textformfield',
         content: '''
 import 'package:flutter/material.dart';
-import 'package:$projectName/utils/styles/k_text_style.dart';
-import 'package:$projectName/utils/styles/styles.dart';
+import '/utils/styles/styles.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'global_text.dart';
 
 class GlobalTextFormField extends StatelessWidget {
   final bool? obscureText;
@@ -1172,7 +1185,7 @@ class GlobalTextFormField extends StatelessWidget {
     return TextFormField(
       initialValue: initialValue,
       maxLines: line,
-      style: style == null ? KTextStyle.customTextStyle() : style,
+      style: style ?? KTextStyle.customTextStyle(),
       autovalidateMode: autovalidateMode,
       obscureText: obscureText ?? false,
       obscuringCharacter: '*',
@@ -1197,11 +1210,20 @@ class GlobalTextFormField extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Text(labelText ?? "", style: KTextStyle.customTextStyle()),
-                  const Text('*', style: TextStyle(color: Colors.red)),
+                  GlobalText(
+                    str: labelText ?? "",
+                    style: KTextStyle.customTextStyle(),
+                  ),
+                  const GlobalText(
+                    str: '*',
+                    style: TextStyle(color: Colors.red),
+                  ),
                 ],
               )
-            : Text(labelText ?? "", style: KTextStyle.customTextStyle()),
+            : GlobalText(
+                str: labelText ?? "",
+                style: KTextStyle.customTextStyle(),
+              ),
         // labelText: labelText,
         labelStyle: labelStyle,
         filled: true,
@@ -1209,13 +1231,11 @@ class GlobalTextFormField extends StatelessWidget {
 
         fillColor: KColor.formtextFill.color,
         suffixIcon: suffixIcon,
-        hintStyle: hintStyle == null
-            ? KTextStyle.customTextStyle(fontSize: 13.sp)
-            : hintStyle,
-        border: OutlineInputBorder(
+        hintStyle: hintStyle ?? KTextStyle.customTextStyle(fontSize: 13.sp),
+        border:  OutlineInputBorder(
           borderSide: BorderSide.none,
           borderRadius: BorderRadius.all(
-            Radius.circular(8),
+            Radius.circular(8.r),
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -1226,7 +1246,7 @@ class GlobalTextFormField extends StatelessWidget {
           borderSide: BorderSide(color: KColor.red.color, width: 1.w),
           borderRadius: BorderRadius.all(
             Radius.circular(
-              8,
+              8.r,
             ),
           ),
         ),
@@ -1234,13 +1254,13 @@ class GlobalTextFormField extends StatelessWidget {
           borderSide: BorderSide(color: KColor.red.color, width: 1.w),
           borderRadius: BorderRadius.all(
             Radius.circular(
-              8,
+              8.r,
             ),
           ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: Color(0xffE0E0E0), width: 1.w),
+          borderSide: BorderSide(color: const Color(0xffE0E0E0), width: 1.w),
         ),
       ),
       validator: validator,
@@ -1248,8 +1268,6 @@ class GlobalTextFormField extends StatelessWidget {
     );
   }
 }
-
-
  ''');
 
     await _createFile(
@@ -1257,11 +1275,11 @@ class GlobalTextFormField extends StatelessWidget {
         content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:$projectName/constant/constant_key.dart';
+import '/constant/constant_key.dart';
 
 class GlobalText extends StatelessWidget {
   final String str;
-  final FontWeight fontWeight;
+  final FontWeight? fontWeight;
   final double? fontSize;
   final Color? color;
   final FontStyle? fontStyle;
@@ -1273,11 +1291,12 @@ class GlobalText extends StatelessWidget {
   final bool? softwrap;
   final double? height;
   final String? fontFamily;
+  final TextStyle? style;
 
   const GlobalText({
     Key? key,
     required this.str,
-    required this.fontWeight,
+    this.fontWeight,
     this.fontSize,
     this.fontStyle,
     this.color,
@@ -1289,6 +1308,7 @@ class GlobalText extends StatelessWidget {
     this.softwrap,
     this.height,
     this.fontFamily,
+    this.style,
   }) : super(key: key);
 
   @override
@@ -1299,20 +1319,21 @@ class GlobalText extends StatelessWidget {
       overflow: overflow,
       textAlign: textAlign,
       softWrap: softwrap,
-      style: TextStyle(
-        color: color ?? Colors.black,
-        fontSize: fontSize?.sp,
-        fontWeight: fontWeight,
-        letterSpacing: letterSpacing,
-        decoration: decoration,
-        height: height,
-        fontStyle: fontStyle,
-        fontFamily: fontFamily ?? AppConstant.FONTFAMILY.key,
-      ),
+      textScaleFactor: 1.0,
+      style: style ??
+          TextStyle(
+            color: color ?? Colors.black,
+            fontSize: fontSize?.sp,
+            fontWeight: fontWeight ?? FontWeight.w500,
+            letterSpacing: letterSpacing,
+            decoration: decoration,
+            height: height,
+            fontStyle: fontStyle,
+            fontFamily: fontFamily ?? AppConstant.FONTFAMILY.key,
+          ),
     );
   }
 }
-
  ''');
 
     await _createFile(
@@ -1320,7 +1341,7 @@ class GlobalText extends StatelessWidget {
         content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+import 'global_text.dart';
 import '../../utils/styles/styles.dart';
 
 class GlobalDropdown extends StatelessWidget {
@@ -1367,14 +1388,12 @@ class GlobalDropdown extends StatelessWidget {
         ),
       ),
       isExpanded: true,
-      hint: Text(
-        "\$hintText",
-        style: TextStyle(
-          color: KColor.grey.color,
-          fontSize: 18.sp,
-          fontWeight: FontWeight.w400,
-          fontStyle: FontStyle.normal,
-        ),
+      hint: GlobalText(
+       str: "\$hintText",
+       color: KColor.grey.color,
+       fontSize: 18.sp,
+       fontWeight: FontWeight.w400,
+       fontStyle: FontStyle.normal,
       ),
       onChanged: onChanged,
       items: items,
@@ -1390,6 +1409,7 @@ class GlobalDropdown extends StatelessWidget {
         content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'global_text.dart';
 
 class GlobalLoader extends StatelessWidget {
   const GlobalLoader({Key? key, this.text = "Loading..."}) : super(key: key);
@@ -1402,7 +1422,7 @@ class GlobalLoader extends StatelessWidget {
       children: [
       const  CircularProgressIndicator.adaptive(),
         SizedBox(width: 10.w),
-        Text(text ?? "")
+        GlobalText(str:text ?? "")
       ],
     );
   }
@@ -1416,8 +1436,8 @@ class GlobalLoader extends StatelessWidget {
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:$projectName/utils/enum.dart';
-import 'package:$projectName/utils/extension.dart';
+import '/utils/enum.dart';
+import '/utils/extension.dart';
 
 class GlobalSvgLoader extends StatelessWidget {
   const GlobalSvgLoader({
@@ -1427,13 +1447,13 @@ class GlobalSvgLoader extends StatelessWidget {
     this.width,
     this.fit,
     this.color,
-    required this.svgFor,
+    this.svgFor = SvgFor.asset,
   }) : super(key: key);
   final String imagePath;
   final double? height;
   final double? width;
   final BoxFit? fit;
-  final SvgFor svgFor;
+  final SvgFor? svgFor;
   final Color? color;
   @override
   Widget build(BuildContext context) {
@@ -1457,7 +1477,6 @@ class GlobalSvgLoader extends StatelessWidget {
     }
   }
 }
-
  ''');
 
     await _createFile(
@@ -1470,7 +1489,7 @@ class GlobalImageLoader extends StatelessWidget {
   const GlobalImageLoader({
     Key? key,
     required this.imagePath,
-    required this.imageFor,
+    this.imageFor = ImageFor.asset,
     this.height,
     this.width,
     this.fit,
@@ -1479,7 +1498,7 @@ class GlobalImageLoader extends StatelessWidget {
   final double? height;
   final double? width;
   final BoxFit? fit;
-  final ImageFor imageFor;
+  final ImageFor? imageFor;
   @override
   Widget build(BuildContext context) {
     if (imageFor == ImageFor.network) {
@@ -1542,50 +1561,49 @@ class GlobalImageLoader extends StatelessWidget {
     //module file
     await _createFile(
       directoryCreator.modulesDir.path +
-          '/module_name' +
+          '/dashboard' +
           '/controller' +
           '/state',
-      'module_name_state',
+      'dashboard_state',
     );
     await _createFile(
-        directoryCreator.modulesDir.path + '/module_name' + '/controller',
-        'controller_name',
+        directoryCreator.modulesDir.path + '/dashboard' + '/controller',
+        'dashboard_controller',
         content: '''
-import '../repository/login_interface.dart';
-import '../repository/login_repository.dart';
-class LoginController  {
-  final ILoginRepository _loginRepository = LoginRepository();
-  
-  }
+import '../repository/dashboard_interface.dart';
+import '../repository/dashboard_repository.dart';
 
+class DashboardController {
+  final IDashboardRepository _dashboardRepository = DashboardRepository();
+}
 
 ''');
     await _createFile(
-      directoryCreator.modulesDir.path + '/module_name' + '/model',
+      directoryCreator.modulesDir.path + '/dashboard' + '/model',
       'model_class_name',
     );
     await _createFile(
-        directoryCreator.modulesDir.path + '/module_name' + '/repository',
-        'module_name_api',
+        directoryCreator.modulesDir.path + '/dashboard' + '/repository',
+        'dashboard_api',
         content: '''
 import 'package:$projectName/data_provider/api_client.dart';
-class ModuleNameApi {
+class DashboardApi {
   final ApiClient _apiClient = ApiClient();
 
-  ModuleNameApi();
+  DashboardApi();
 
  
 }
 
 ''');
     await _createFile(
-        directoryCreator.modulesDir.path + '/module_name' + '/repository',
-        'module_name_interface',
+        directoryCreator.modulesDir.path + '/dashboard' + '/repository',
+        'dashboard_interface',
         content: '''
 import 'package:flutter/material.dart';
 
 @immutable
-abstract class IModuleNameRepository {
+abstract class IDashboardRepository {
   
 }
 
@@ -1594,20 +1612,26 @@ abstract class IModuleNameRepository {
 
 ''');
     await _createFile(
-        directoryCreator.modulesDir.path + '/module_name' + '/repository',
-        'module_name_repository',
+        directoryCreator.modulesDir.path + '/dashboard' + '/repository',
+        'dashboard_repository',
         content: '''
-import 'package:$projectName/module/module_name/repository/module_name_interface.dart';
+import 'dashboard_api.dart';
+import 'dashboard_interface.dart';
 
-class ModuleNameRepository implements IModuleNameRepository {}
+class DashboardRepository implements IDashboardRepository {
+  final _api = DashboardApi();
+}
+
 
 
 ''');
 
     await _createFile(
-        directoryCreator.modulesDir.path + '/module_name' + '/views',
-        'screen_name',
+        directoryCreator.modulesDir.path + '/dashboard' + '/views',
+        'dashboard_screen',
         content: """
+import '/global/widget/global_appbar.dart';
+import '/global/widget/global_text.dart';
 import 'package:flutter/material.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -1615,14 +1639,21 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Container(child: Text("Project Setup"),),),);
+    return Scaffold(
+      appBar: GlobalAppBar(
+        title: "Dashboard",
+      ),
+      body: const Center(
+        child: GlobalText(str: "Project Setup"),
+      ),
+    );
   }
 }
 
 """);
     await _createFile(
       directoryCreator.modulesDir.path +
-          '/module_name' +
+          '/dashboard' +
           '/views' +
           '/components',
       'widget_name',
@@ -1631,15 +1662,18 @@ class DashboardScreen extends StatelessWidget {
 //Utils file
 
     await _createFile(directoryCreator.utilsDir.path, 'extension',
-        content: """import 'dart:developer' as darttools show log;
+        content: """
+
+import 'dart:developer' as darttools show log;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart'
     show AppLocalizations;
 //import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:$projectName/constant/constant_key.dart';
-import 'package:$projectName/data_provider/pref_helper.dart';
+import '/constant/constant_key.dart';
+import '/data_provider/pref_helper.dart';
 import 'package:intl/intl.dart';
+
 
 extension ConvertNum on String {
   static const english = [
@@ -1833,6 +1867,42 @@ extension CapitalizeExtention on String {
 extension LastPathComponent on String {
   String get lastPathComponent => this.split('/').last.replaceAll("_", "");
 }
+extension IterableExtension<T> on Iterable<T> {
+  Iterable<T> distinctBy(Object Function(T e) getCompareValue) {
+    var result = <T>[];
+    forEach((element) {
+      if (!result.any((x) => getCompareValue(x) == getCompareValue(element))) {
+        result.add(element);
+      }
+    });
+
+    return result;
+  }
+}
+
+/// it will use for finding data  from list based on same date
+extension Iterables<E> on Iterable<E> {
+  Map<K, List<E>> groupBy<K>(K Function(E) keyFunction) => fold(
+        <K, List<E>>{},
+        (Map<K, List<E>> map, E element) =>
+            map..putIfAbsent(keyFunction(element), () => <E>[]).add(element),
+      );
+}
+
+extension DateTimeGreater on DateTime {
+  bool get isDateGreater {
+    DateTime currentDate = DateTime.now();
+
+    // Create a date to compare with the current date
+    DateTime compareDate = this;
+    // Example date: May 30, 2023
+    if (compareDate.isAfter(currentDate)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
 
 """);
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_assets',
@@ -1957,13 +2027,13 @@ class KTextStyle {
 export 'k_text_style.dart';
 export 'k_assets.dart';
 """);
-    await _createFile(directoryCreator.utilsDir.path, 'app_routes',
-        content: """import 'package:flutter/material.dart';
-        import 'package:$projectName/module/module_name/views/screen_name.dart';
+    await _createFile(directoryCreator.utilsDir.path, 'app_routes', content: """
+import 'package:flutter/material.dart';
+import '../modules/dashboard/views/dashboard_screen.dart';
+
 
 enum AppRoutes {
   dashboard,
-  
 }
 
 extension AppRoutesExtention on AppRoutes {
@@ -1971,17 +2041,19 @@ extension AppRoutesExtention on AppRoutes {
     switch (this) {
       case AppRoutes.dashboard:
         return const DashboardScreen();
-    
     }
   }
 }
 
+
 """);
 
     await _createFile(directoryCreator.utilsDir.path, 'app_version',
-        content: """import 'package:$projectName/constant/constant_key.dart';
-import 'package:$projectName/data_provider/pref_helper.dart';
-import 'package:$projectName/utils/extension.dart';
+        content: """
+
+import 'package:flutter/material.dart';
+import '/constant/constant_key.dart';
+import '/data_provider/pref_helper.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class AppVersion {
@@ -1993,17 +2065,17 @@ class AppVersion {
     versionCode = packageInfo.buildNumber;
     await PrefHelper.setString(AppConstant.APP_VERSION.key, currentVersion);
     await PrefHelper.setString(AppConstant.BUILD_NUMBER.key, versionCode);
-    "Current version is  \${currentVersion.toString()}".log();
-    "App version Code is  \${versionCode.toString()}".log();
+    debugPrint("Current version is  :: \${currentVersion.toString()}");
+    debugPrint("App version Code is :: \${versionCode.toString()}");
   }
 }
-
 
 """);
 
     await _createFile(directoryCreator.utilsDir.path, 'date_util',
-        content: """import 'package:flutter/material.dart';
-import 'package:$projectName/utils/navigation.dart';
+        content: """
+import 'package:flutter/material.dart';
+import '/utils/navigation.dart';
 
 class DateUtil {
   static DateTime? fromDate;
@@ -2023,7 +2095,6 @@ class DateUtil {
     return picked;
   }
 }
-
 
 """);
 
@@ -2064,7 +2135,7 @@ enum SvgFor {
 
     await _createFile(directoryCreator.utilsDir.path, 'navigation',
         content: """import 'package:flutter/material.dart';
-import 'package:$projectName/utils/app_routes.dart';
+import '/utils/app_routes.dart';
 
 class Navigation {
   static GlobalKey<NavigatorState> key = GlobalKey<NavigatorState>();
@@ -2176,10 +2247,13 @@ class Navigation {
 
 """);
     await _createFile(directoryCreator.utilsDir.path, 'network_connection',
-        content: """import 'dart:async';
+        content: """
+import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
-import 'package:$projectName/utils/enum.dart';
+import 'package:flutter/services.dart';
+import '/utils/enum.dart';
+import 'package:flutter/material.dart';
 
 class NetworkConnection {
   static NetworkConnection? _instance;
@@ -2189,19 +2263,40 @@ class NetworkConnection {
   static NetworkConnection get instance => _instance ??= NetworkConnection._();
   bool isInternet = true;
 
-  InternetAvailable() async {
-    StreamSubscription<ConnectivityResult> subscription;
+  Future<bool> hasInternetConnection() async {
+    try {
+      final connectivityResult = await (Connectivity().checkConnectivity());
+      if (connectivityResult == ConnectivityResult.mobile ||
+          connectivityResult == ConnectivityResult.wifi) {
+        return true;
+      } else {
+        return false;
+      }
+    } on PlatformException {
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
 
-    subscription = await Connectivity()
-        .onConnectivityChanged
-        .listen((ConnectivityResult result) {
+  internetAvailable() async {
+    isInternet = await hasInternetConnection();
+   debugPrint("isInternet1 :: \$isInternet"); 
+    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
       // Got a new connectivity status!
       if (result == ConnectivityResult.none) {
         isInternet = false;
+         debugPrint("isInternet2 :: \$isInternet"); 
       } else {
         isInternet = true;
+       debugPrint("isInternet3 :: \$isInternet"); 
       }
     });
+
+    /// This Delay is require for sync the result value with UI.
+    /// In iOS first rebuild the UI after that
+    /// the Internet value is process thats why we show the connection Error Dialog
+    await Future.delayed(const Duration(seconds: 1));
   }
 
   List<APIParams> apiStack = [];
@@ -2227,10 +2322,10 @@ class APIParams {
     await _createFile(directoryCreator.utilsDir.path, 'view_util', content: """
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:$projectName/global/widget/global_button.dart';
-import 'package:$projectName/global/widget/global_text.dart';
-import 'package:$projectName/utils/navigation.dart';
-import 'package:$projectName/utils/styles/styles.dart';
+import '/global/widget/global_button.dart';
+import '/global/widget/global_text.dart';
+import '/utils/navigation.dart';
+import '/utils/styles/styles.dart';
 
 class ViewUtil {
   static SSLSnackbar(
@@ -2271,7 +2366,7 @@ class ViewUtil {
       builder: (BuildContext context) {
         // return object of type Dialog.
         return AlertDialog(
-          title: GlobalText(
+          title: const GlobalText(
             str: "Connection Error",
             fontWeight: FontWeight.w500,
           ),
@@ -2280,7 +2375,7 @@ class ViewUtil {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              GlobalText(
+              const GlobalText(
                 str: "Your internet connection appears to be offline",
                 textAlign: TextAlign.center,
                 fontWeight: FontWeight.w500,
@@ -2361,7 +2456,7 @@ class ViewUtil {
           boxShadow: [
             BoxShadow(
               color: const Color(0x1a000000),
-              offset: Offset(0, 1),
+              offset: const Offset(0, 1),
               blurRadius: 3.r,
               spreadRadius: 0,
             )
@@ -2374,7 +2469,6 @@ class ViewUtil {
   }
 }
 
-
 """);
     await _createFile(
       'lib',
@@ -2386,14 +2480,14 @@ import 'package:flutter/services.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:$projectName/constant/app_url.dart';
-import 'package:$projectName/data_provider/pref_helper.dart';
-import 'package:$projectName/module/module_name/views/screen_name.dart';
-import 'package:$projectName/utils/app_version.dart';
-import 'package:$projectName/utils/enum.dart';
-import 'package:$projectName/utils/navigation.dart';
-import 'package:$projectName/utils/network_connection.dart';
-import 'package:$projectName/utils/styles/k_colors.dart';
+import '/constant/app_url.dart';
+import '/data_provider/pref_helper.dart';
+import '/utils/app_version.dart';
+import '/utils/enum.dart';
+import '/utils/navigation.dart';
+import '/utils/network_connection.dart';
+import '/utils/styles/k_colors.dart';
+import 'modules/dashboard/views/dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -2416,7 +2510,7 @@ initServices() async {
   );
   await PrefHelper.init();
   await AppVersion.getVersion();
-  await NetworkConnection.instance.InternetAvailable();
+  await NetworkConnection.instance.internetAvailable();
 }
 
 class MyApp extends StatelessWidget {
@@ -2458,7 +2552,6 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
 """,
     );
 

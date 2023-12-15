@@ -10,7 +10,7 @@ class RepoImplDirectoryCreator implements IDirectoryCreator {
   final _model = 'model';
   final _widget = 'widget';
   final _views = 'views';
-  final _moduleName = 'module_name';
+  final _moduleName = 'dashboard';
   final _controller = 'controller';
   final _styles = 'styles';
   final _components = 'components';
