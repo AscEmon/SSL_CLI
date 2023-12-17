@@ -365,3 +365,8 @@
 
 - automatic route added with repo based module generation
 - pubspec edit and config all neccessary packages and other stuff
+
+
+## 1.5.6
+
+- update changelog file
