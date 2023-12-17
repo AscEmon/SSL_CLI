@@ -1,4 +1,7 @@
 import 'dart:io';
+import 'package:ssl_cli/utils/enum.dart';
+import 'package:ssl_cli/utils/extension.dart';
+
 import '../repo_i_creators.dart';
 
 class RepoImplFileCreator implements IFileCreator {
@@ -11,7 +14,7 @@ class RepoImplFileCreator implements IFileCreator {
 
   @override
   Future<void> createNecessaryFiles() async {
-    print('creating necessary files...');
+    'creating necessary files...'.printWithColor(status: PrintType.success);
 
     //constant folder file
     await _createFile(
@@ -1661,8 +1664,7 @@ class DashboardScreen extends StatelessWidget {
 
 //Utils file
 
-    await _createFile(directoryCreator.utilsDir.path, 'extension',
-        content: """
+    await _createFile(directoryCreator.utilsDir.path, 'extension', content: """
 
 import 'dart:developer' as darttools show log;
 
@@ -2072,8 +2074,7 @@ class AppVersion {
 
 """);
 
-    await _createFile(directoryCreator.utilsDir.path, 'date_util',
-        content: """
+    await _createFile(directoryCreator.utilsDir.path, 'date_util', content: """
 import 'package:flutter/material.dart';
 import '/utils/navigation.dart';
 
@@ -2499,7 +2500,7 @@ void main() async {
       DeviceOrientation.portraitDown,
     ],
   );
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 /// Make sure you always init shared pref first. It has token and token is need
@@ -2514,6 +2515,7 @@ initServices() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
@@ -2524,7 +2526,7 @@ class MyApp extends StatelessWidget {
       minTextAdapt: true,
       builder: (ctx, child) {
         return MaterialApp(
-          title: '$projectName',
+          title: '${projectName.convertToCamelCase()}',
           navigatorKey: Navigation.key,
           debugShowCheckedModeBanner: false,
           //localization

@@ -361,3 +361,7 @@
 - K_asset file generation command added
 
 
+## 1.5.5
+
+- automatic route added with repo based module generation
+- pubspec edit and config all neccessary packages and other stuff

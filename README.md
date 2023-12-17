@@ -24,16 +24,6 @@ After successful activation, you can use it.
 
     ssl_cli create <project_name>
 
-#### Write now we are dependent some packages thats why we need to add this packages in our pubspec.yaml file. Please enusre that use latest version of this packages
-
-> - google_fonts:
-> - intl:
-> - dio:
-> - shared_preferences:
-> - connectivity_plus:
-> - flutter_screenutil:
-> - package_info_plus:
-> - flutter_svg:
 
 ##### 4. As we generate localization using this cli thats why we need some configuration.
 
