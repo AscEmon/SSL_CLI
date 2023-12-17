@@ -24,55 +24,6 @@ After successful activation, you can use it.
 
     ssl_cli create <project_name>
 
-#### Write now we are dependent some packages thats why we need to add this packages in our pubspec.yaml file. Please enusre that use latest version of this packages
-
-> - google_fonts:
-> - intl:
-> - dio:
-> - shared_preferences:
-> - connectivity_plus:
-> - flutter_screenutil:
-> - package_info_plus:
-> - flutter_svg:
-
-##### 4. As we generate localization using this cli thats why we need some configuration.
-
-### Add this below code in pubspec.yaml
-
-```
-dependencies:
-  flutter:
-    sdk: flutter
-
-  #this line is added for localization
-  flutter_localizations:
-    sdk: flutter
-```
-
-```
-flutter:
-
-
-  #It will be generate automatically localized file when we added new text in arb file.
-  #N:B: Remember it will only generate when we restart our application
-  generate: true
-  uses-material-design: true
-
-```
-
-### For iOS localization is required to add this below code in dict tag in info.plist
-
-```
- <key>CFBundleLocalizations</key>
- 	<array>
- 		<string>en</string>
- 		<string>sv</string>
- 	</array>
-```
-
-### Now, You can easily create repository based module using this below command. Please remember create this command from root of the project.
-
-    ssl_cli module <module_name>
 
 ### Now, You can easily create repository based module using this below command. Please remember create this command from root of the project.
 

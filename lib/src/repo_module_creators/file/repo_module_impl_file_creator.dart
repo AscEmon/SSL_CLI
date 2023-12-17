@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:ssl_cli/utils/extension.dart';
+
 import '../repo_module_i_creators.dart';
 
 class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
@@ -91,6 +93,8 @@ class ${className}Repository implements I${className}Repository {}
         directoryCreator.moduleDir.path + '/$moduleName' + '/views',
         '${moduleName}_screen',
         content: """
+import '/global/widget/global_appbar.dart';
+import '/global/widget/global_text.dart';
 import 'package:flutter/material.dart';
 
 class ${className}Screen extends StatelessWidget {
@@ -98,9 +102,18 @@ class ${className}Screen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(body: Center(child: Container(child: Text("$className Setup"),),),);
+    return Scaffold(
+      appBar: GlobalAppBar(
+        title: "${className.convertToCamelCase()}",
+      ),
+      body: const Center(
+        child: GlobalText(str: "${className.convertToCamelCase()} Setup"),
+      ),
+    );
   }
 }
+
+
 
 """);
     await _createFile(
