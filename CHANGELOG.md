@@ -368,5 +368,8 @@
 
 
 ## 1.5.6
-
 - update changelog file
+
+## 1.5.7
+- auto route generation issue resolve
+
