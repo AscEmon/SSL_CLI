@@ -1,4 +1,6 @@
 import 'dart:io';
+
+import '../../../utils/pubspec_edit.dart';
 import '../repo_i_creators.dart';
 
 class RepoImplDirectoryCreator implements IDirectoryCreator {
@@ -21,6 +23,7 @@ class RepoImplDirectoryCreator implements IDirectoryCreator {
   final _fonts = 'fonts';
   final _repository = 'repository';
   final _state = 'state';
+  final _pubspec = 'pubspec';
 
   final String projectName;
   RepoImplDirectoryCreator(this.projectName);
@@ -77,10 +80,12 @@ class RepoImplDirectoryCreator implements IDirectoryCreator {
 
       //constant directory
       print('creating constant directory...');
+
       await Directory(absConstantPath).create();
 
       // dataProvider directory
       print('creating dataProvider directory...');
+
       await Directory(absDataProviderPath).create();
 
       //global directory
@@ -109,6 +114,12 @@ class RepoImplDirectoryCreator implements IDirectoryCreator {
       print('creating util directory...');
       await Directory(absUtilsPath).create();
       await Directory('$absUtilsPath/$_styles').create();
+
+      //pubspec edit file
+      print('pubspec Generate with packages and other configuration...');
+      final pubspecEdit = PubspecEdit();
+      final pubspecFilePath = "${Directory.current.path}/$_pubspec.yaml";
+      pubspecEdit.pubspecEditConfig(pubspecFilePath);
 
       return true;
     } catch (e, s) {

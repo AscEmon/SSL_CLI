@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../file/route_generation_create_module.dart';
 import '../repo_module_i_creators.dart';
 
 class RepoModuleImplDirectoryCreator implements RepoModuleIDirectoryCreator {
@@ -42,6 +43,11 @@ class RepoModuleImplDirectoryCreator implements RepoModuleIDirectoryCreator {
       await Directory('$absMvcPath/$moduleName/$_repository').create();
       await Directory('$absMvcPath/$moduleName/$_views').create();
       await Directory('$absMvcPath/$moduleName/$_views/$_components').create();
+
+      String filePath = 'lib/utils/app_routes.dart';
+
+      RouteGenerationCreateModule routeGenerate = RouteGenerationCreateModule();
+      routeGenerate.moduleToRouteCreate(filePath, moduleName);
 
       return true;
     } catch (e, s) {

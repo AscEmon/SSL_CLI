@@ -1,6 +1,6 @@
-import 'dart:io';
-
 import 'package:ssl_cli/src/repo_structure_creators/repo_i_creators.dart';
+import 'package:ssl_cli/utils/enum.dart';
+import 'package:ssl_cli/utils/extension.dart';
 
 class RepoImplSSLCreator implements RepoISSLCreator {
   final IDirectoryCreator directoryCreator;
@@ -18,7 +18,7 @@ class RepoImplSSLCreator implements RepoISSLCreator {
     if (res) {
       await fileCreator.createNecessaryFiles();
     } else {
-      stderr.writeln('File creation cancelled!');
+      'File creation cancelled!'.printWithColor(status: PrintType.error);
     }
   }
 }
