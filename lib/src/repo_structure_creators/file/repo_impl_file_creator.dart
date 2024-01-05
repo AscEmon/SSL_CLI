@@ -2506,8 +2506,9 @@ void main() async {
 /// Make sure you always init shared pref first. It has token and token is need
 /// to make API call
 initServices() async {
+  const mode = String.fromEnvironment('mode', defaultValue: 'DEV');
   AppUrlExtention.setUrl(
-    UrlLink.isDev,
+    mode == "DEV" ? UrlLink.isDev : UrlLink.isLive,
   );
   await PrefHelper.init();
   await AppVersion.getVersion();
@@ -2563,6 +2564,15 @@ class MyApp extends StatelessWidget {
 template-arb-file: intl_en.arb
 output-localization-file: app_localizations.dart
 """);
+
+    await _createFile(Directory.current.path, 'config',
+        fileExtention: 'json', content: """
+{
+    "telegram_chat_id": "",
+    "botToken": ""
+}
+
+""");
   }
 
   Future<void> _createFile(
@@ -2576,6 +2586,8 @@ output-localization-file: app_localizations.dart
       fileType = 'yaml';
     } else if (fileExtention == 'arb') {
       fileType = 'arb';
+    } else if (fileExtention == 'json') {
+      fileType = 'json';
     } else {
       fileType = 'dart';
     }
