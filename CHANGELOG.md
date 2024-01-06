@@ -373,3 +373,7 @@
 ## 1.5.7
 - auto route generation issue resolve
 
+
+## 1.6.1
+- auto route generation issue resolve
+

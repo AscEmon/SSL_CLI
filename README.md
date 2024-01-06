@@ -37,3 +37,37 @@ After successful activation, you can use it.
 
 
 > **_NOTE :_**  Ensure to re run this command whenever new assets are added. This updates the **_k_assets.dart_** file with the latest asset paths.
+
+### Effortlessly build APK with flavorType without adding any third-party packages. The generated APK will have a modified name like app_name_flavorType_versionName_versionCode.
+
+    ssl_cli build apk --flavorType 
+
+> **_NOTE :_**  available flavorType is --DEV, --LIVE, --LOCAL , --STAGE
+
+
+
+### If you want to set up flavor with Dart Define in your existing project, simply use the following command: 
+
+    ssl_cli setup --flavor
+
+> **_NOTE :_**  This setup will work whether your project structure is built with ssl_cli or without ssl_cli. Don't hesitate; use this command to modify your APK name and save time.
+
+### Now, most importantly, you can easily send your APK to Telegram automatically after building it. Just add --t. If you include this flag, the APK will be automatically sent to the Telegram group.
+
+    ssl_cli build apk --flavorType --t
+
+
+
+> **_NOTE :_** Please add your Telegram chat ID and botToken to the config.json file. If you don't have them, follow these steps:
+
+1. Go to Telegram and search for BotFather. Type /start, and it will prompt you for some information. After providing the information, it will give you a botToken. Copy the token and paste it into the config.json file.
+
+2. If you want to share your APK automatically, add your bot to the group as an admin and enable all necessary permissions.
+
+3. After adding the bot to the group as admin, send a message and hit the following link in the browser:
+ 
+ https://api.telegram.org/bot<yourBotToken>/getUpdates
+ 
+ You will get the group chat ID. Copy the ID and paste it into the config.json file.
+
+4. All setup is done. Now you can easily send your APK to Telegram using just a single command.  
