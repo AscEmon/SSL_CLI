@@ -12,7 +12,7 @@ class HelpCommand implements ICommand {
     printFormattedHelp('generate : ssl_cli generate k_assets.dart',
         'Generate image and SVG path in utils/k_assets.dart file automatically based on your assets folder.');
     printFormattedHelp('build : ssl_cli build apk (e.g.--DEV, --LIVE)',
-        'Build Android APK with modified name_flavor_version name_version code in your outputs APK folder.Available command in flavor type --DEV, --LIVE, --LOCAL, --STAGE.');
+        'Build Android APK with modified name_flavor_version name_version code in your outputs APK folder.Available command in flavor type --DEV, --LIVE, --LOCAL, --STAGE.If you want to sent your apk file telegram group with build command then add --t param(eg: ssl_cli build apk --LIVE --t). It will sent you apk automatically with your group but before make sure you added telegram chat id and botToken in config.json file.');
     printFormattedHelp('clean : ssl_cli clean',
         'Clean your project, similar to the flutter clean command.');
     printFormattedHelp('pub get : ssl_cli pub get',
@@ -21,6 +21,8 @@ class HelpCommand implements ICommand {
         'Run your project with the specified flavor command. Remember, it will run in release mode.Available command in flavor type --DEV, --LIVE, --LOCAL, --STAGE.');
     printFormattedHelp('setup : ssl_cli setup --flavor',
         'Set up flavor for Android using this command in your existing project. It is not mandatory to create your project using ssl_cli. Remember, this setup does not require any third-party packages.');
+    printFormattedHelp('sent : ssl_cli sent --apk',
+        'Sent your apk to telegram group after create your build.Remeber check your config.json file and set your group chat_id and botToken.');
 
     exit(0);
   }

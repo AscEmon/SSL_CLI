@@ -4,12 +4,13 @@ import 'package:ssl_cli/src/command/build_flavor_command.dart';
 import 'package:ssl_cli/utils/setup_flavor.dart';
 import 'package:ssl_cli/utils/extension.dart';
 import '../utils/enum.dart';
+import '../utils/mixin/sent_apk_telegram_mixin.dart';
 import 'command/asset_generation_command.dart';
 import 'command/create_command.dart';
 import 'command/help_command.dart';
 import 'command/i_command.dart';
 
-class SSLCommandRunner {
+class SSLCommandRunner with SentApkTelegramMixin {
   void run(List<String> arguments) {
     final argParser = ArgParser();
 
@@ -31,10 +32,14 @@ class SSLCommandRunner {
         } else if (res.command!.name!.contains('build') ||
             res.command!.name!.contains('clean') ||
             res.command!.name!.contains('pub') ||
-            res.command!.name!.contains('run')) {
+            res.command!.name!.contains('run') ||
+            res.command!.arguments.first.contains("t")) {
           command = _handleBuildCommand(res.arguments);
         } else if (res.command!.name!.startsWith('generate')) {
           command = _handleGenerateCommand(arguments);
+        } else if (res.command!.name!.startsWith('sent') &&
+            res.command!.arguments.first.contains("apk")) {
+          _handleSentCommand();
         } else if (res.command!.name!.startsWith('help')) {
           command = HelpCommand();
         } else {
@@ -46,6 +51,7 @@ class SSLCommandRunner {
         _errorAndExit();
       }
     } catch (e) {
+      print(e);
       _errorAndExit();
     }
   }
@@ -60,7 +66,11 @@ class SSLCommandRunner {
       ..addCommand('pub')
       ..addCommand('run')
       ..addCommand('setup')
+      ..addCommand("sent")
       ..addFlag('flavor', negatable: false, help: 'Enable flavor')
+      ..addFlag('apk', negatable: false, help: 'Sent Apk to telegram group.')
+      ..addFlag('t',
+          negatable: false, help: 'Sent Apk to telegram group automatically.')
       ..addFlag('DEV', negatable: false, help: 'Enable DEV mode')
       ..addFlag('LIVE', negatable: false, help: 'Enable LIVE mode')
       ..addFlag('STAGE', negatable: false, help: 'Enable STAGE mode')
@@ -100,9 +110,11 @@ class SSLCommandRunner {
   }
 
   ICommand? _handleBuildCommand(List<String> arguments) {
-    return BuildFlavorCommand(
-      arguments: arguments,
-    );
+    return BuildFlavorCommand(arguments: arguments);
+  }
+
+  void _handleSentCommand() {
+    sentApkTelegramFunc();
   }
 
   ICommand? _handleGenerateCommand(List<String> arguments) {
@@ -122,7 +134,7 @@ class SSLCommandRunner {
 
   void _errorAndExit([String? command]) {
     stderr.writeln('Command not available!');
-    stderr.writeln('try SSL_cli help for commands.');
+    stderr.writeln('try ssl_cli help --all to check all available commands.');
     exit(2);
   }
 }

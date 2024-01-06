@@ -5,8 +5,9 @@ import 'package:ssl_cli/src/command/i_command.dart';
 import 'package:ssl_cli/utils/extension.dart';
 
 import '../../utils/enum.dart';
+import '../../utils/mixin/sent_apk_telegram_mixin.dart';
 
-class BuildFlavorCommand implements ICommand {
+class BuildFlavorCommand with SentApkTelegramMixin implements ICommand {
   final List<String> arguments;
 
   BuildFlavorCommand({required this.arguments});
@@ -32,7 +33,8 @@ class BuildFlavorCommand implements ICommand {
     if (arguments.length < 4 &&
         !((arguments.contains("clean")) ||
             (arguments.contains("get")) ||
-            (arguments.contains("run")))) {
+            (arguments.contains("run")) ||
+            (arguments.contains("appbundle")))) {
       "Need build flavor ex: --LIVE ,--DEV"
           .printWithColor(status: PrintType.warning);
       exit(1);
@@ -48,7 +50,13 @@ class BuildFlavorCommand implements ICommand {
     if (arguments.contains("run")) {
       await runCommand(arguments);
     } else {
-      var process = await Process.start(arguments[0], arguments.sublist(1));
+      Process process;
+
+      if (arguments.contains("--t")) {
+        process = await Process.start(arguments[0], arguments.sublist(1, 4));
+      } else {
+        process = await Process.start(arguments[0], arguments.sublist(1));
+      }
 
       await handleProcessResult(process, arguments);
     }
@@ -82,7 +90,6 @@ class BuildFlavorCommand implements ICommand {
     });
 
     var exitCode = await process.exitCode;
-    print("exitcode :: $exitCode");
 
     await stdoutSubscription.cancel();
     await stderrSubscription.cancel();
@@ -105,10 +112,18 @@ class BuildFlavorCommand implements ICommand {
     } else if (arguments.contains("run")) {
       print("Run successfully completed. Installing.....");
       exit(0);
-    } else {
+    } else if (arguments.contains("apk")) {
       'APK file created successfully.'
           .printWithColor(status: PrintType.success);
-      handleApkProcessing();
+      if (arguments.contains("--t")) {
+        sentApkTelegramFunc();
+      } else {
+        handleApkProcessing();
+      }
+    } else if (arguments.contains("appbundle")) {
+      'App Bundle file created successfully.'
+          .printWithColor(status: PrintType.success);
+      exit(0);
     }
   }
 
@@ -119,7 +134,7 @@ class BuildFlavorCommand implements ICommand {
 
   Future<void> handleApkProcessing() async {
     if (apkSentTelegramBoard()) {
-      sentApkTelegramFunc(arguments[2].replaceAll("--", ""));
+      sentApkTelegramFunc();
     } else {
       exit(0);
     }
@@ -134,7 +149,6 @@ void handleKeyPress(String key) {
     case 'q':
       quitApplication();
       break;
-    // Add more cases for other keys if needed
   }
 }
 
@@ -163,49 +177,4 @@ bool apkSentTelegramBoard() {
       answer?.toLowerCase() == 'y' || answer?.toLowerCase() == 'yes';
 
   return answer != null && validator;
-}
-
-void sentApkTelegramFunc(String mode) {
-  print("Sent $mode APK to telegram initiating....");
-  // Path to the directory containing APKs
-  String apkDirectory = './build/app/outputs/apk/release';
-
-  // Use the listSync method to get a list of files in the directory
-  var apkFiles = Directory(apkDirectory).listSync();
-
-  var matchingApk = apkFiles.firstWhere(
-    (file) => file is File && file.path.contains("_${mode}_"),
-  );
-
-  //Data read from config.json
-  String constantsFileContent =
-      File("${Directory.current.path}/config.json").readAsStringSync();
-  Map<String, dynamic> constants = jsonDecode(constantsFileContent);
-
-  if (constants['telegram_chat_id'].toString().isEmpty ||
-      constants['botToken'].toString().isEmpty) {
-    'Please check config.json file. Maybe telegram chat id and BotToken is missing.'
-        .printWithColor(status: PrintType.warning);
-    return;
-  }
-
-  var result = Process.runSync(
-    'curl',
-    [
-      '-F',
-      'chat_id=${constants['telegram_chat_id']}',
-      '-F',
-      'document=@${matchingApk.path}',
-      'https://api.telegram.org/bot${constants['botToken']}/sendDocument',
-    ],
-  );
-
-  // Check the result and handle accordingly
-  if (result.exitCode == 0) {
-    'APK sent to Telegram successfully.'
-        .printWithColor(status: PrintType.success);
-    exit(0);
-  } else {
-    print('Failed to send APK to Telegram. Error: ${result.stderr}');
-  }
 }
