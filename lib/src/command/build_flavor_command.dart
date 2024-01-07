@@ -18,7 +18,7 @@ class BuildFlavorCommand with SentApkTelegramMixin implements ICommand {
     List<String> arg = List.from(arguments);
     arg.insert(0, executable);
 
-    printArguments(arg);
+    // printArguments(arg);
 
     validateArguments(arg);
 

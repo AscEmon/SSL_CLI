@@ -374,9 +374,12 @@
 - auto route generation issue resolve
 
 
-## 1.6.1
+## 2.0.0
 - flavor type added with dart define
 - setup flavor command added
 - telegram sent integrate for App distribution
+
+## 2.0.1
+- bug fix
 
 
