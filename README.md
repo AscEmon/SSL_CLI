@@ -64,7 +64,7 @@ After successful activation, you can use it.
 
 2. If you want to share your APK automatically, add your bot to the group as an admin and enable all necessary permissions.
 
-3. After adding the bot to the group as admin, send a message and hit the following link in the browser:
+3. After adding the bot to the group as admin, send a dummy message in that group and hit the following link in the browser:
  
  https://api.telegram.org/bot<yourBotToken>/getUpdates
  
