@@ -382,4 +382,7 @@
 ## 2.0.1
 - bug fix
 
+## 2.0.2
+- executable change for windows shell
+
 
