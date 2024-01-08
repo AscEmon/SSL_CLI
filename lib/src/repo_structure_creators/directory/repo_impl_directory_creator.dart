@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../../../utils/setup_flavor.dart';
 import '../../../utils/pubspec_edit.dart';
 import '../repo_i_creators.dart';
 
@@ -114,6 +115,11 @@ class RepoImplDirectoryCreator implements IDirectoryCreator {
       print('creating util directory...');
       await Directory(absUtilsPath).create();
       await Directory('$absUtilsPath/$_styles').create();
+
+      print('ssl_cli build setup initiate...');
+      final appBuildGradleEdit = SetupFlavor();
+
+      appBuildGradleEdit.appBuildGradleEditFunc();
 
       //pubspec edit file
       print('pubspec Generate with packages and other configuration...');
