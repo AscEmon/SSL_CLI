@@ -21,29 +21,38 @@ class SSLCommandRunner with SentApkTelegramMixin {
     try {
       if (res.command != null && res.command!.name != null) {
         ICommand? command;
-
-        if (res.command!.name!.startsWith('create')) {
-          command = _handleCreateCommand(arguments);
-        } else if (res.command!.name!.contains('module')) {
-          command = _handleModuleCommand(arguments);
-        } else if (res.command!.name!.contains('setup') &&
-            res.command!.arguments.first.contains("flavor")) {
-          _handleSetupCommand();
-        } else if (res.command!.name!.contains('build') ||
-            res.command!.name!.contains('clean') ||
-            res.command!.name!.contains('pub') ||
-            res.command!.name!.contains('run') ||
-            res.command!.arguments.first.contains("t")) {
-          command = _handleBuildCommand(res.arguments);
-        } else if (res.command!.name!.startsWith('generate')) {
-          command = _handleGenerateCommand(arguments);
-        } else if (res.command!.name!.startsWith('sent') &&
-            res.command!.arguments.first.contains("apk")) {
-          _handleSentCommand();
-        } else if (res.command!.name!.startsWith('help')) {
-          command = HelpCommand();
-        } else {
-          _errorAndExit(res.command!.name);
+        switch (res.command!.name) {
+          case 'create':
+            command = _handleCreateCommand(arguments);
+            break;
+          case 'module':
+            command = _handleModuleCommand(arguments);
+            break;
+          case 'setup':
+            if (res.command!.arguments.first == "--flavor") {
+              _handleSetupCommand();
+            }
+            break;
+          case 'build':
+          case 'clean':
+          case 'pub':
+          case 'run':
+            command = _handleBuildCommand(res.arguments);
+            break;
+          case 'generate':
+            command = _handleGenerateCommand(arguments);
+            break;
+          case 'sent':
+            if (res.command!.arguments.first == "--apk") {
+              _handleSentCommand();
+            }
+            break;
+          case 'help':
+            command = HelpCommand();
+            break;
+          default:
+            _errorAndExit(res.command!.name);
+            break;
         }
 
         command?.execute();
