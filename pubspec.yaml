@@ -1,6 +1,6 @@
 name: ssl_cli
 description: A flutter architecture creator package.
-version: 2.0.2
+version: 2.0.3
 homepage: https://github.com/AscEmon/SSL_CLI
 
 environment:
