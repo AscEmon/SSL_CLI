@@ -385,4 +385,7 @@
 ## 2.0.2
 - executable change for windows shell
 
+## 2.0.3
+- command conflict issue resolve
+
 
