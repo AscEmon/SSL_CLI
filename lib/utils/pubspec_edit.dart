@@ -5,7 +5,7 @@ import 'package:ssl_cli/utils/extension.dart';
 import 'enum.dart';
 
 class PubspecEdit {
-  void pubspecEditConfig(String filePath) {
+  void pubspecEditConfig(String filePath, {String? patternNumber}) {
     try {
       // Read the content of the file
       final file = File(filePath);
@@ -35,6 +35,10 @@ class PubspecEdit {
         lines.insert(indexOfCupertinoIcons + 6, '  package_info_plus: ^3.0.3');
         lines.insert(indexOfCupertinoIcons + 7, '  flutter_svg: ^2.0.2');
         lines.insert(indexOfCupertinoIcons + 8, '  google_fonts: ^4.0.3');
+        if (patternNumber != null && patternNumber == "3") {
+          // for bloc pattern
+          lines.insert(indexOfCupertinoIcons + 9, '  flutter_bloc: ^8.1.3');
+        }
 
         int indexOfUsesMaterialDesign =
             lines.indexOf('  uses-material-design: true');

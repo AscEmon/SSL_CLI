@@ -169,7 +169,8 @@ String? formatBoard() {
   String content = '''
      Please Enter Your Pattern 
      1 for Mvc 
-     2 for Repository     
+     2 for Repository
+     3 for Bloc Pattern     
 \n''';
 
   stderr.write(content);
