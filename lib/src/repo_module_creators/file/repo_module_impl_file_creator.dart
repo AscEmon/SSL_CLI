@@ -6,9 +6,11 @@ import '../repo_module_i_creators.dart';
 class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
   final RepoModuleIDirectoryCreator directoryCreator;
   final String moduleName;
+  final String? modulePattern;
   RepoModuleImplFileCreator(
     this.directoryCreator,
     this.moduleName,
+    this.modulePattern,
   );
 
   @override
@@ -25,18 +27,55 @@ class RepoModuleImplFileCreator implements RepoModuleIFileCreator {
       className = split.first.capitalize();
     }
 
-    await _createFile(
-      directoryCreator.moduleDir.path +
-          "/$moduleName" +
-          '/controller' +
-          '/state',
-      '${moduleName}_state',
-    );
+    if (modulePattern == "1") {
+      await _createFile(
+          directoryCreator.moduleDir.path + "/$moduleName" + '/bloc',
+          '${moduleName}_state',
+          content: '''
+import 'package:flutter/material.dart';
 
-    await _createFile(
-        directoryCreator.moduleDir.path + "/$moduleName" + '/controller',
-        '${moduleName}_controller',
-        content: '''
+@immutable
+class ${className}State {
+
+
+}
+''');
+      await _createFile(
+          directoryCreator.moduleDir.path + "/$moduleName" + '/bloc',
+          '${moduleName}_event',
+          content: '''
+sealed class ${className}Event {}
+''');
+
+      await _createFile(
+          directoryCreator.moduleDir.path + "/$moduleName" + '/bloc',
+          '${moduleName}_bloc',
+          content: '''
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../repository/${moduleName}_interface.dart';
+import '../repository/${moduleName}_repository.dart';
+import '/modules/$moduleName/bloc/${moduleName}_event.dart';
+import '/modules/$moduleName/bloc/${moduleName}_state.dart';
+
+class ${className}Bloc  extends Bloc<${className}Event, ${className}State> {
+  final I${className}Repository _${className.toLowerCase()}Repository = ${className}Repository();
+${className}Bloc():super(${className}State());
+  }
+''');
+    } else {
+      await _createFile(
+        directoryCreator.moduleDir.path +
+            "/$moduleName" +
+            '/controller' +
+            '/state',
+        '${moduleName}_state',
+      );
+
+      await _createFile(
+          directoryCreator.moduleDir.path + "/$moduleName" + '/controller',
+          '${moduleName}_controller',
+          content: '''
 import '../repository/${moduleName}_interface.dart';
 import '../repository/${moduleName}_repository.dart';
 class ${className}Controller  {
@@ -44,14 +83,11 @@ class ${className}Controller  {
   
   }
 ''');
-    await _createFile(
-      directoryCreator.moduleDir.path + "/$moduleName" + '/model',
-      'model_class_name',
-    );
-    await _createFile(
-        directoryCreator.moduleDir.path + "/$moduleName" + '/repository',
-        '/${moduleName}_api',
-        content: '''
+
+      await _createFile(
+          directoryCreator.moduleDir.path + "/$moduleName" + '/repository',
+          '/${moduleName}_api',
+          content: '''
 import '/data_provider/api_client.dart';
 class ${className}Api {
   final ApiClient _apiClient = ApiClient();
@@ -62,6 +98,12 @@ class ${className}Api {
 }
 
 ''');
+    }
+
+    await _createFile(
+      directoryCreator.moduleDir.path + "/$moduleName" + '/model',
+      'model_class_name',
+    );
     await _createFile(
         directoryCreator.moduleDir.path + "/$moduleName" + '/repository',
         '/${moduleName}_interface',

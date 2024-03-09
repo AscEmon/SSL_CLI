@@ -1371,6 +1371,7 @@ class GlobalDropdown extends StatelessWidget {
         content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '/utils/extension.dart';
 import 'global_text.dart';
 
 class GlobalLoader extends StatelessWidget {
@@ -1382,13 +1383,14 @@ class GlobalLoader extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-      const  CircularProgressIndicator.adaptive(),
+        centerCircularProgress(),
         SizedBox(width: 10.w),
-        GlobalText(str:text ?? "")
+        GlobalText(str: text ?? "")
       ],
     );
   }
 }
+
 
  ''');
 
@@ -1762,13 +1764,11 @@ extension VersionCheck on String {
   }
 }
 
+
 extension WidgetExtention on Widget {
   Widget centerCircularProgress({Color? progressColor}) => Center(
-        child: Container(
-          //using adaptive we can easily show platfrom base indicator
-          child: CircularProgressIndicator.adaptive(
-            backgroundColor: progressColor,
-          ),
+        child: CircularProgressIndicator.adaptive(
+          backgroundColor: progressColor,
         ),
       );
 }
@@ -1863,10 +1863,15 @@ extension DateTimeGreater on DateTime {
     await _createFile(
         directoryCreator.utilsDir.path + '/mixin', 'bloc_provider_mixin',
         content: '''
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '/modules/dashboard/bloc/dashboard_bloc.dart';
 
 mixin BlocProviderMixin {
   blocProviders() {
     return [
+       BlocProvider(
+        create: (context) => DashboardBloc(),
+      ),
       
     ];
   }
