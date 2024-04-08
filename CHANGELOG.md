@@ -388,4 +388,8 @@
 ## 2.0.3
 - command conflict issue resolve
 
+## 3.0.0
+- Bloc pattern architecture create
+- Module create for bloc pattern 
+
 

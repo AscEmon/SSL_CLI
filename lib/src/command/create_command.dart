@@ -5,6 +5,9 @@ import 'package:ssl_cli/src/repo_structure_creators/directory/repo_impl_director
 import 'package:ssl_cli/src/repo_structure_creators/file/repo_impl_file_creator.dart';
 import 'package:ssl_cli/src/repo_structure_creators/repo_impl_ssl_creator.dart';
 
+import '../bloc_structure_creators/bloc_impl_ssl_creator.dart';
+import '../bloc_structure_creators/directory/bloc_impl_directory_creator.dart';
+import '../bloc_structure_creators/file/bloc_impl_file_creator.dart';
 import '../mvc_structure_creators/mvc_impl_ssl_creator.dart';
 import '../mvc_structure_creators/directory/mvc_impl_directory_creator.dart';
 import '../mvc_structure_creators/file/mvc_impl_file_creator.dart';
@@ -13,11 +16,13 @@ import 'i_command.dart';
 class CreateCommand implements ICommand {
   String? projectName;
   String? patternNumber;
+  String? modulePattern;
   String? moduleName;
   CreateCommand({
     this.projectName,
     this.patternNumber,
     this.moduleName,
+    this.modulePattern,
   });
   @override
   Future<void> execute() async {
@@ -30,12 +35,26 @@ class CreateCommand implements ICommand {
         fileCreator: fileCreator,
       );
       return sslCreator.create();
-    } else if (moduleName != null) {
-      final directoryCreator = RepoModuleImplDirectoryCreator(moduleName!);
-      final fileCreator =
-          RepoModuleImplFileCreator(directoryCreator, moduleName!);
+    } else if (moduleName != null && modulePattern != null) {
+      final directoryCreator =
+          RepoModuleImplDirectoryCreator(moduleName!, modulePattern);
+      final fileCreator = RepoModuleImplFileCreator(
+          directoryCreator, moduleName!, modulePattern);
 
       final sslCreator = RepoModuleImplSSLCreator(
+        directoryCreator: directoryCreator,
+        fileCreator: fileCreator,
+      );
+      return sslCreator.create();
+    } else if (projectName != null &&
+        patternNumber != null &&
+        patternNumber == "3") {
+      final directoryCreator =
+          BlocImplDirectoryCreator(projectName ?? "", patternNumber!);
+      final fileCreator =
+          BlocImplFileCreator(directoryCreator, projectName ?? "");
+
+      final sslCreator = BlocImplSSLCreator(
         directoryCreator: directoryCreator,
         fileCreator: fileCreator,
       );

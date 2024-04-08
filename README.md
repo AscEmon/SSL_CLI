@@ -31,6 +31,10 @@ After successful activation, you can use it.
 
 
 ## 🌟 New Addition 🌟
+### You can effortlessly generate Bloc Pattern Architecture and Bloc Pattern Module using this CLI.
+
+
+
 ### You can effortlessly generate **_k_assets.dart_** file containing all your asset paths using this command. Please remember create this command from root of the project.
 
     ssl_cli generate k_assets.dart
