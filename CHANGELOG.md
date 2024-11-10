@@ -399,5 +399,7 @@
 ## 3.0.2
 - yaml edit issue resolve
 
+## 3.0.3
+- flavor issue resolve
 
 
