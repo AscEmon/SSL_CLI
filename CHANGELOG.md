@@ -392,4 +392,12 @@
 - Bloc pattern architecture create
 - Module create for bloc pattern 
 
+## 3.0.1
+- package version update
+- Network connection update
+
+## 3.0.2
+- yaml edit issue resolve
+
+
 

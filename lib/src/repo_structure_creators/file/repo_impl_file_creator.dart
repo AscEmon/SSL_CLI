@@ -2266,11 +2266,16 @@ class NetworkConnection {
 
   Future<bool> hasInternetConnection() async {
     try {
-      final connectivityResult = await (Connectivity().checkConnectivity());
-      if (connectivityResult == ConnectivityResult.mobile ||
-          connectivityResult == ConnectivityResult.wifi) {
-        return true;
-      } else {
+      try {
+        final response = await Dio().get(
+          'https://www.google.com',
+          options: Options(
+            receiveTimeout: const Duration(seconds: 3),
+          ),
+        );
+        return response.statusCode == 200;
+      } catch (e) {
+        // If the HTTP request fails, assume no internet
         return false;
       }
     } on PlatformException {
@@ -2280,30 +2285,30 @@ class NetworkConnection {
     }
   }
 
-  internetAvailable() async {
+  Future<void> internetAvailable() async {
     isInternet = await hasInternetConnection();
-   debugPrint("isInternet1 :: \$isInternet"); 
-    Connectivity().onConnectivityChanged.listen((ConnectivityResult result) {
-      // Got a new connectivity status!
-      if (result == ConnectivityResult.none) {
+    debugPrint("isInternet1 :: \$isInternet");
+
+    Connectivity()
+        .onConnectivityChanged
+        .listen((List<ConnectivityResult> results) {
+      if (results.contains(ConnectivityResult.none)) {
         isInternet = false;
-         debugPrint("isInternet2 :: \$isInternet"); 
+        debugPrint("isInternet2 :: \$isInternet");
       } else {
         isInternet = true;
-       debugPrint("isInternet3 :: \$isInternet"); 
+        debugPrint("isInternet3 :: \$isInternet");
       }
     });
 
-    /// This Delay is require for sync the result value with UI.
-    /// In iOS first rebuild the UI after that
-    /// the Internet value is process thats why we show the connection Error Dialog
+    // Delay to sync the result value with the UI.
     await Future.delayed(const Duration(seconds: 1));
   }
 
   List<APIParams> apiStack = [];
 }
 
-//check api params for calling the api while internet will be available
+// API parameters for calling the API when the internet is available
 class APIParams {
   String url;
   Method method;
