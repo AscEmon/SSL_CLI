@@ -66,7 +66,7 @@ def appFlavor() {
                          def appName = variant.getMergedFlavor().applicationId
                          int lastIndex = appName.lastIndexOf('.')
                          def modifiedAppName = lastIndex != -1 ? appName.substring(lastIndex + 1) : appName
-                         outputFileName = "\${modifiedAppName}_\${appFlavor()}\${flutter.versionName}(\${flutter.versionCode}).apk"
+                         outputFileName = "\${modifiedAppName}_\${appFlavor()}\${versionName}(\${versionCode}).apk"
                          renamePath(outputFileName)
                     }
                 }

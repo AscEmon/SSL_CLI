@@ -258,21 +258,24 @@ class ApiClient {
     bool isFormData = false,
     required Function(Response response) onSuccessFunction,
   }) async {
-    final tokenHeader = <String, String>{
-      if (isFormData)
-        HttpHeaders.contentTypeHeader: AppConstant.MULTIPART_FORM_DATA.key
-      else
-        HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON.key
-    };
+   final tokenHeader = <String, String>{};
+    if (isFormData) {
+      params ??= {};
+      tokenHeader[HttpHeaders.contentTypeHeader] =
+          AppConstant.MULTIPART_FORM_DATA.key;
+    } else {
+      tokenHeader[HttpHeaders.contentTypeHeader] =
+          AppConstant.APPLICATION_JSON.key;
+    }
     if (extraHeaders != null) {
       tokenHeader.addAll(extraHeaders);
     }
     _initDio(extraHeader: tokenHeader);
 
-    if (files != null && isFormData) {
+    if (isFormData) {
       params?.addAll({
         "\$fileKeyName": files
-            .map((item) => MultipartFile.fromFileSync(item.path,
+            ?.map((item) => MultipartFile.fromFileSync(item.path,
                 filename: item.path.split('/').last))
             .toList()
       });
@@ -427,33 +430,33 @@ class ApiClient {
   void _handleDioError(DioException error) {
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
-        ViewUtil.SSLSnackbar("Time out delay");
+        ViewUtil.snackbar("Time out delay");
         break;
       case DioExceptionType.receiveTimeout:
-        ViewUtil.SSLSnackbar("Server is not responded properly");
+        ViewUtil.snackbar("Server is not responded properly");
         break;
       case DioExceptionType.unknown:
-        ViewUtil.SSLSnackbar("Server is not responded properly");
+        ViewUtil.snackbar("Server is not responded properly");
         break;
       case DioExceptionType.connectionError:
-        ViewUtil.SSLSnackbar("Connection error");
+        ViewUtil.snackbar("Connection error");
         break;
       case DioExceptionType.cancel:
-        ViewUtil.SSLSnackbar("Connection cancel");
+        ViewUtil.snackbar("Connection cancel");
         break;
 
       case DioExceptionType.badCertificate:
-        ViewUtil.SSLSnackbar("Incorrect certificate error");
+        ViewUtil.snackbar("Incorrect certificate error");
         break;
       case DioExceptionType.sendTimeout:
-        ViewUtil.SSLSnackbar("Send timeout error");
+        ViewUtil.snackbar("Send timeout error");
         break;
       case DioExceptionType.badResponse:
         _tempErrorHandle(error);
         break;
 
       default:
-        ViewUtil.SSLSnackbar("Something went wrong");
+        ViewUtil.snackbar("Something went wrong");
         break;
     }
   }
@@ -482,7 +485,7 @@ class ApiClient {
       }
       return onSuccessFunction!(response);
     } else {
-      ViewUtil.SSLSnackbar("Something went wrong");
+      ViewUtil.snackbar("Something went wrong");
       throw Exception("Response data is \${response.data}");
     }
   }
@@ -584,7 +587,7 @@ class ApiClient {
       if (response.statusCode == 200) {
         return response;
       } else {
-        _showExceptionSSLSnackbar("Something went wrong");
+        _showExceptionsnackbar("Something went wrong");
         throw Exception();
       }
 
@@ -627,7 +630,7 @@ class ApiClient {
           return response;
         }
       } else {
-        _showExceptionSSLSnackbar("Something went wrong");
+        _showExceptionsnackbar("Something went wrong");
         throw Exception();
       }
 
@@ -650,7 +653,7 @@ class ApiClient {
             PrefHelper.logout();
            
           } else {
-            _showExceptionSSLSnackbar(result.errors[0].message);
+            _showExceptionsnackbar(result.errors[0].message);
           }
         }
       }
@@ -660,31 +663,31 @@ void _dioErrorHandler(bool isLoaderShowing, DioException error) {
  if (isLoaderShowing) Navigation.pop(Navigation.key.currentContext!);
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
-        ViewUtil.SSLSnackbar("Time out delay ");
+        ViewUtil.snackbar("Time out delay ");
         break;
       case DioExceptionType.receiveTimeout:
-        ViewUtil.SSLSnackbar("Server is not responded properly");
+        ViewUtil.snackbar("Server is not responded properly");
         break;
       case DioExceptionType.unknown:
-        ViewUtil.SSLSnackbar("Server is not responded properly");
+        ViewUtil.snackbar("Server is not responded properly");
         break;
       case DioExceptionType.connectionError:
-        ViewUtil.SSLSnackbar("Connection error");
+        ViewUtil.snackbar("Connection error");
         break;
       case DioExceptionType.cancel:
-        ViewUtil.SSLSnackbar("Connection cancel");
+        ViewUtil.snackbar("Connection cancel");
         break;
 
       case DioExceptionType.badCertificate:
-        ViewUtil.SSLSnackbar("Incorrect certificate error");
+        ViewUtil.snackbar("Incorrect certificate error");
         break;
       case DioExceptionType.sendTimeout:
-        ViewUtil.SSLSnackbar("Send timeout error");
+        ViewUtil.snackbar("Send timeout error");
         break;
       case DioExceptionType.badResponse:
         final Map data = json.decode(error.response.toString());
         if (error.response?.statusCode == 502) {
-          ViewUtil.SSLSnackbar("Something went wrong");
+          ViewUtil.snackbar("Something went wrong");
         } else {
           data.log();
         }
@@ -692,13 +695,13 @@ void _dioErrorHandler(bool isLoaderShowing, DioException error) {
         break;
 
       default:
-        ViewUtil.SSLSnackbar("Something went wrong");
+        ViewUtil.snackbar("Something went wrong");
         break;
     }
   }
 
-  static _showExceptionSSLSnackbar(String? msg) async {
-    ViewUtil.SSLSnackbar(msg ?? "");
+  static _showExceptionsnackbar(String? msg) async {
+    ViewUtil.snackbar(msg ?? "");
   }
 }
 
@@ -866,7 +869,8 @@ class Errors {
     await _createFile(
       directoryCreator.globalDir.path + '/model',
       'global_paginator',
-      content: """class GlobalPaginator {
+      content: """
+class GlobalPaginator {
   GlobalPaginator({
     this.currentPage,
     this.totalPages,
@@ -879,19 +883,18 @@ class Errors {
 
   factory GlobalPaginator.fromJson(Map<String, dynamic> json) =>
       GlobalPaginator(
-        currentPage: json["current_page"] == null ? null : json["current_page"],
-        totalPages: json["total_pages"] == null ? null : json["total_pages"],
+        currentPage: json["current_page"],
+        totalPages: json["total_pages"],
         recordPerPage:
-            json["record_per_page"] == null ? null : json["record_per_page"],
+            json["record_per_page"],
       );
 
   Map<String, dynamic> toJson() => {
-        "current_page": currentPage == null ? null : currentPage,
-        "total_pages": totalPages == null ? null : totalPages,
-        "record_per_page": recordPerPage == null ? null : recordPerPage,
+        "current_page": currentPage,
+        "total_pages": totalPages,
+        "record_per_page": recordPerPage,
       };
 }
-
 """,
     );
 
@@ -911,11 +914,11 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
 
   GlobalAppBar({
-    Key? key,
+    super.key,
     required this.title,
     this.centerTitle,
     this.actions,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -953,9 +956,9 @@ import '/utils/navigation.dart';
 
 class ErrorDialog extends StatelessWidget {
   const ErrorDialog({
-    Key? key,
+    super.key,
     required this.erroMsg,
-  }) : super(key: key);
+  });
 
   final List<String> erroMsg;
 
@@ -1034,7 +1037,7 @@ class GlobalButton extends StatelessWidget {
   final double? textFontSize;
 
   GlobalButton({
-    Key? key,
+    super.key,
     required this.onPressed,
     required this.buttonText,
     this.isRounded = true,
@@ -1042,7 +1045,7 @@ class GlobalButton extends StatelessWidget {
     this.roundedBorderRadius = 17,
     this.btnBackgroundActiveColor,
     this.textFontSize,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1119,7 +1122,7 @@ class GlobalTextFormField extends StatelessWidget {
   final Function(String)? onChanged;
 
   const GlobalTextFormField({
-    Key? key,
+    super.key,
     this.obscureText,
     this.textInputType,
     this.controller,
@@ -1140,7 +1143,7 @@ class GlobalTextFormField extends StatelessWidget {
     this.style,
     this.onChanged,
     this.textInputAction = TextInputAction.done,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1256,7 +1259,7 @@ class GlobalText extends StatelessWidget {
   final TextStyle? style;
 
   const GlobalText({
-    Key? key,
+    super.key,
     required this.str,
     this.fontWeight,
     this.fontSize,
@@ -1271,7 +1274,7 @@ class GlobalText extends StatelessWidget {
     this.height,
     this.fontFamily,
     this.style,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1308,12 +1311,12 @@ import '../../utils/styles/styles.dart';
 
 class GlobalDropdown extends StatelessWidget {
   const GlobalDropdown({
-    Key? key,
+    super.key,
     required this.validator,
     required this.hintText,
     required this.onChanged,
     required this.items,
-  }) : super(key: key);
+  });
 
   final String? Function(Object?)? validator;
   final String? hintText;
@@ -1375,7 +1378,7 @@ import '/utils/extension.dart';
 import 'global_text.dart';
 
 class GlobalLoader extends StatelessWidget {
-  const GlobalLoader({Key? key, this.text = "Loading..."}) : super(key: key);
+  const GlobalLoader({super.key, this.text = "Loading..."});
   final String? text;
 
   @override
@@ -1404,14 +1407,14 @@ import '/utils/extension.dart';
 
 class GlobalSvgLoader extends StatelessWidget {
   const GlobalSvgLoader({
-    Key? key,
+    super.key,
     required this.imagePath,
     this.height,
     this.width,
     this.fit,
     this.color,
     this.svgFor = SvgFor.asset,
-  }) : super(key: key);
+  });
   final String imagePath;
   final double? height;
   final double? width;
@@ -1450,13 +1453,13 @@ import 'package:$projectName/utils/enum.dart';
 
 class GlobalImageLoader extends StatelessWidget {
   const GlobalImageLoader({
-    Key? key,
+    super.key,
     required this.imagePath,
     this.imageFor = ImageFor.asset,
     this.height,
     this.width,
     this.fit,
-  }) : super(key: key);
+  });
   final String imagePath;
   final double? height;
   final double? width;
@@ -1592,7 +1595,7 @@ import '/global/widget/global_text.dart';
 import 'package:flutter/material.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -2142,43 +2145,45 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import '../data_provider/api_client.dart';
 import 'enum.dart';
+import '/utils/extension.dart';
 import 'mixin/loader_show_hide_mixin.dart';
 
 class NetworkRequestBuilder with LoaderShowHideMixin {
   final ApiClient _apiClient = ApiClient();
 
-  late String url;
-  late Method method;
-  Map<String, dynamic>? params;
-  Function(bool isLoading) onLoading = (isLoading) => true;
-  late Function(Response response) onSuccess;
+  late String _url;
+  late Method _method;
+  Map<String, dynamic>? _params;
+  // ignore: prefer_function_declarations_over_variables
+  final Function(bool isLoading) _onLoading = (isLoading) => true;
+  late Function(Response response) _onSuccess;
   late Function(Object errorMessage) onFailed;
-  bool showLoader = false;
-  bool isFormData = false;
-  Map<String, String>? extraHeaders;
-  Options? options;
-  void Function(int, int)? onReceiveProgress;
-  String? savePath;
-  List<File>? files;
-  String? fileKeyName;
+  bool _showLoader = false;
+  bool _isFormData = false;
+  Map<String, String>? _extraHeaders;
+  Options? _options;
+  void Function(int, int)? _onReceiveProgress;
+  String? _savePath;
+  List<File>? _files;
+  String? _fileKeyName;
 
   NetworkRequestBuilder setUrl(String url) {
-    this.url = url;
+    _url = url;
     return this;
   }
 
   NetworkRequestBuilder setMethod(Method method) {
-    this.method = method;
+    _method = method;
     return this;
   }
 
   NetworkRequestBuilder setParams(Map<String, dynamic> params) {
-    this.params = params;
+    _params = params;
     return this;
   }
 
   NetworkRequestBuilder setOnSuccess(Function(Response response) onSuccess) {
-    this.onSuccess = onSuccess;
+    _onSuccess = onSuccess;
     return this;
   }
 
@@ -2188,82 +2193,82 @@ class NetworkRequestBuilder with LoaderShowHideMixin {
   }
 
   NetworkRequestBuilder setShowLoader(bool showLoader) {
-    this.showLoader = showLoader;
+    _showLoader = showLoader;
     return this;
   }
 
   NetworkRequestBuilder setFormData(bool fromData) {
-    isFormData = fromData;
+    _isFormData = fromData;
     return this;
   }
 
   NetworkRequestBuilder setExtraHeaders(Map<String, String>? extraHeaders) {
-    this.extraHeaders = extraHeaders;
+    _extraHeaders = extraHeaders;
     return this;
   }
 
   NetworkRequestBuilder setOptions(Options? options) {
-    this.options = options;
+    _options = options;
     return this;
   }
 
   NetworkRequestBuilder setOnReceiveProgress(
       void Function(int, int)? onReceiveProgress) {
-    this.onReceiveProgress = onReceiveProgress;
+    _onReceiveProgress = onReceiveProgress;
     return this;
   }
 
   NetworkRequestBuilder setSavePath(String? savePath) {
-    this.savePath = savePath;
+    _savePath = savePath;
     return this;
   }
 
   NetworkRequestBuilder setFiles(List<File>? files) {
-    this.files = files;
+    _files = files;
     return this;
   }
 
   NetworkRequestBuilder setFileKeyName(String? fileKeyName) {
-    this.fileKeyName = fileKeyName;
+    _fileKeyName = fileKeyName;
     return this;
   }
 
   Future<void> executeNetworkRequest() async {
-    if (showLoader) {
+    if (_showLoader) {
       showLoaderView();
     }
-    onLoading(true);
+    _onLoading(true);
 
     await _apiClient
         .request(
-      method: method,
-      url: url,
-      params: params,
-      extraHeaders: extraHeaders,
-      options: options,
-      onReceiveProgress: onReceiveProgress,
-      savePath: savePath,
-      files: files,
-      isFormData: isFormData,
-      fileKeyName: fileKeyName,
+      method: _method,
+      url: _url,
+      params: _params,
+      extraHeaders: _extraHeaders,
+      options: _options,
+      onReceiveProgress: _onReceiveProgress,
+      savePath: _savePath,
+      files: _files,
+      isFormData: _isFormData,
+      fileKeyName: _fileKeyName,
       onSuccessFunction: (Response response) async {
-        if (showLoader) {
+        if (_showLoader) {
           hideLoader();
         }
-        await onSuccess(response);
-        onLoading(false);
+        await _onSuccess(response);
+        _onLoading(false);
       },
     )
         .catchError((Object e) {
-      if (showLoader) {
+      "E \$e".log();
+      if (_showLoader) {
         hideLoader();
       }
       onFailed(e);
-      onLoading(false);
+      _onLoading(false);
     });
   }
 }
-
 
 ''');
 
@@ -2304,16 +2309,28 @@ class Navigation {
     context, {
     required AppRoutes appRoutes,
     String? routeName,
+    bool isAnimation = true,
     T? arguments,
   }) {
     return Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        settings: RouteSettings(name: routeName),
-        builder: (context) => appRoutes.buildWidget(
-          arguments: arguments,
-        ),
-      ),
+      isAnimation
+          ? PageRouteBuilder(
+              settings: RouteSettings(name: routeName),
+              pageBuilder: (_, __, ___) {
+                return appRoutes.buildWidget(
+                  arguments: arguments,
+                );
+              },
+            )
+          : PageRouteBuilder(
+              settings: RouteSettings(name: routeName),
+              pageBuilder: (_, __, ___) => appRoutes.buildWidget(
+                arguments: arguments,
+              ),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
       (route) => false,
     );
   }
@@ -2458,6 +2475,103 @@ class APIParams {
 
 
 """);
+
+    await _createFile(directoryCreator.utilsDir.path, 'app_bloc_observer',
+        content: """
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '/utils/extension.dart';
+
+class AppBlocObserver extends BlocObserver {
+  // Private constructor
+  AppBlocObserver._privateConstructor();
+
+  // Singleton instance
+  static final AppBlocObserver _instance =
+      AppBlocObserver._privateConstructor();
+
+  // Factory constructor to return the singleton instance
+  factory AppBlocObserver() => _instance;
+
+  // Public getter to access the singleton instance
+  static AppBlocObserver get instance => _instance;
+
+  final List<BlocBase> _blocs = [];
+
+  @override
+  void onCreate(BlocBase bloc) {
+    super.onCreate(bloc);
+    _blocs.add(bloc);
+    'Bloc Created: \${bloc.runtimeType} \${bloc.hashCode}'.log();
+  }
+
+  @override
+  void onClose(BlocBase bloc) {
+    super.onClose(bloc);
+    _blocs.remove(bloc);
+    'Bloc Closed: \${bloc.runtimeType}'.log();
+  }
+
+  Future<void> disposeAllBlocs() async {
+    'Disposing all BLoCs...'.log();
+    'Total BLoCs to dispose: \${_blocs.length}'.log();
+    for (final bloc in _blocs) {
+      'Disposing Bloc: \${bloc.runtimeType} \${bloc.hashCode}'.log();
+      bloc.close(); // Trigger bloc's close logic
+    }
+    _blocs.clear(); // Clear the list once all blocs are closed
+    'All blocs disposed'.log();
+  }
+}
+""");
+
+    await _createFile(directoryCreator.utilsDir.path, "bloc_reinitalizer",
+        content: """
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '/utils/app_bloc_observer.dart';
+import 'mixin/bloc_provider_mixin.dart';
+
+class BlocReinitializer extends StatefulWidget {
+  final Widget child;
+
+  const BlocReinitializer({super.key, required this.child});
+
+  static void reinitialize(BuildContext context) async {
+    await AppBlocObserver.instance.disposeAllBlocs();
+    final _BlocReinitializerState? state =
+        // ignore: use_build_context_synchronously
+        context.findAncestorStateOfType<_BlocReinitializerState>();
+    state?.reinitialize();
+  }
+
+  @override
+  // ignore: library_private_types_in_public_api
+  _BlocReinitializerState createState() => _BlocReinitializerState();
+}
+
+class _BlocReinitializerState extends State<BlocReinitializer>
+    with BlocProviderMixin {
+  Key key = UniqueKey();
+
+  void reinitialize() {
+    setState(() {
+      key = UniqueKey();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: key,
+      child: MultiBlocProvider(
+        providers: blocProviders(),
+        child: widget.child,
+      ),
+    );
+  }
+}
+""");
+
     await _createFile(directoryCreator.utilsDir.path, 'view_util', content: """
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -2467,14 +2581,14 @@ import '/utils/navigation.dart';
 import '/utils/styles/styles.dart';
 
 class ViewUtil {
-  static SSLSnackbar(
+  static snackbar(
     String msg, {
     String? btnName,
     void Function()? onPressed,
   }) {
     /**
      * Using ScaffoldMessenger we can easily access
-     * this SSLSnackbar from anywhere
+     * this snackbar from anywhere
      */
 
     return ScaffoldMessenger.of(Navigation.key.currentContext!).showSnackBar(
@@ -2628,7 +2742,7 @@ import '/utils/styles/k_colors.dart';
 import 'modules/dashboard/views/dashboard_screen.dart';
 import '/utils/mixin/bloc_provider_mixin.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
+import 'utils/bloc_reinitalizer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -2662,42 +2776,48 @@ class MyApp extends StatelessWidget with BlocProviderMixin {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
 
     return ScreenUtilInit(
-      //Change the height and Width based on design
-      designSize: const Size(360, 800),
-      minTextAdapt: true,
-      builder: (ctx, child) {
-      return  MultiBlocProvider(
-        providers: blocProviders(),
-        child: MaterialApp(
-          title: '${projectName.convertToCamelCase()}',
-          navigatorKey: Navigation.key,
-          debugShowCheckedModeBanner: false,
-          //localization
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          locale: (PrefHelper.getLanguage() == 1)
-              ? const Locale('en', 'US')
-              : const Locale('bn', 'BD'),
-          theme: ThemeData(
-            progressIndicatorTheme: ProgressIndicatorThemeData(
-              color: KColor.secondary.color,
-            ),
-            textTheme: GoogleFonts.poppinsTextTheme(),
-            primaryColor: KColor.primary.color,
-            visualDensity: VisualDensity.adaptivePlatformDensity,
-            colorScheme: ThemeData().colorScheme.copyWith(
-                  secondary: KColor.secondary.color,
+        // Change the height and Width based on design
+        designSize: const Size(960, 1440),
+        minTextAdapt: true,
+        builder: (ctx, child) {
+          return ScreenUtilInit(
+            //Change the height and Width based on design
+            designSize: const Size(360, 800),
+            minTextAdapt: true,
+            builder: (ctx, child) {
+              return BlocReinitializer(
+                child: MaterialApp(
+                  title: '${projectName.convertToCamelCase()}',
+                  navigatorKey: Navigation.key,
+                  debugShowCheckedModeBanner: false,
+                  //localization
+                  supportedLocales: AppLocalizations.supportedLocales,
+                  localizationsDelegates:
+                      AppLocalizations.localizationsDelegates,
+                  locale: (PrefHelper.getLanguage() == 1)
+                      ? const Locale('en', 'US')
+                      : const Locale('bn', 'BD'),
+                  theme: ThemeData(
+                    progressIndicatorTheme: ProgressIndicatorThemeData(
+                      color: KColor.secondary.color,
+                    ),
+                    textTheme: GoogleFonts.poppinsTextTheme(),
+                    primaryColor: KColor.primary.color,
+                    visualDensity: VisualDensity.adaptivePlatformDensity,
+                    colorScheme: ThemeData().colorScheme.copyWith(
+                          secondary: KColor.secondary.color,
+                        ),
+                    primarySwatch: KColor.primary.color as MaterialColor,
+                  ),
+                  home: child,
                 ),
-            primarySwatch: KColor.primary.color as MaterialColor,
-          ),
-          home: child,
-         ),
-        );
-      },
-      child: const DashboardScreen(),
-    );
+              );
+            },
+            child: const DashboardScreen(),
+          );
+        });
   }
-}
+} 
 """,
     );
 
