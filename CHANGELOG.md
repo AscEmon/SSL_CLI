@@ -402,4 +402,9 @@
 ## 3.0.3
 - flavor issue resolve
 
+## 3.0.4
+- bloc reinitializer and dispose integrate
+- new widget key issue resolve
+- build gradle version name and number issue resolve
+
 
