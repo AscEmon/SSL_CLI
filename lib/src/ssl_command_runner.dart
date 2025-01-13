@@ -106,9 +106,14 @@ class SSLCommandRunner with SentApkTelegramMixin {
   }
 
   ICommand? _handleModuleCommand(List<String> arguments) {
-    return CreateCommand(
-      moduleName: arguments.last,
-    );
+    final String? modulePattern = formatModuleBoard();
+    if (modulePattern != null) {
+      return CreateCommand(
+        moduleName: arguments.last,
+        modulePattern: modulePattern,
+      );
+    }
+    return null;
   }
 
   void _handleSetupCommand() {
@@ -169,7 +174,22 @@ String? formatBoard() {
   String content = '''
      Please Enter Your Pattern 
      1 for Mvc 
-     2 for Repository     
+     2 for Repository
+     3 for Bloc Pattern     
+\n''';
+
+  stderr.write(content);
+
+  final answer = stdin.readLineSync();
+
+  return answer;
+}
+
+String? formatModuleBoard() {
+  String content = '''
+     Please select module pattern
+     1 for Bloc pattern 
+     2 for Others
 \n''';
 
   stderr.write(content);

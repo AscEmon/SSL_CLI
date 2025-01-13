@@ -2,12 +2,12 @@ import 'dart:io';
 import 'package:ssl_cli/utils/enum.dart';
 import 'package:ssl_cli/utils/extension.dart';
 
-import '../repo_i_creators.dart';
+import '../bloc_i_creators.dart';
 
-class RepoImplFileCreator implements IFileCreator {
+class BlocImplFileCreator implements IFileCreator {
   final IDirectoryCreator directoryCreator;
   final String projectName;
-  RepoImplFileCreator(
+  BlocImplFileCreator(
     this.directoryCreator,
     this.projectName,
   );
@@ -193,27 +193,24 @@ extension AppConstantExtention on AppConstant {
     //dataProvider folder file
     await _createFile(directoryCreator.dataProviderDir.path, 'api_client',
         content: """
-
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
+
 import '/constant/app_url.dart';
 import '/constant/constant_key.dart';
 import '/data_provider/pref_helper.dart';
-import '/global/widget/error_dialog.dart';
 import '/utils/enum.dart';
 import '/utils/extension.dart';
 import '/utils/navigation.dart';
 import '/utils/network_connection.dart';
 import '/utils/view_util.dart';
 
-
 class ApiClient {
   final Dio _dio = Dio();
   Map<String, dynamic> _header = {};
-  bool? isPopDialog;
 
   _initDio({Map<String, String>? extraHeader}) async {
     _header = _getHeaders();
@@ -224,7 +221,7 @@ class ApiClient {
     _dio.options = BaseOptions(
       baseUrl: AppUrl.base.url,
       headers: _header,
-      connectTimeout: const Duration(milliseconds: 60 * 1000), //miliseconds
+      connectTimeout: const Duration(milliseconds: 60 * 1000),
       sendTimeout: const Duration(milliseconds: 60 * 1000),
       receiveTimeout: const Duration(milliseconds: 60 * 1000),
     );
@@ -248,80 +245,52 @@ class ApiClient {
     }));
   }
 
-  // Image or file upload using Rest handle.
-  Future requestFormData({
+  Future request({
     required String url,
     required Method method,
     Map<String, dynamic>? params,
-    bool? isPopGlobalDialog,
     Map<String, String>? extraHeaders,
     Options? options,
     void Function(int, int)? onReceiveProgress,
     String? savePath,
     List<File>? files,
     String? fileKeyName,
+    bool isFormData = false,
     required Function(Response response) onSuccessFunction,
   }) async {
-    final tokenHeader = <String, String>{
-      HttpHeaders.contentTypeHeader: AppConstant.MULTIPART_FORM_DATA.key
-    };
+   final tokenHeader = <String, String>{};
+    if (isFormData) {
+      params ??= {};
+      tokenHeader[HttpHeaders.contentTypeHeader] =
+          AppConstant.MULTIPART_FORM_DATA.key;
+    } else {
+      tokenHeader[HttpHeaders.contentTypeHeader] =
+          AppConstant.APPLICATION_JSON.key;
+    }
     if (extraHeaders != null) {
       tokenHeader.addAll(extraHeaders);
     }
     _initDio(extraHeader: tokenHeader);
 
-    if (files != null) {
+    if (isFormData) {
       params?.addAll({
         "\$fileKeyName": files
-            .map((item) => MultipartFile.fromFileSync(item.path,
+            ?.map((item) => MultipartFile.fromFileSync(item.path,
                 filename: item.path.split('/').last))
             .toList()
       });
     }
 
-    final data = FormData.fromMap(params!);
-
-    // Handle and check all the status.
-    return clientHandle(
-      url,
-      method,
-      params,
-      data: data,
-      onSuccessFunction: onSuccessFunction,
-    );
-  }
-
-  // Normal Rest API  handle.
-  Future request({
-    required String url,
-    required Method method,
-    Map<String, dynamic>? params,
-    bool? isPopGlobalDialog,
-    String? token,
-    Options? options,
-    void Function(int, int)? onReceiveProgress,
-    String? savePath,
-    Map<String, String>? extraHeaders,
-    required Function(Response response) onSuccessFunction,
-  }) async {
-    //use this for extra header
-    final tokenHeader = <String, String>{
-      //  AppConstant.PUSH_ID.key: PrefHelper.getString(AppConstant.DEVICE_ID.key),
-    };
-
-    if (extraHeaders != null) {
-      tokenHeader.addAll(extraHeaders);
+    FormData? data;
+    if (params != null && isFormData) {
+      data = FormData.fromMap(params);
     }
-
     if (NetworkConnection.instance.isInternet) {
-      // Handle and check all the status.
-      isPopDialog = isPopGlobalDialog;
-      _initDio(extraHeader: tokenHeader);
-      // checkProxy();
       return clientHandle(
         url,
         method,
         params,
+        data: data,
         options: options,
         savePath: savePath,
         onReceiveProgress: onReceiveProgress,
@@ -356,8 +325,7 @@ class ApiClient {
       if (method == Method.POST) {
         response = await _dio.post(
           url,
-          // queryParameters: params,
-          data: data != null ? data : params,
+          data: data ?? params,
         );
       } else if (method == Method.DELETE) {
         response = await _dio.delete(url);
@@ -381,7 +349,6 @@ class ApiClient {
       }
       /**
        * Handle Rest based on response json
-       * So please check in json body there is any status_code or code
        */
       _handleResponse(
         response: response,
@@ -400,21 +367,15 @@ class ApiClient {
   }
 
   Map<String, String> _getHeaders() {
-    final DEVISE_OS =
-        Platform.isAndroid ? AppConstant.ANDROID.key : AppConstant.IOS.key;
-
     Map<String, String> headers = {
       HttpHeaders.contentTypeHeader: AppConstant.APPLICATION_JSON.key,
       AppConstant.APP_VERSION.key:
           PrefHelper.getString(AppConstant.APP_VERSION.key),
       AppConstant.BUILD_NUMBER.key:
           PrefHelper.getString(AppConstant.BUILD_NUMBER.key),
-      AppConstant.DEVICE_OS.key: DEVISE_OS,
       AppConstant.LANGUAGE.key: PrefHelper.getLanguage() == 1
           ? AppConstant.EN.key
           : AppConstant.BN.key,
-      AppConstant.DEVICE_ID.key:
-          PrefHelper.getString(AppConstant.DEVICE_ID.key),
     };
     String token = PrefHelper.getString(AppConstant.TOKEN.key);
     if (token.isNotEmpty == true) {
@@ -453,6 +414,11 @@ class ApiClient {
                   );
                 }
                 NetworkConnection.instance.apiStack = [];
+              } else {
+                Navigator.of(Navigation.key.currentState!.overlay!.context,
+                        rootNavigator: true)
+                    .pop();
+                ViewUtil.isPresentedDialog = false;
               }
             },
           );
@@ -464,39 +430,33 @@ class ApiClient {
   void _handleDioError(DioException error) {
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
-        ViewUtil.SSLSnackbar("Time out delay ");
+        ViewUtil.snackbar("Time out delay");
         break;
       case DioExceptionType.receiveTimeout:
-        ViewUtil.SSLSnackbar("Server is not responded properly");
+        ViewUtil.snackbar("Server is not responded properly");
         break;
       case DioExceptionType.unknown:
-        ViewUtil.SSLSnackbar("Server is not responded properly");
+        ViewUtil.snackbar("Server is not responded properly");
         break;
       case DioExceptionType.connectionError:
-        ViewUtil.SSLSnackbar("Connection error");
+        ViewUtil.snackbar("Connection error");
         break;
       case DioExceptionType.cancel:
-        ViewUtil.SSLSnackbar("Connection cancel");
+        ViewUtil.snackbar("Connection cancel");
         break;
 
       case DioExceptionType.badCertificate:
-        ViewUtil.SSLSnackbar("Incorrect certificate error");
+        ViewUtil.snackbar("Incorrect certificate error");
         break;
       case DioExceptionType.sendTimeout:
-        ViewUtil.SSLSnackbar("Send timeout error");
+        ViewUtil.snackbar("Send timeout error");
         break;
       case DioExceptionType.badResponse:
-        final Map data = json.decode(error.response.toString());
-        if (error.response?.statusCode == 502) {
-          ViewUtil.SSLSnackbar("Something went wrong");
-        } else {
-          _tempErrorHandle(data);
-        }
-
+        _tempErrorHandle(error);
         break;
 
       default:
-        ViewUtil.SSLSnackbar("Something went wrong");
+        ViewUtil.snackbar("Something went wrong");
         break;
     }
   }
@@ -505,16 +465,12 @@ class ApiClient {
     required Response response,
     required Function(Response response)? onSuccessFunction,
   }) async {
-    if (response.statusCode == 200) {
+    if ((response.statusCode == 200 || response.statusCode == 201) &&
+        response.data != null) {
       final Map data = json.decode(response.toString());
-      final verifycode = data['status'];
-      int code = int.tryParse(verifycode.toString()) ?? 0;
-      if (code == 200) {
-        if (response.data != null) {
-          return onSuccessFunction!(response);
-        } else {
-          throw Exception("response data is \${response.data}");
-        }
+      int code = int.tryParse(data['status'].toString()) ?? 0;
+      if (code == 200 && response.data != null) {
+        return onSuccessFunction!(response);
       } else if (code == 401) {
         await PrefHelper.setString(AppConstant.TOKEN.key, "");
         // Navigation.pushAndRemoveUntil(
@@ -523,16 +479,23 @@ class ApiClient {
         //   arguments: LoginRegisterOpenFor.normal,
         // );
       } else {
-        //Where error occured then pop the global dialog
-        _tempErrorHandle(data);
+        //Handle error manually 
+        data.toString().log();
+ 
       }
+      return onSuccessFunction!(response);
+    } else {
+      ViewUtil.snackbar("Something went wrong");
+      throw Exception("Response data is \${response.data}");
     }
   }
 
-  void _tempErrorHandle(dynamic data) async {
-    "data:: \$data".log();
- }   
+  void _tempErrorHandle(DioException error) async {
+    final Map data = json.decode(error.response.toString());
+    "_tempErrorHandle :: \${data["message"]}".log();
+  }
 }
+
 
 """);
     await _createFile(
@@ -624,7 +587,7 @@ class ApiClient {
       if (response.statusCode == 200) {
         return response;
       } else {
-        _showExceptionSnackBar("Something went wrong");
+        _showExceptionsnackbar("Something went wrong");
         throw Exception();
       }
 
@@ -667,7 +630,7 @@ class ApiClient {
           return response;
         }
       } else {
-        _showExceptionSnackBar("Something went wrong");
+        _showExceptionsnackbar("Something went wrong");
         throw Exception();
       }
 
@@ -690,7 +653,7 @@ class ApiClient {
             PrefHelper.logout();
            
           } else {
-            _showExceptionSnackBar(result.errors[0].message);
+            _showExceptionsnackbar(result.errors[0].message);
           }
         }
       }
@@ -700,31 +663,31 @@ void _dioErrorHandler(bool isLoaderShowing, DioException error) {
  if (isLoaderShowing) Navigation.pop(Navigation.key.currentContext!);
     switch (error.type) {
       case DioExceptionType.connectionTimeout:
-        ViewUtil.SSLSnackbar("Time out delay ");
+        ViewUtil.snackbar("Time out delay ");
         break;
       case DioExceptionType.receiveTimeout:
-        ViewUtil.SSLSnackbar("Server is not responded properly");
+        ViewUtil.snackbar("Server is not responded properly");
         break;
       case DioExceptionType.unknown:
-        ViewUtil.SSLSnackbar("Server is not responded properly");
+        ViewUtil.snackbar("Server is not responded properly");
         break;
       case DioExceptionType.connectionError:
-        ViewUtil.SSLSnackbar("Connection error");
+        ViewUtil.snackbar("Connection error");
         break;
       case DioExceptionType.cancel:
-        ViewUtil.SSLSnackbar("Connection cancel");
+        ViewUtil.snackbar("Connection cancel");
         break;
 
       case DioExceptionType.badCertificate:
-        ViewUtil.SSLSnackbar("Incorrect certificate error");
+        ViewUtil.snackbar("Incorrect certificate error");
         break;
       case DioExceptionType.sendTimeout:
-        ViewUtil.SSLSnackbar("Send timeout error");
+        ViewUtil.snackbar("Send timeout error");
         break;
       case DioExceptionType.badResponse:
         final Map data = json.decode(error.response.toString());
         if (error.response?.statusCode == 502) {
-          ViewUtil.SSLSnackbar("Something went wrong");
+          ViewUtil.snackbar("Something went wrong");
         } else {
           data.log();
         }
@@ -732,13 +695,13 @@ void _dioErrorHandler(bool isLoaderShowing, DioException error) {
         break;
 
       default:
-        ViewUtil.SSLSnackbar("Something went wrong");
+        ViewUtil.snackbar("Something went wrong");
         break;
     }
   }
 
-  static _showExceptionSnackBar(String? msg) async {
-    ViewUtil.SSLSnackbar(msg ?? "");
+  static _showExceptionsnackbar(String? msg) async {
+    ViewUtil.snackbar(msg ?? "");
   }
 }
 
@@ -906,7 +869,8 @@ class Errors {
     await _createFile(
       directoryCreator.globalDir.path + '/model',
       'global_paginator',
-      content: """class GlobalPaginator {
+      content: """
+class GlobalPaginator {
   GlobalPaginator({
     this.currentPage,
     this.totalPages,
@@ -919,19 +883,18 @@ class Errors {
 
   factory GlobalPaginator.fromJson(Map<String, dynamic> json) =>
       GlobalPaginator(
-        currentPage: json["current_page"] == null ? null : json["current_page"],
-        totalPages: json["total_pages"] == null ? null : json["total_pages"],
+        currentPage: json["current_page"],
+        totalPages: json["total_pages"],
         recordPerPage:
-            json["record_per_page"] == null ? null : json["record_per_page"],
+            json["record_per_page"],
       );
 
   Map<String, dynamic> toJson() => {
-        "current_page": currentPage == null ? null : currentPage,
-        "total_pages": totalPages == null ? null : totalPages,
-        "record_per_page": recordPerPage == null ? null : recordPerPage,
+        "current_page": currentPage,
+        "total_pages": totalPages,
+        "record_per_page": recordPerPage,
       };
 }
-
 """,
     );
 
@@ -951,11 +914,11 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? actions;
 
   GlobalAppBar({
-    Key? key,
+    super.key,
     required this.title,
     this.centerTitle,
     this.actions,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -987,16 +950,15 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
         content: '''
  import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_svg/svg.dart';
 import '/global/widget/global_text.dart';
 import '/utils/navigation.dart';
 
 
 class ErrorDialog extends StatelessWidget {
   const ErrorDialog({
-    Key? key,
+    super.key,
     required this.erroMsg,
-  }) : super(key: key);
+  });
 
   final List<String> erroMsg;
 
@@ -1075,7 +1037,7 @@ class GlobalButton extends StatelessWidget {
   final double? textFontSize;
 
   GlobalButton({
-    Key? key,
+    super.key,
     required this.onPressed,
     required this.buttonText,
     this.isRounded = true,
@@ -1083,7 +1045,7 @@ class GlobalButton extends StatelessWidget {
     this.roundedBorderRadius = 17,
     this.btnBackgroundActiveColor,
     this.textFontSize,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1160,7 +1122,7 @@ class GlobalTextFormField extends StatelessWidget {
   final Function(String)? onChanged;
 
   const GlobalTextFormField({
-    Key? key,
+    super.key,
     this.obscureText,
     this.textInputType,
     this.controller,
@@ -1181,7 +1143,7 @@ class GlobalTextFormField extends StatelessWidget {
     this.style,
     this.onChanged,
     this.textInputAction = TextInputAction.done,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1297,7 +1259,7 @@ class GlobalText extends StatelessWidget {
   final TextStyle? style;
 
   const GlobalText({
-    Key? key,
+    super.key,
     required this.str,
     this.fontWeight,
     this.fontSize,
@@ -1312,7 +1274,7 @@ class GlobalText extends StatelessWidget {
     this.height,
     this.fontFamily,
     this.style,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1349,12 +1311,12 @@ import '../../utils/styles/styles.dart';
 
 class GlobalDropdown extends StatelessWidget {
   const GlobalDropdown({
-    Key? key,
+    super.key,
     required this.validator,
     required this.hintText,
     required this.onChanged,
     required this.items,
-  }) : super(key: key);
+  });
 
   final String? Function(Object?)? validator;
   final String? hintText;
@@ -1412,10 +1374,11 @@ class GlobalDropdown extends StatelessWidget {
         content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '/utils/extension.dart';
 import 'global_text.dart';
 
 class GlobalLoader extends StatelessWidget {
-  const GlobalLoader({Key? key, this.text = "Loading..."}) : super(key: key);
+  const GlobalLoader({super.key, this.text = "Loading..."});
   final String? text;
 
   @override
@@ -1423,13 +1386,14 @@ class GlobalLoader extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-      const  CircularProgressIndicator.adaptive(),
+        centerCircularProgress(),
         SizedBox(width: 10.w),
-        GlobalText(str:text ?? "")
+        GlobalText(str: text ?? "")
       ],
     );
   }
 }
+
 
  ''');
 
@@ -1437,21 +1401,20 @@ class GlobalLoader extends StatelessWidget {
         directoryCreator.globalDir.path + '/widget', 'global_svg_loader',
         content: '''
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '/utils/enum.dart';
 import '/utils/extension.dart';
 
 class GlobalSvgLoader extends StatelessWidget {
   const GlobalSvgLoader({
-    Key? key,
+    super.key,
     required this.imagePath,
     this.height,
     this.width,
     this.fit,
     this.color,
     this.svgFor = SvgFor.asset,
-  }) : super(key: key);
+  });
   final String imagePath;
   final double? height;
   final double? width;
@@ -1490,13 +1453,13 @@ import 'package:$projectName/utils/enum.dart';
 
 class GlobalImageLoader extends StatelessWidget {
   const GlobalImageLoader({
-    Key? key,
+    super.key,
     required this.imagePath,
     this.imageFor = ImageFor.asset,
     this.height,
     this.width,
     this.fit,
-  }) : super(key: key);
+  });
   final String imagePath;
   final double? height;
   final double? width;
@@ -1562,22 +1525,36 @@ class GlobalImageLoader extends StatelessWidget {
     );
 
     //module file
-    await _createFile(
-      directoryCreator.modulesDir.path +
-          '/dashboard' +
-          '/controller' +
-          '/state',
-      'dashboard_state',
-    );
-    await _createFile(
-        directoryCreator.modulesDir.path + '/dashboard' + '/controller',
-        'dashboard_controller',
+    await _createFile(directoryCreator.modulesDir.path + '/dashboard' + '/bloc',
+        'dashboard_state',
+        content: '''
+import 'package:flutter/material.dart';
+
+@immutable
+class DashboardState {
+
+
+}
+''');
+    await _createFile(directoryCreator.modulesDir.path + '/dashboard' + '/bloc',
+        'dashboard_event',
+        content: '''
+sealed class DashboardEvent {}
+''');
+    await _createFile(directoryCreator.modulesDir.path + '/dashboard' + '/bloc',
+        'dashboard_bloc',
         content: '''
 import '../repository/dashboard_interface.dart';
 import '../repository/dashboard_repository.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '/modules/dashboard/bloc/dashboard_event.dart';
+import '/modules/dashboard/bloc/dashboard_state.dart';
 
-class DashboardController {
+
+
+class DashboardBloc extends Bloc<DashboardEvent, DashboardState> {
   final IDashboardRepository _dashboardRepository = DashboardRepository();
+  DashboardBloc():super(DashboardState());
 }
 
 ''');
@@ -1585,20 +1562,7 @@ class DashboardController {
       directoryCreator.modulesDir.path + '/dashboard' + '/model',
       'model_class_name',
     );
-    await _createFile(
-        directoryCreator.modulesDir.path + '/dashboard' + '/repository',
-        'dashboard_api',
-        content: '''
-import 'package:$projectName/data_provider/api_client.dart';
-class DashboardApi {
-  final ApiClient _apiClient = ApiClient();
 
-  DashboardApi();
-
- 
-}
-
-''');
     await _createFile(
         directoryCreator.modulesDir.path + '/dashboard' + '/repository',
         'dashboard_interface',
@@ -1610,22 +1574,15 @@ abstract class IDashboardRepository {
   
 }
 
-
-
-
 ''');
     await _createFile(
         directoryCreator.modulesDir.path + '/dashboard' + '/repository',
         'dashboard_repository',
         content: '''
-import 'dashboard_api.dart';
 import 'dashboard_interface.dart';
 
 class DashboardRepository implements IDashboardRepository {
-  final _api = DashboardApi();
 }
-
-
 
 ''');
 
@@ -1638,7 +1595,7 @@ import '/global/widget/global_text.dart';
 import 'package:flutter/material.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -1810,13 +1767,11 @@ extension VersionCheck on String {
   }
 }
 
+
 extension WidgetExtention on Widget {
   Widget centerCircularProgress({Color? progressColor}) => Center(
-        child: Container(
-          //using adaptive we can easily show platfrom base indicator
-          child: CircularProgressIndicator.adaptive(
-            backgroundColor: progressColor,
-          ),
+        child: CircularProgressIndicator.adaptive(
+          backgroundColor: progressColor,
         ),
       );
 }
@@ -1907,6 +1862,48 @@ extension DateTimeGreater on DateTime {
 }
 
 """);
+
+    await _createFile(
+        directoryCreator.utilsDir.path + '/mixin', 'bloc_provider_mixin',
+        content: '''
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '/modules/dashboard/bloc/dashboard_bloc.dart';
+
+mixin BlocProviderMixin {
+  blocProviders() {
+    return [
+       BlocProvider(
+        create: (context) => DashboardBloc(),
+      ),
+      
+    ];
+  }
+}
+
+
+
+''');
+    await _createFile(
+        directoryCreator.utilsDir.path + '/mixin', 'loader_show_hide_mixin',
+        content: '''
+import '../../global/widget/global_loader.dart';
+import '../navigation.dart';
+import '../view_util.dart';
+
+mixin LoaderShowHideMixin {
+  void showLoaderView() {
+    ViewUtil.showAlertDialog(
+      content: const GlobalLoader(),
+    );
+  }
+
+  void hideLoader() {
+    Navigation.pop(Navigation.key.currentContext);
+  }
+}
+
+
+''');
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_assets',
         content: """enum KAssetName {
   oil,
@@ -1932,6 +1929,7 @@ extension AssetsExtention on KAssetName {
 }
 
 """);
+
     await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_colors',
         content: """import 'package:flutter/material.dart';
 
@@ -2131,8 +2129,148 @@ enum SvgFor {
   network,
 }
 
+enum AppStatus {
+  initial,
+  success,
+  error,
+  loading,
+}
+
 
 """);
+
+    await _createFile(directoryCreator.utilsDir.path, "network_request_builder",
+        content: '''
+import 'dart:io';
+import 'package:dio/dio.dart';
+import '../data_provider/api_client.dart';
+import 'enum.dart';
+import '/utils/extension.dart';
+import 'mixin/loader_show_hide_mixin.dart';
+
+class NetworkRequestBuilder with LoaderShowHideMixin {
+  final ApiClient _apiClient = ApiClient();
+
+  late String _url;
+  late Method _method;
+  Map<String, dynamic>? _params;
+  // ignore: prefer_function_declarations_over_variables
+  final Function(bool isLoading) _onLoading = (isLoading) => true;
+  late Function(Response response) _onSuccess;
+  late Function(Object errorMessage) onFailed;
+  bool _showLoader = false;
+  bool _isFormData = false;
+  Map<String, String>? _extraHeaders;
+  Options? _options;
+  void Function(int, int)? _onReceiveProgress;
+  String? _savePath;
+  List<File>? _files;
+  String? _fileKeyName;
+
+  NetworkRequestBuilder setUrl(String url) {
+    _url = url;
+    return this;
+  }
+
+  NetworkRequestBuilder setMethod(Method method) {
+    _method = method;
+    return this;
+  }
+
+  NetworkRequestBuilder setParams(Map<String, dynamic> params) {
+    _params = params;
+    return this;
+  }
+
+  NetworkRequestBuilder setOnSuccess(Function(Response response) onSuccess) {
+    _onSuccess = onSuccess;
+    return this;
+  }
+
+  NetworkRequestBuilder setOnFailed(Function(Object errorMessage) onFailed) {
+    this.onFailed = onFailed;
+    return this;
+  }
+
+  NetworkRequestBuilder setShowLoader(bool showLoader) {
+    _showLoader = showLoader;
+    return this;
+  }
+
+  NetworkRequestBuilder setFormData(bool fromData) {
+    _isFormData = fromData;
+    return this;
+  }
+
+  NetworkRequestBuilder setExtraHeaders(Map<String, String>? extraHeaders) {
+    _extraHeaders = extraHeaders;
+    return this;
+  }
+
+  NetworkRequestBuilder setOptions(Options? options) {
+    _options = options;
+    return this;
+  }
+
+  NetworkRequestBuilder setOnReceiveProgress(
+      void Function(int, int)? onReceiveProgress) {
+    _onReceiveProgress = onReceiveProgress;
+    return this;
+  }
+
+  NetworkRequestBuilder setSavePath(String? savePath) {
+    _savePath = savePath;
+    return this;
+  }
+
+  NetworkRequestBuilder setFiles(List<File>? files) {
+    _files = files;
+    return this;
+  }
+
+  NetworkRequestBuilder setFileKeyName(String? fileKeyName) {
+    _fileKeyName = fileKeyName;
+    return this;
+  }
+
+  Future<void> executeNetworkRequest() async {
+    if (_showLoader) {
+      showLoaderView();
+    }
+    _onLoading(true);
+
+    await _apiClient
+        .request(
+      method: _method,
+      url: _url,
+      params: _params,
+      extraHeaders: _extraHeaders,
+      options: _options,
+      onReceiveProgress: _onReceiveProgress,
+      savePath: _savePath,
+      files: _files,
+      isFormData: _isFormData,
+      fileKeyName: _fileKeyName,
+      onSuccessFunction: (Response response) async {
+        if (_showLoader) {
+          hideLoader();
+        }
+        await _onSuccess(response);
+        _onLoading(false);
+      },
+    )
+        .catchError((Object e) {
+      "E \$e".log();
+      if (_showLoader) {
+        hideLoader();
+      }
+      onFailed(e);
+      _onLoading(false);
+    });
+  }
+}
+
+''');
 
     await _createFile(directoryCreator.utilsDir.path, 'navigation',
         content: """import 'package:flutter/material.dart';
@@ -2171,16 +2309,28 @@ class Navigation {
     context, {
     required AppRoutes appRoutes,
     String? routeName,
+    bool isAnimation = true,
     T? arguments,
   }) {
     return Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        settings: RouteSettings(name: routeName),
-        builder: (context) => appRoutes.buildWidget(
-          arguments: arguments,
-        ),
-      ),
+      isAnimation
+          ? PageRouteBuilder(
+              settings: RouteSettings(name: routeName),
+              pageBuilder: (_, __, ___) {
+                return appRoutes.buildWidget(
+                  arguments: arguments,
+                );
+              },
+            )
+          : PageRouteBuilder(
+              settings: RouteSettings(name: routeName),
+              pageBuilder: (_, __, ___) => appRoutes.buildWidget(
+                arguments: arguments,
+              ),
+              transitionDuration: Duration.zero,
+              reverseTransitionDuration: Duration.zero,
+            ),
       (route) => false,
     );
   }
@@ -2325,6 +2475,103 @@ class APIParams {
 
 
 """);
+
+    await _createFile(directoryCreator.utilsDir.path, 'app_bloc_observer',
+        content: """
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '/utils/extension.dart';
+
+class AppBlocObserver extends BlocObserver {
+  // Private constructor
+  AppBlocObserver._privateConstructor();
+
+  // Singleton instance
+  static final AppBlocObserver _instance =
+      AppBlocObserver._privateConstructor();
+
+  // Factory constructor to return the singleton instance
+  factory AppBlocObserver() => _instance;
+
+  // Public getter to access the singleton instance
+  static AppBlocObserver get instance => _instance;
+
+  final List<BlocBase> _blocs = [];
+
+  @override
+  void onCreate(BlocBase bloc) {
+    super.onCreate(bloc);
+    _blocs.add(bloc);
+    'Bloc Created: \${bloc.runtimeType} \${bloc.hashCode}'.log();
+  }
+
+  @override
+  void onClose(BlocBase bloc) {
+    super.onClose(bloc);
+    _blocs.remove(bloc);
+    'Bloc Closed: \${bloc.runtimeType}'.log();
+  }
+
+  Future<void> disposeAllBlocs() async {
+    'Disposing all BLoCs...'.log();
+    'Total BLoCs to dispose: \${_blocs.length}'.log();
+    for (final bloc in _blocs) {
+      'Disposing Bloc: \${bloc.runtimeType} \${bloc.hashCode}'.log();
+      bloc.close(); // Trigger bloc's close logic
+    }
+    _blocs.clear(); // Clear the list once all blocs are closed
+    'All blocs disposed'.log();
+  }
+}
+""");
+
+    await _createFile(directoryCreator.utilsDir.path, "bloc_reinitalizer",
+        content: """
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '/utils/app_bloc_observer.dart';
+import 'mixin/bloc_provider_mixin.dart';
+
+class BlocReinitializer extends StatefulWidget {
+  final Widget child;
+
+  const BlocReinitializer({super.key, required this.child});
+
+  static void reinitialize(BuildContext context) async {
+    await AppBlocObserver.instance.disposeAllBlocs();
+    final _BlocReinitializerState? state =
+        // ignore: use_build_context_synchronously
+        context.findAncestorStateOfType<_BlocReinitializerState>();
+    state?.reinitialize();
+  }
+
+  @override
+  // ignore: library_private_types_in_public_api
+  _BlocReinitializerState createState() => _BlocReinitializerState();
+}
+
+class _BlocReinitializerState extends State<BlocReinitializer>
+    with BlocProviderMixin {
+  Key key = UniqueKey();
+
+  void reinitialize() {
+    setState(() {
+      key = UniqueKey();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return KeyedSubtree(
+      key: key,
+      child: MultiBlocProvider(
+        providers: blocProviders(),
+        child: widget.child,
+      ),
+    );
+  }
+}
+""");
+
     await _createFile(directoryCreator.utilsDir.path, 'view_util', content: """
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -2334,7 +2581,7 @@ import '/utils/navigation.dart';
 import '/utils/styles/styles.dart';
 
 class ViewUtil {
-  static SSLSnackbar(
+  static snackbar(
     String msg, {
     String? btnName,
     void Function()? onPressed,
@@ -2435,7 +2682,6 @@ class ViewUtil {
           ),
           title: title,
           content: content,
-         
         );
       },
     );
@@ -2494,6 +2740,9 @@ import '/utils/navigation.dart';
 import '/utils/network_connection.dart';
 import '/utils/styles/k_colors.dart';
 import 'modules/dashboard/views/dashboard_screen.dart';
+import '/utils/mixin/bloc_provider_mixin.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'utils/bloc_reinitalizer.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -2520,46 +2769,55 @@ initServices() async {
   await NetworkConnection.instance.internetAvailable();
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatelessWidget with BlocProviderMixin {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
 
     return ScreenUtilInit(
-      //Change the height and Width based on design
-      designSize: const Size(360, 800),
-      minTextAdapt: true,
-      builder: (ctx, child) {
-        return MaterialApp(
-          title: '${projectName.convertToCamelCase()}',
-          navigatorKey: Navigation.key,
-          debugShowCheckedModeBanner: false,
-          //localization
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          locale: (PrefHelper.getLanguage() == 1)
-              ? const Locale('en', 'US')
-              : const Locale('bn', 'BD'),
-          theme: ThemeData(
-            progressIndicatorTheme: ProgressIndicatorThemeData(
-              color: KColor.secondary.color,
-            ),
-            textTheme: GoogleFonts.poppinsTextTheme(),
-            primaryColor: KColor.primary.color,
-            visualDensity: VisualDensity.adaptivePlatformDensity,
-            colorScheme: ThemeData().colorScheme.copyWith(
-                  secondary: KColor.secondary.color,
+        // Change the height and Width based on design
+        designSize: const Size(960, 1440),
+        minTextAdapt: true,
+        builder: (ctx, child) {
+          return ScreenUtilInit(
+            //Change the height and Width based on design
+            designSize: const Size(360, 800),
+            minTextAdapt: true,
+            builder: (ctx, child) {
+              return BlocReinitializer(
+                child: MaterialApp(
+                  title: '${projectName.convertToCamelCase()}',
+                  navigatorKey: Navigation.key,
+                  debugShowCheckedModeBanner: false,
+                  //localization
+                  supportedLocales: AppLocalizations.supportedLocales,
+                  localizationsDelegates:
+                      AppLocalizations.localizationsDelegates,
+                  locale: (PrefHelper.getLanguage() == 1)
+                      ? const Locale('en', 'US')
+                      : const Locale('bn', 'BD'),
+                  theme: ThemeData(
+                    progressIndicatorTheme: ProgressIndicatorThemeData(
+                      color: KColor.secondary.color,
+                    ),
+                    textTheme: GoogleFonts.poppinsTextTheme(),
+                    primaryColor: KColor.primary.color,
+                    visualDensity: VisualDensity.adaptivePlatformDensity,
+                    colorScheme: ThemeData().colorScheme.copyWith(
+                          secondary: KColor.secondary.color,
+                        ),
+                    primarySwatch: KColor.primary.color as MaterialColor,
+                  ),
+                  home: child,
                 ),
-            primarySwatch: KColor.primary.color as MaterialColor,
-          ),
-          home: child,
-        );
-      },
-      child: const DashboardScreen(),
-    );
+              );
+            },
+            child: const DashboardScreen(),
+          );
+        });
   }
-}
+} 
 """,
     );
 

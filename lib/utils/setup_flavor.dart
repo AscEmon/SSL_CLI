@@ -10,8 +10,8 @@ class SetupFlavor {
       final file = File(filePath);
       List<String> lines = file.readAsLinesSync();
 
-      final int applyFormIndex = lines.indexOf(
-          "def localPropertiesFile = rootProject.file('local.properties')");
+      final int applyFormIndex = lines.indexWhere(
+          (line) => line.contains('id "dev.flutter.flutter-gradle-plugin"'));
 
       if (applyFormIndex != -1) {
         final additionalCode = '''
@@ -52,7 +52,7 @@ def appFlavor() {
 }
 ''';
 
-        lines.insert(applyFormIndex + 1, additionalCode);
+        lines.insert(applyFormIndex + 2, additionalCode);
         file.writeAsStringSync(lines.join('\n'));
 
         int index = lines.indexWhere(
@@ -66,7 +66,7 @@ def appFlavor() {
                          def appName = variant.getMergedFlavor().applicationId
                          int lastIndex = appName.lastIndexOf('.')
                          def modifiedAppName = lastIndex != -1 ? appName.substring(lastIndex + 1) : appName
-                         outputFileName = "\${modifiedAppName}_\${appFlavor()}\${flutterVersionName}(\${flutterVersionCode}).apk"
+                         outputFileName = "\${modifiedAppName}_\${appFlavor()}\${versionName}(\${versionCode}).apk"
                          renamePath(outputFileName)
                     }
                 }

@@ -5,7 +5,7 @@ import 'package:ssl_cli/utils/extension.dart';
 import 'enum.dart';
 
 class PubspecEdit {
-  void pubspecEditConfig(String filePath) {
+  void pubspecEditConfig(String filePath, {String? patternNumber}) {
     try {
       // Read the content of the file
       final file = File(filePath);
@@ -22,19 +22,24 @@ class PubspecEdit {
           indexOfSdkFlutter + 1, '  flutter_localizations:\n    sdk: flutter');
 
       // Find the index of 'cupertino_icons: ^1.0.2'
-      int indexOfCupertinoIcons = lines.indexOf('  cupertino_icons: ^1.0.2');
+      // Find the index of the line containing 'cupertino_icons'
+      int indexOfCupertinoIcons =
+          lines.indexWhere((line) => line.contains('cupertino_icons'));
 
       if (indexOfCupertinoIcons != -1) {
         // Add lines for dio and shared_preferences after 'cupertino_icons: ^1.0.2'
-        lines.insert(indexOfCupertinoIcons + 1, '  dio: ^5.0.1');
-        lines.insert(
-            indexOfCupertinoIcons + 2, '  shared_preferences: ^2.0.18');
-        lines.insert(indexOfCupertinoIcons + 3, '  intl: ^0.18.0');
-        lines.insert(indexOfCupertinoIcons + 4, '  connectivity_plus: ^3.0.3');
-        lines.insert(indexOfCupertinoIcons + 5, '  flutter_screenutil: ^5.6.1');
-        lines.insert(indexOfCupertinoIcons + 6, '  package_info_plus: ^3.0.3');
-        lines.insert(indexOfCupertinoIcons + 7, '  flutter_svg: ^2.0.2');
-        lines.insert(indexOfCupertinoIcons + 8, '  google_fonts: ^4.0.3');
+        lines.insert(indexOfCupertinoIcons + 1, '  dio: ^5.7.0');
+        lines.insert(indexOfCupertinoIcons + 2, '  shared_preferences: ^2.3.2');
+        lines.insert(indexOfCupertinoIcons + 3, '  intl: ^0.19.0');
+        lines.insert(indexOfCupertinoIcons + 4, '  connectivity_plus: ^6.0.3');
+        lines.insert(indexOfCupertinoIcons + 5, '  flutter_screenutil: ^5.9.3');
+        lines.insert(indexOfCupertinoIcons + 6, '  package_info_plus: ^8.0.3');
+        lines.insert(indexOfCupertinoIcons + 7, '  flutter_svg: ^2.0.14');
+        lines.insert(indexOfCupertinoIcons + 8, '  google_fonts: ^6.2.1');
+        if (patternNumber != null && patternNumber == "3") {
+          // for bloc pattern
+          lines.insert(indexOfCupertinoIcons + 9, '  flutter_bloc: ^8.1.6');
+        }
 
         int indexOfUsesMaterialDesign =
             lines.indexOf('  uses-material-design: true');

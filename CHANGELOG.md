@@ -388,4 +388,23 @@
 ## 2.0.3
 - command conflict issue resolve
 
+## 3.0.0
+- Bloc pattern architecture create
+- Module create for bloc pattern 
+
+## 3.0.1
+- package version update
+- Network connection update
+
+## 3.0.2
+- yaml edit issue resolve
+
+## 3.0.3
+- flavor issue resolve
+
+## 3.0.4
+- bloc reinitializer and dispose integrate
+- new widget key issue resolve
+- build gradle version name and number issue resolve
+
 
