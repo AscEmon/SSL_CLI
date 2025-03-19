@@ -3,6 +3,7 @@ import 'package:args/args.dart';
 import 'package:ssl_cli/src/command/build_flavor_command.dart';
 import 'package:ssl_cli/utils/setup_flavor.dart';
 import 'package:ssl_cli/utils/extension.dart';
+import '../utils/doc_generation.dart';
 import '../utils/enum.dart';
 import '../utils/mixin/sent_apk_telegram_mixin.dart';
 import 'command/asset_generation_command.dart';
@@ -135,15 +136,16 @@ class SSLCommandRunner with SentApkTelegramMixin {
     final assetName = arguments[1];
     if (assetName == "k_assets.dart") {
       return AssetGenerationCommand();
+    } else if (assetName.isValidFilePath()) {
+      DocGenerator docGen = DocGenerator();
+      docGen.generateDocs(arguments[1]);
     } else {
-      "Wrong Command, please use command".printWithColor(
+      "Wrong Command, please use ssl_cli help --all".printWithColor(
         status: PrintType.warning,
-      );
-      "ssl_cli generate k_assets.dart".printWithColor(
-        status: PrintType.success,
       );
       exit(0);
     }
+    return null;
   }
 
   void _errorAndExit([String? command]) {

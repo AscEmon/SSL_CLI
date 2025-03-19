@@ -11,6 +11,9 @@ class HelpCommand implements ICommand {
         'Create a module with predefined code based on the repository pattern.');
     printFormattedHelp('generate : ssl_cli generate k_assets.dart',
         'Generate image and SVG path in utils/k_assets.dart file automatically based on your assets folder.');
+    printFormattedHelp('generate : ssl_cli generate <folder/file path>',
+        'Generate AI-powered documentation for your project. You can generate documentation for the entire project or a single Dart file.');
+
     printFormattedHelp('build : ssl_cli build apk (e.g.--DEV, --LIVE)',
         'Build Android APK with modified name_flavor_version name_version code in your outputs APK folder.Available command in flavor type --DEV, --LIVE, --LOCAL, --STAGE.If you want to sent your apk file telegram group with build command then add --t param(eg: ssl_cli build apk --LIVE --t). It will sent you apk automatically with your group but before make sure you added telegram chat id and botToken in config.json file.');
     printFormattedHelp('clean : ssl_cli clean',
