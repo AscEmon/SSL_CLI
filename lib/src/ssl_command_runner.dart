@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:args/args.dart';
+import 'package:ssl_cli/src/command/config_command.dart';
 import 'package:ssl_cli/src/command/build_flavor_command.dart';
 import 'package:ssl_cli/utils/setup_flavor.dart';
 import 'package:ssl_cli/utils/extension.dart';
@@ -48,6 +49,11 @@ class SSLCommandRunner with SentApkTelegramMixin {
               _handleSentCommand();
             }
             break;
+          case 'override':
+            if (res.command!.arguments.isNotEmpty && res.command!.arguments.first == "--config.json") {
+              command = _handleOverrideCommand();
+            }
+            break;
           case 'help':
             command = HelpCommand();
             break;
@@ -77,6 +83,7 @@ class SSLCommandRunner with SentApkTelegramMixin {
       ..addCommand('run')
       ..addCommand('setup')
       ..addCommand("sent")
+      ..addCommand('override')
       ..addFlag('flavor', negatable: false, help: 'Enable flavor')
       ..addFlag('apk', negatable: false, help: 'Sent Apk to telegram group.')
       ..addFlag('t',
@@ -152,6 +159,10 @@ class SSLCommandRunner with SentApkTelegramMixin {
     stderr.writeln('Command not available!');
     stderr.writeln('try ssl_cli help --all to check all available commands.');
     exit(2);
+  }
+
+  ICommand _handleOverrideCommand() {
+    return ConfigCommand(isOverride: true);
   }
 }
 

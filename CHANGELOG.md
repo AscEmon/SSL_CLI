@@ -346,6 +346,12 @@
 
 - repo module create
 
+## 1.6.0
+
+- Added `override --config.json` command to add AI configuration fields to existing config.json
+- Added support for geminiApiKey, openAiApiKey, deepSeekApiKey, and geminiModelName in config.json
+- Backup of existing config.json is created before any modifications
+
 ## 1.5.1
 
 - change folder name module to modules
@@ -411,3 +417,5 @@
 
 ## 3.1.5
 - Automatic Doc generation integrate
+## 3.1.6
+- override command added for  config.json
