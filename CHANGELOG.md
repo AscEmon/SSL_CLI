@@ -408,3 +408,6 @@
 - build gradle version name and number issue resolve
 
 
+
+## 3.1.5
+- Automatic Doc generation integrate

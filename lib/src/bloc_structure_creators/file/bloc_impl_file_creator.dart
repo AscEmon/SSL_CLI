@@ -2835,7 +2835,8 @@ output-localization-file: app_localizations.dart
     "botToken": "",
     "geminiApiKey":"",
     "openAiApiKey": "",
-    "deepSeekApiKey": ""
+    "deepSeekApiKey": "",
+    "geminiModelName":""
 }
 
 """);

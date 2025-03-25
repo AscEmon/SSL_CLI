@@ -29,7 +29,7 @@ class DocGenerator {
       print("❌ Error: API key not found.");
       return;
     }
-    
+
     List<String> documentation = [];
     for (File file in dartFiles) {
       print("📂 Processing: ${file.path}");
@@ -121,8 +121,8 @@ class DocGenerator {
     file.writeAsStringSync(updatedContent, mode: FileMode.write);
   }
 
-  /// Reads API key from config.json
-  String _getApiKey(int choice) {
+  /// Reads configuration from config.json
+  Map<String, dynamic> _getConfig() {
     File configFile = File(configFilePath);
     if (!configFile.existsSync()) {
       print("❌ Error: `$configFilePath` not found! Please create one.");
@@ -130,14 +130,7 @@ class DocGenerator {
     }
 
     try {
-      Map<String, dynamic> config = jsonDecode(configFile.readAsStringSync());
-      String key = choice == 1
-          ? "geminiApiKey"
-          : choice == 2
-              ? "openAiApiKey"
-              : "deepSeekApiKey";
-
-      return config[key] ?? "";
+      return jsonDecode(configFile.readAsStringSync());
     } catch (e) {
       print(
           "❌ Error: Failed to read `$configFilePath`. Ensure it's valid JSON.");
@@ -145,10 +138,24 @@ class DocGenerator {
     }
   }
 
+  /// Reads API key from config.json
+  String _getApiKey(int choice) {
+    Map<String, dynamic> config = _getConfig();
+    String key = choice == 1
+        ? "geminiApiKey"
+        : choice == 2
+            ? "openAiApiKey"
+            : "deepSeekApiKey";
+
+    return config[key] ?? "";
+  }
+
   /// Get API URL based on user choice
   String _getApiUrl(int choice, String apiKey) {
+    Map<String, dynamic> config = _getConfig();
     if (choice == 1) {
-      return "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey";
+      String modelName = config["geminiModelName"] ?? "gemini-1.5-flash";
+      return "https://generativelanguage.googleapis.com/v1beta/models/$modelName:generateContent?key=$apiKey";
     } else if (choice == 2) {
       return "https://api.openai.com/v1/chat/completions";
     } else if (choice == 3) {
@@ -193,7 +200,7 @@ class DocGenerator {
   FileSystemEntity? _getFileSystemEntity(String path) {
     FileSystemEntityType type = FileSystemEntity.typeSync(path);
     if (type == FileSystemEntityType.notFound) {
-      print("❌ File or folder not found!");
+      print("❌ File or folder not found! $path");
       return null;
     }
     return type == FileSystemEntityType.file ? File(path) : Directory(path);

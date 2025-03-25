@@ -26,7 +26,8 @@ class HelpCommand implements ICommand {
         'Set up flavor for Android using this command in your existing project. It is not mandatory to create your project using ssl_cli. Remember, this setup does not require any third-party packages.');
     printFormattedHelp('sent : ssl_cli sent --apk',
         'Sent your apk to telegram group after create your build.Remeber check your config.json file and set your group chat_id and botToken.');
-
+    printFormattedHelp('generate : ssl_cli generate <file path or folder path>',
+        'Generate AI-powered documentation for your project. You can generate documentation for the entire project or a single Dart file.');
     exit(0);
   }
 
