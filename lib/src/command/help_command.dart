@@ -28,6 +28,8 @@ class HelpCommand implements ICommand {
         'Sent your apk to telegram group after create your build.Remeber check your config.json file and set your group chat_id and botToken.');
     printFormattedHelp('generate : ssl_cli generate <file path or folder path>',
         'Generate AI-powered documentation for your project. You can generate documentation for the entire project or a single Dart file.');
+    printFormattedHelp('config : ssl_cli override --config.json',
+        'Override config.json file for your project.');
     exit(0);
   }
 
