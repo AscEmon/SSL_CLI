@@ -2745,8 +2745,8 @@ class Product extends Equatable {
 ''');
 
     // Domain - Repositories
-    await _createFile('$productsPath/domain/repositories', 'product_repository',
-        '''
+    await _createFile(
+        '$productsPath/domain/repositories', 'product_repository', '''
 import 'package:dartz/dartz.dart';
 
 import '/core/error/failures.dart';
@@ -2763,8 +2763,7 @@ abstract class ProductRepository {
 ''');
 
 // Domain - Usecases
-await _createFile('$productsPath/domain/usecases', 'get_products',
-        '''
+    await _createFile('$productsPath/domain/usecases', 'get_products', '''
 import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
 import '/core/error/failures.dart';
@@ -2959,8 +2958,8 @@ import 'package:flutter/material.dart';
 
 class ProductNotifier {}
 ''');
- await _createFile(
-        '$productsPath/presentation/providers/state', 'product_state', ''' 
+    await _createFile(
+        '$productsPath/presentation/providers/state', 'product_state', '''
 import 'package:flutter/material.dart';
 @immutable
 class ProductState {}
@@ -3110,16 +3109,61 @@ class MyApp extends ConsumerWidget {
 }
 
 ''');
+
+    //localization yaml file create in project folder
+    await _createFile(
+      Directory.current.path,
+      'l10n',
+      """arb-dir: lib/l10n
+template-arb-file: intl_en.arb
+output-localization-file: app_localizations.dart
+""",
+      fileExtention: 'yaml',
+    );
+
+    await _createFile(
+      Directory.current.path,
+      'config',
+      '''
+{
+    "telegram_chat_id": "",
+    "botToken": "",
+    "geminiApiKey":"",
+    "openAiApiKey": "",
+    "deepSeekApiKey": "",
+    "geminiModelName":""
+}
+''',
+      fileExtention: 'json',
+    );
   }
 
-  Future<void> _createFile(String path, String fileName, String content) async {
+  Future<void> _createFile(
+    String basePath,
+    String fileName,
+    String content, {
+    String? fileExtention = 'dart',
+  }) async {
+    String fileType;
+    if (fileExtention == 'yaml') {
+      fileType = 'yaml';
+    } else if (fileExtention == 'arb') {
+      fileType = 'arb';
+    } else if (fileExtention == 'json') {
+      fileType = 'json';
+    } else {
+      fileType = 'dart';
+    }
+
     try {
-      final file = File('$path/$fileName.dart');
-      await file.writeAsString(content);
-      'Created: $fileName.dart'.printWithColor(status: PrintType.success);
-    } catch (e) {
-      'Error creating $fileName.dart: $e'
-          .printWithColor(status: PrintType.error);
+      final file = await File('$basePath/$fileName.$fileType').create();
+
+      final writer = file.openWrite();
+      writer.write(content);
+      writer.close();
+    } catch (_) {
+      stderr.write('creating $fileName.$fileType failed!');
+      exit(2);
     }
   }
 }
