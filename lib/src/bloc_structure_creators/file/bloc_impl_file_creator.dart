@@ -2832,7 +2832,11 @@ output-localization-file: app_localizations.dart
         fileExtention: 'json', content: """
 {
     "telegram_chat_id": "",
-    "botToken": ""
+    "botToken": "",
+    "geminiApiKey":"",
+    "openAiApiKey": "",
+    "deepSeekApiKey": "",
+    "geminiModelName":""
 }
 
 """);
