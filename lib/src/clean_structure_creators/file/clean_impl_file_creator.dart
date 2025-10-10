@@ -303,7 +303,7 @@ extension AppRoutesExtention on AppRoutes {
 }
 ''');
 
- await _createFile('$corePath/routes', 'navigation', ''' 
+    await _createFile('$corePath/routes', 'navigation', '''
 import 'package:flutter/material.dart';
 import 'app_routes.dart';
 
@@ -412,8 +412,7 @@ class Navigation {
 
  ''');
 
-
-await _createFile('$corePath/theme', 'app_colors', ''' 
+    await _createFile('$corePath/theme', 'app_colors', '''
 import 'package:flutter/material.dart';
 
 /// Application colors using enum
@@ -466,7 +465,7 @@ enum AppColors {
 
 ''');
 
-await _createFile('$corePath/theme', 'theme_helper', ''' 
+    await _createFile('$corePath/theme', 'theme_helper', '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:test_clean/core/theme/app_colors.dart';
@@ -763,11 +762,11 @@ class AppTheme {
 
 ''');
 
- await _createFile('$corePath/theme', 'theme_manager',
-        '''
+    await _createFile('$corePath/theme', 'theme_manager', '''
 import 'package:flutter/material.dart';
 import '/core/constants/app_constants.dart';
 import '/core/theme/theme_helper.dart';
+
 import '../utils/preferences_helper.dart';
 
 class ThemeManager {
@@ -812,7 +811,6 @@ class ThemeManager {
 }
 
 ''');
-
 
     // Network
     await _createFile('$corePath/network', 'network_info',
@@ -1687,94 +1685,173 @@ Future<void> initDependencies() async {
 ''');
 
     // Presentation widgets
-    await _createFile('$corePath/presentation/widgets', 'global_text',
-        '''import 'package:flutter/material.dart';
+    await _createFile('$corePath/presentation/widgets', 'global_text', '''
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class GlobalText extends StatelessWidget {
   final String str;
-  final double? fontSize;
   final FontWeight? fontWeight;
+  final double? fontSize;
   final Color? color;
+  final FontStyle? fontStyle;
+  final double? letterSpacing;
+  final TextDecoration? decoration;
   final int? maxLines;
   final TextOverflow? overflow;
+  final TextAlign? textAlign;
+  final bool? softwrap;
+  final double? height;
+  final String? fontFamily;
+  final TextStyle? style;
 
   const GlobalText({
-    Key? key,
+    super.key,
     required this.str,
-    this.fontSize,
     this.fontWeight,
+    this.fontSize,
+    this.fontStyle,
     this.color,
+    this.letterSpacing,
+    this.decoration,
     this.maxLines,
+    this.textAlign,
     this.overflow,
-  }) : super(key: key);
+    this.softwrap,
+    this.height,
+    this.fontFamily,
+    this.style,
+  });
 
   @override
   Widget build(BuildContext context) {
+    // Get the current text color from theme
+    final defaultTextColor = Theme.of(context).textTheme.bodyMedium?.color;
+
     return Text(
       str,
-      style: TextStyle(
-        fontSize: fontSize?.sp ?? 14.sp,
-        fontWeight: fontWeight ?? FontWeight.normal,
-        color: color ?? Colors.black,
-      ),
       maxLines: maxLines,
       overflow: overflow,
+      textAlign: textAlign,
+      softWrap: softwrap,
+      textScaler: TextScaler.linear(1.0),
+      style:
+          style ??
+          GoogleFonts.inter(
+            // Use provided color or default from theme
+            color: color ?? defaultTextColor,
+            fontSize: fontSize?.sp,
+            fontWeight: fontWeight ?? FontWeight.w500,
+            letterSpacing: letterSpacing,
+            decoration: decoration,
+            height: height,
+            fontStyle: fontStyle,
+          ),
     );
   }
 }
+
 ''');
 
-    await _createFile('$corePath/presentation/widgets', 'global_button',
-        '''import 'package:flutter/material.dart';
+    await _createFile('$corePath/presentation/widgets', 'global_button', '''
+import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'global_text.dart';
+
+import '../../theme/app_colors.dart';
+import '/core/presentation/widgets/global_text.dart';
 
 class GlobalButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final String buttonText;
+  final bool isRounded;
+  final double? btnHeight;
+  final int roundedBorderRadius;
   final Color? btnBackgroundActiveColor;
+  final double? textFontSize;
 
   const GlobalButton({
-    Key? key,
+    super.key,
     required this.onPressed,
     required this.buttonText,
+    this.isRounded = true,
+    this.btnHeight,
+    this.roundedBorderRadius = 17,
     this.btnBackgroundActiveColor,
-  }) : super(key: key);
+    this.textFontSize,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 50.h,
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: btnBackgroundActiveColor ?? Theme.of(context).primaryColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+    Color btnColor = btnBackgroundActiveColor ?? AppColors.primary.color;
+
+    return ElevatedButton(
+      style: ButtonStyle(
+        shape: WidgetStateProperty.resolveWith<OutlinedBorder>((states) {
+          return RoundedRectangleBorder(
+            borderRadius:
+                isRounded
+                    ? BorderRadius.circular(roundedBorderRadius.r)
+                    : BorderRadius.zero,
+          );
+        }),
+        backgroundColor: WidgetStateProperty.resolveWith<Color>(
+          (Set<WidgetState> states) =>
+              onPressed != null ? btnColor : AppColors.grey.color,
         ),
-        child: GlobalText(str: buttonText, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+        elevation: WidgetStateProperty.resolveWith((states) => 0.0),
+      ),
+      onPressed: onPressed,
+      child: SizedBox(
+        height: btnHeight ?? 76.h,
+        child: Center(
+          child: GlobalText(
+            str: buttonText,
+            fontWeight: FontWeight.w500,
+            fontSize: textFontSize ?? 14,
+          ),
+        ),
       ),
     );
   }
 }
+
 ''');
 
     await _createFile('$corePath/presentation/widgets', 'global_appbar',
         '''import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'global_text.dart';
+
+import '/core/presentation/widgets/global_text.dart';
 
 class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  final bool? centerTitle;
   final List<Widget>? actions;
+  final Color? backgroundColor;
 
-  const GlobalAppBar({Key? key, required this.title, this.actions}) : super(key: key);
+  const GlobalAppBar({
+    super.key,
+    required this.title,
+    this.centerTitle,
+    this.actions,
+    this.backgroundColor,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final Color? themeBgColor = Theme.of(context).appBarTheme.backgroundColor;
     return AppBar(
-      title: GlobalText(str: title, fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+      elevation: 0,
+      centerTitle: centerTitle,
+      scrolledUnderElevation: 0,
+      backgroundColor: backgroundColor ?? themeBgColor,
+      title: GlobalText(
+        str: title,
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        letterSpacing: 0.1,
+      ),
       actions: actions,
     );
   }
@@ -1782,19 +1859,800 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize => Size.fromHeight(56.h);
 }
+
 ''');
 
     await _createFile('$corePath/presentation/widgets', 'global_loader',
         '''import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+import '/core/presentation/widgets/global_text.dart';
 
 class GlobalLoader extends StatelessWidget {
-  const GlobalLoader({Key? key}) : super(key: key);
+  const GlobalLoader({super.key, this.text});
+  final String? text;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: CircularProgressIndicator());
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const CircularProgressIndicator.adaptive(),
+        SizedBox(width: 10.w),
+        GlobalText(str: text ?? ''),
+      ],
+    );
   }
 }
+
+''');
+
+    await _createFile('$corePath/presentation/widgets', 'app_starter_error', '''
+ import 'package:flutter/material.dart';
+
+import 'global_text.dart';
+
+class AppStarterError extends StatelessWidget {
+  const AppStarterError({super.key, required this.error});
+
+  final String error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.error_outline, size: 64, color: Colors.red),
+              SizedBox(height: 16),
+              GlobalText(
+                str: 'Failed to initialize app',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 8),
+              GlobalText(
+                str: error,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+ 
+ ''');
+
+    await _createFile('$corePath/presentation/widgets', 'global_dropdown', '''
+ 
+ import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '/core/presentation/widgets/global_text.dart';
+import '../../theme/app_colors.dart';
+
+class GlobalDropdown<T> extends StatelessWidget {
+  const GlobalDropdown({
+    super.key,
+    required this.validator,
+    required this.hintText,
+    required this.onChanged,
+    required this.items,
+    this.borderRadius = 10,
+    this.value,
+  });
+
+  final String? Function(T?)? validator;
+  final String? hintText;
+  final void Function(T?)? onChanged;
+  final List<DropdownMenuItem<T>>? items;
+  final double? borderRadius;
+  final T? value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final textColor = isDark ? AppColors.white.color : AppColors.black.color;
+    final hintColor = isDark ? AppColors.lightGrey.color : AppColors.grey.color;
+
+    return Theme(
+      data: ThemeData(
+        buttonTheme: ButtonTheme.of(context).copyWith(alignedDropdown: true),
+      ),
+      child: DropdownButtonFormField<T>(
+        validator: validator,
+        padding: EdgeInsets.zero,
+        alignment: AlignmentDirectional.centerStart,
+        icon: Icon(Icons.arrow_drop_down, color: AppColors.black.color),
+        iconSize: 24.sp,
+        value: value,
+        decoration: InputDecoration(
+          contentPadding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 0.h),
+          filled: true,
+          fillColor: isDark ? AppColors.lightGrey.color : AppColors.white.color,
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(borderRadius!.r),
+            borderSide: BorderSide(color: AppColors.primary.color, width: 1.w),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: AppColors.error.color, width: 1.w),
+            borderRadius: BorderRadius.circular(borderRadius!.r),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderSide: BorderSide(color: AppColors.error.color, width: 1.w),
+            borderRadius: BorderRadius.circular(borderRadius!.r),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(borderRadius!.r),
+            borderSide: BorderSide(color: AppColors.grey.color, width: 1.w),
+          ),
+        ),
+        isExpanded: true,
+        // Improved hint with explicit color
+        hint: GlobalText(
+          str: hintText ?? '',
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          color: hintColor,
+        ),
+        onChanged: onChanged,
+        items:
+            items?.map((item) {
+              // Ensure each dropdown item has the correct text color
+              if (item.child is Text) {
+                final text = item.child as Text;
+                return DropdownMenuItem<T>(
+                  value: item.value,
+                  child: Text(
+                    text.data ?? '',
+                    style: TextStyle(color: textColor, fontSize: 14.sp),
+                  ),
+                );
+              } else if (item.child is GlobalText) {
+                final globalText = item.child as GlobalText;
+                return DropdownMenuItem<T>(
+                  value: item.value,
+                  child: GlobalText(
+                    str: globalText.str,
+                    fontSize: 14.sp,
+                    color: textColor,
+                  ),
+                );
+              }
+              return item;
+            }).toList() ??
+            [],
+        dropdownColor:
+            isDark ? AppColors.greylish.color : AppColors.white.color,
+        style: GoogleFonts.inter(
+          color: textColor,
+          fontSize: 14.sp,
+          fontWeight: FontWeight.w500,
+        ),
+
+        itemHeight: 48.h,
+        menuMaxHeight: 300.h,
+        isDense: false,
+      ),
+    );
+  }
+}
+''');
+
+    await _createFile(
+        '$corePath/presentation/widgets', 'global_image_loader', '''
+ 
+ import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '/core/presentation/widgets/global_loader.dart';
+
+enum ImageFor { asset, network }
+
+/// A unified image loader that can handle both regular images and SVGs
+/// based on the file extension. Default to asset loading.
+class GlobalImageLoader extends StatelessWidget {
+  const GlobalImageLoader({
+    super.key,
+    required this.imagePath,
+    this.height,
+    this.width,
+    this.fit,
+    this.color,
+    this.imageFor = ImageFor.asset,
+  });
+
+  final String imagePath;
+  final double? height;
+  final double? width;
+  final BoxFit? fit;
+  final ImageFor? imageFor;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    // Check if the image is an SVG based on file extension
+    final bool isSvg = imagePath.toLowerCase().endsWith('.svg');
+
+    // Handle network images
+    if (imageFor == ImageFor.network) {
+      if (isSvg) {
+        return SvgPicture.network(
+          imagePath,
+          height: height,
+          width: width,
+          fit: fit ?? BoxFit.scaleDown,
+          colorFilter: ColorFilter.mode(color!, BlendMode.srcIn),
+          placeholderBuilder: (BuildContext context) => GlobalLoader(text: ''),
+        );
+      } else {
+        return Image.network(
+          imagePath,
+          height: height,
+          width: width,
+          fit: fit ?? BoxFit.cover,
+          errorBuilder: (context, exception, stackTrace) => const Text('😢'),
+        );
+      }
+    }
+    // Handle asset images (default)
+    else {
+      if (isSvg) {
+        return SvgPicture.asset(
+          imagePath,
+          height: height,
+          width: width,
+          fit: fit ?? BoxFit.cover,
+          colorFilter: ColorFilter.mode(color!, BlendMode.srcIn),
+        );
+      } else {
+        return Image.asset(
+          imagePath,
+          height: height,
+          width: width,
+          fit: fit ?? BoxFit.cover,
+          errorBuilder: (context, exception, stackTrace) => const Text('😢'),
+        );
+      }
+    }
+  }
+} 
+ ''');
+
+    await _createFile(
+        '$corePath/presentation/widgets', 'global_network_dialog', '''
+ 
+ import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+import '../../theme/app_colors.dart';
+import '/core/presentation/widgets/global_button.dart';
+import '/core/presentation/widgets/global_text.dart';
+
+class GlobalNetworkDialog extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const GlobalNetworkDialog({super.key, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        width: 300,
+        padding: EdgeInsets.all(16.w),
+        decoration: BoxDecoration(
+          color: AppColors.white.color,
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 5),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wifi_off, color: AppColors.error.color),
+            const SizedBox(height: 16),
+            const GlobalText(
+              str: 'No Internet Connection',
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+            const SizedBox(height: 8),
+            const GlobalText(
+              str: 'Please check your internet connection and try again.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            GlobalButton(
+              btnHeight: 52.h,
+              onPressed: onRetry,
+              buttonText: 'Try Again',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+ ''');
+
+    await _createFile(
+        '$corePath/presentation/widgets', 'global_network_listener', '''
+ 
+ 
+ import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '/core/di/service_locator.dart';
+import '/core/network/network_info.dart';
+import 'global_network_dialog.dart';
+import '../../routes/navigation.dart';
+import '../../utils/extension.dart';
+import '../view_util.dart';
+
+/// Provider for NetworkInfo
+/// Retrieves the singleton instance from service locator (get_it)
+/// This ensures we use the same instance throughout the app
+final networkInfoProvider = Provider<NetworkInfo>((ref) => sl<NetworkInfo>());
+
+class GlobalNetworkListener extends ConsumerStatefulWidget {
+  final Widget child;
+
+  const GlobalNetworkListener({super.key, required this.child});
+
+  @override
+  ConsumerState<GlobalNetworkListener> createState() =>
+      _GlobalNetworkListenerState();
+}
+
+class _GlobalNetworkListenerState extends ConsumerState<GlobalNetworkListener> {
+  bool _wasConnected = true;
+  bool _isShowingDialog = false;
+  // Track all active dialog contexts to ensure proper dismissal
+  final List<BuildContext> _activeDialogContexts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkInitialConnectivity();
+  }
+
+  @override
+  void dispose() {
+    // Ensure all dialogs are dismissed when widget is disposed
+    _dismissAllNetworkDialogs();
+    super.dispose();
+  }
+
+  Future<void> _checkInitialConnectivity() async {
+    final networkInfo = ref.read(networkInfoProvider);
+    _wasConnected = await networkInfo.internetAvailable();
+
+    // Show dialog immediately if no internet on app start
+    if (!_wasConnected) {
+      _showNetworkErrorDialog();
+    }
+
+    // Listen for connectivity changes
+    networkInfo.onConnectivityChanged.listen(_handleConnectivityChange);
+  }
+
+  void _handleConnectivityChange(List<ConnectivityResult> connectivityResult) {
+    final isConnected =
+        connectivityResult.isNotEmpty &&
+        connectivityResult.any((element) => element != ConnectivityResult.none);
+
+    'isNetworkAvailable :: \$isConnected'.log();
+
+    // If network was connected but now disconnected
+    if (_wasConnected && !isConnected) {
+      _showNetworkErrorDialog();
+    }
+    // If network was disconnected but now connected
+    else if (!_wasConnected && isConnected) {
+      _dismissAllNetworkDialogs();
+      _retryQueuedRequests();
+    }
+
+    _wasConnected = isConnected;
+  }
+
+  void _showNetworkErrorDialog() {
+    if (_isShowingDialog || !mounted) return;
+
+    _isShowingDialog = true;
+
+    // Show dialog on next frame to avoid build conflicts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Create a dialog context
+      final BuildContext dialogContext = Navigation.key.currentContext!;
+
+      ViewUtil.alertDialog(
+        barrierDismissible: false,
+        content: PopScope(
+          canPop: false,
+          onPopInvokedWithResult:
+              (didpop, result) {}, // Prevent back button from closing dialog
+          child: GlobalNetworkDialog(
+            onRetry: () async {
+              final networkInfo = ref.read(networkInfoProvider);
+              final isConnected = await networkInfo.internetAvailable();
+
+              if (isConnected) {
+                _dismissAllNetworkDialogs();
+                _retryQueuedRequests();
+              }
+            },
+          ),
+        ),
+      ).then((_) {
+        // Remove this dialog context when it's closed
+        _activeDialogContexts.remove(dialogContext);
+        if (_activeDialogContexts.isEmpty) {
+          _isShowingDialog = false;
+        }
+      });
+
+      // Add this dialog context to our tracking list
+      _activeDialogContexts.add(dialogContext);
+    });
+  }
+
+  void _dismissAllNetworkDialogs() {
+    if (!_isShowingDialog || !mounted) return;
+
+    // Pop all dialogs by repeatedly calling Navigator.pop until no more dialogs
+    final navigatorState = Navigation.key.currentState;
+    if (navigatorState != null) {
+      while (_isShowingDialog && navigatorState.canPop()) {
+        navigatorState.pop();
+      }
+    }
+
+    // Clear the tracking list
+    _activeDialogContexts.clear();
+    _isShowingDialog = false;
+  }
+
+  void _retryQueuedRequests() {
+    final networkInfo = ref.read(networkInfoProvider);
+
+    if (networkInfo is NetworkInfoImpl) {
+      if (networkInfo.apiStack.isNotEmpty) {
+        for (final request in networkInfo.apiStack) {
+          request.execute();
+        }
+        networkInfo.apiStack.clear();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return widget.child;
+  }
+}
+ ''');
+
+    await _createFile(
+        '$corePath/presentation/widgets', 'global_text_form_field', '''
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+import '../../theme/app_colors.dart';
+import '/core/presentation/widgets/global_text.dart';
+
+class GlobalTextFormField extends StatelessWidget {
+  final bool? obscureText;
+  final TextInputType? textInputType;
+  final TextInputType? keyboardType; // Added for compatibility
+  final TextEditingController? controller;
+  final String? Function(String?)? validator;
+  final Widget? suffixIcon;
+  final Widget? prefixIcon;
+  final int? maxlength;
+  final AutovalidateMode? autovalidateMode;
+  final bool? readOnly;
+  final Color? fillColor;
+  final String? hintText;
+  final String? labelText;
+  final String? errorText; // Added for real-time validation
+  final TextStyle? hintStyle;
+  final TextStyle? labelStyle;
+  final bool? mandatoryLabel;
+  final TextStyle? style;
+  final int? line;
+  final String? initialValue;
+  final TextInputAction? textInputAction;
+  final Function(String)? onChanged;
+  final double borderRadius;
+
+  const GlobalTextFormField({
+    super.key,
+    this.obscureText,
+    this.textInputType,
+    this.keyboardType, // Added
+    this.controller,
+    this.validator,
+    this.fillColor,
+    this.suffixIcon,
+    this.prefixIcon,
+    this.maxlength,
+    this.initialValue,
+    this.autovalidateMode,
+    this.readOnly,
+    this.hintText,
+    this.labelText,
+    this.errorText, // Added
+    this.hintStyle,
+    this.mandatoryLabel,
+    this.labelStyle,
+    this.line = 1,
+    this.style,
+    this.onChanged,
+    this.textInputAction = TextInputAction.done,
+    this.borderRadius = 10,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Get theme colors
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Define colors based on theme
+    final textColor = isDark ? AppColors.white.color : AppColors.black.color;
+    final cursorColor =
+        isDark ? AppColors.primary.color : AppColors.black.color;
+    final fieldFillColor =
+        isDark
+            ? AppColors.greylish.color.withValues(alpha: 0.5)
+            : fillColor ?? const Color.fromARGB(255, 250, 246, 246);
+    final borderColor =
+        isDark
+            ? AppColors.grey.color
+            : AppColors.grey.color.withValues(alpha: 0.2);
+    final errorColor = AppColors.error.color;
+    final primaryColor = AppColors.primary.color;
+
+    return TextFormField(
+      initialValue: initialValue,
+      maxLines: line,
+      style:
+          style ??
+          TextStyle(
+            color: textColor,
+            fontSize: 14.sp,
+            fontWeight: FontWeight.w400,
+          ),
+      autovalidateMode: autovalidateMode,
+      obscureText: obscureText ?? false,
+      obscuringCharacter: '*',
+      controller: controller,
+      textInputAction: textInputAction,
+      cursorColor: cursorColor,
+
+      keyboardType: keyboardType ?? textInputType ?? TextInputType.text,
+      onChanged: onChanged,
+      maxLength: maxlength,
+      onEditingComplete: () => FocusScope.of(context).nextFocus(),
+      decoration: InputDecoration(
+        contentPadding: EdgeInsets.symmetric(vertical: 16.h, horizontal: 14.w),
+        prefixIcon: prefixIcon,
+        hintText: hintText,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        errorText: errorText, // Show error from provider
+        label:
+            mandatoryLabel == true
+                ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    GlobalText(
+                      str: labelText ?? '',
+                      color: isDark ? AppColors.lightGrey.color : null,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    GlobalText(str: '*', color: errorColor, fontSize: 14),
+                  ],
+                )
+                : GlobalText(
+                  str: labelText ?? '',
+                  color: isDark ? AppColors.lightGrey.color : null,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w400,
+                ),
+        labelStyle:
+            labelStyle ??
+            TextStyle(
+              color: isDark ? AppColors.lightGrey.color : AppColors.grey.color,
+              fontSize: 14.sp,
+            ),
+        filled: true,
+        counterText: '',
+
+        fillColor: fieldFillColor,
+        suffixIcon: suffixIcon,
+        hintStyle:
+            hintStyle ??
+            TextStyle(
+              color: isDark ? AppColors.lightGrey.color : AppColors.grey.color,
+              fontSize: 14.sp,
+            ),
+        border: OutlineInputBorder(
+          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.all(Radius.circular(borderRadius.r)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(borderRadius.r),
+          borderSide: BorderSide(color: primaryColor, width: 1.w),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: errorColor, width: 1.w),
+          borderRadius: BorderRadius.all(Radius.circular(borderRadius.r)),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderSide: BorderSide(color: errorColor, width: 1.w),
+          borderRadius: BorderRadius.all(Radius.circular(borderRadius.r)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(borderRadius.r),
+          borderSide: BorderSide(color: borderColor, width: 1.w),
+        ),
+      ),
+      validator: validator,
+      readOnly: readOnly ?? false,
+    );
+  }
+}
+ ''');
+
+    await _createFile('$corePath/presentation', 'mixins', '''
+import '/core/error/exceptions.dart';
+import '/core/error/failures.dart';
+import '/core/presentation/view_util.dart';
+import '/core/presentation/widgets/global_text.dart';
+
+/// A mixin that provides error handling methods for presentation layer
+mixin ErrorHandlerMixin {
+  /// Show appropriate error UI based on failure type
+  void handleError(dynamic error) {
+    if (error is AuthenticationFailure || error is UnauthorizedException) {
+      _showUnauthorizedDialog(error.toString());
+    } else if (error is ServerFailure || error is ServerException) {
+      _showServerErrorSnackBar(error.toString());
+    } else if (error is NetworkFailure || error is NetworkException) {
+      _showNetworkErrorSnackBar(error.toString());
+    } else {
+      ViewUtil.snackbar(error.toString());
+    }
+  }
+
+  /// Show dialog for authentication errors
+  void _showUnauthorizedDialog(String message) {
+    ViewUtil.alertDialog(
+      title: GlobalText(str: 'Authentication Error'),
+      content: GlobalText(str: message),
+    );
+  }
+
+  /// Show snackbar for server errors
+  void _showServerErrorSnackBar(String message) {
+    ViewUtil.snackbar('Server Error');
+  }
+
+  /// Show snackbar for network errors
+  void _showNetworkErrorSnackBar(String message) {
+    ViewUtil.snackbar('Network Error');
+  }
+}
+''');
+
+    await _createFile('$corePath/presentation', 'view_util', '''
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../routes/navigation.dart';
+import '../theme/app_colors.dart';
+import 'widgets/global_text.dart';
+
+class ViewUtil {
+  static snackbar(String msg, {String? btnName, void Function()? onPressed}) {
+    return ScaffoldMessenger.of(Navigation.key.currentContext!).showSnackBar(
+      SnackBar(
+        content: GlobalText(
+          str: msg,
+          fontWeight: FontWeight.w500,
+          color: AppColors.white.color,
+        ),
+        action: SnackBarAction(
+          label: btnName ?? '',
+          textColor:
+              btnName == null ? Colors.transparent : AppColors.white.color,
+          onPressed: onPressed ?? () {},
+        ),
+      ),
+    );
+  }
+
+  // global alert dialog
+  static Future alertDialog({
+    Widget? title,
+    required Widget content,
+    List<Widget>? actions,
+    Color? alertBackgroundColor,
+    bool? barrierDismissible,
+    BorderRadius? borderRadius,
+    EdgeInsetsGeometry? contentPadding,
+  }) async {
+    // flutter defined function.
+    await showDialog(
+      context: Navigation.key.currentContext!,
+      barrierDismissible: barrierDismissible ?? true,
+      builder: (BuildContext context) {
+        // return object of type Dialog.
+        return AlertDialog(
+          backgroundColor: alertBackgroundColor ?? Colors.transparent,
+          contentPadding:
+              contentPadding ?? EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 24.0),
+          shape: RoundedRectangleBorder(
+            borderRadius:
+                borderRadius ?? BorderRadius.all(Radius.circular(8.w)),
+          ),
+          title: title,
+          content: content,
+        );
+      },
+    );
+  }
+
+  static bottomSheet({
+    required BuildContext context,
+    bool? isDismissable,
+    required Widget content,
+    BoxConstraints? boxConstraints,
+  }) {
+    return showModalBottomSheet(
+      backgroundColor: Colors.transparent,
+      constraints: boxConstraints,
+      isScrollControlled: true,
+      context: context,
+      isDismissible: isDismissable ?? true,
+      builder:
+          (context) => Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16.r),
+                topRight: Radius.circular(16.r),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0x1a000000),
+                  offset: const Offset(0, 1),
+                  blurRadius: 3.r,
+                  spreadRadius: 0,
+                ),
+              ],
+              color: const Color(0xffffffff),
+            ),
+            child: content,
+          ),
+    );
+  }
+}
+
 ''');
 
     // Routes
@@ -1875,55 +2733,75 @@ class ThemeHelper {
     // Domain - Entities
     await _createFile('$productsPath/domain/entities', 'product',
         '''import 'package:equatable/equatable.dart';
-
 class Product extends Equatable {
   final int id;
-  final String title;
-  final String description;
-  final double price;
-  final String thumbnail;
-
   const Product({
     required this.id,
-    required this.title,
-    required this.description,
-    required this.price,
-    required this.thumbnail,
   });
 
   @override
-  List<Object?> get props => [id, title, description, price, thumbnail];
+  List<Object?> get props => [id];
 }
 ''');
 
     // Domain - Repositories
     await _createFile('$productsPath/domain/repositories', 'product_repository',
-        '''import 'package:dartz/dartz.dart';
-import '/core/error/failures.dart';
-import '../entities/product.dart';
+        '''
+import 'package:dartz/dartz.dart';
 
+import '/core/error/failures.dart';
+import '/features/products/domain/entities/product.dart';
+import '/features/products/domain/usecases/get_products.dart';
+
+/// Repository interface for product functionality
 abstract class ProductRepository {
-  Future<Either<Failure, List<Product>>> getProducts();
+  /// Get paginated list of products
+  Future<Either<Failure, Product>> getProducts(
+    GetProductsParams params,
+  );
 }
 ''');
 
-    // Domain - Usecases
-    await _createFile('$productsPath/domain/usecases', 'get_products',
-        '''import 'package:dartz/dartz.dart';
+// Domain - Usecases
+await _createFile('$productsPath/domain/usecases', 'get_products',
+        '''
+import 'package:dartz/dartz.dart';
+import 'package:equatable/equatable.dart';
 import '/core/error/failures.dart';
 import '/core/usecases/usecase.dart';
-import '../entities/product.dart';
-import '../repositories/product_repository.dart';
+import '/features/products/domain/entities/product.dart';
+import '/features/products/domain/repositories/product_repository.dart';
 
-class GetProducts implements UseCase<List<Product>, NoParams> {
+/// Use case for getting paginated products
+class GetProducts implements UseCase<Product, GetProductsParams> {
   final ProductRepository _repository;
 
   GetProducts(this._repository);
 
   @override
-  Future<Either<Failure, List<Product>>> call(NoParams params) async {
-    return await _repository.getProducts();
+  Future<Either<Failure, Product>> call(
+    GetProductsParams params,
+  ) async {
+    return await _repository.getProducts(params);
   }
+}
+
+/// Parameters for GetProducts use case
+class GetProductsParams extends Equatable {
+  final int limit;
+  final int skip;
+  final String? searchQuery;
+  final String? category;
+
+  const GetProductsParams({
+    this.limit = 30, 
+    this.skip = 0, 
+    this.searchQuery,
+    this.category,
+  });
+
+  @override
+  List<Object?> get props => [limit, skip, searchQuery, category];
 }
 ''');
 
@@ -1934,29 +2812,17 @@ class GetProducts implements UseCase<List<Product>, NoParams> {
 class ProductModel extends Product {
   const ProductModel({
     required super.id,
-    required super.title,
-    required super.description,
-    required super.price,
-    required super.thumbnail,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     return ProductModel(
       id: json['id'] ?? 0,
-      title: json['title'] ?? '',
-      description: json['description'] ?? '',
-      price: (json['price'] ?? 0).toDouble(),
-      thumbnail: json['thumbnail'] ?? '',
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'title': title,
-      'description': description,
-      'price': price,
-      'thumbnail': thumbnail,
     };
   }
 }
@@ -2088,79 +2954,48 @@ class ProductRepositoryImpl implements ProductRepository {
 
     // Presentation - Providers
     await _createFile(
-        '$productsPath/presentation/providers',
-        'product_providers',
-        '''import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '/core/di/service_locator.dart';
-import '/core/usecases/usecase.dart';
-import '../../domain/entities/product.dart';
-import '../../domain/usecases/get_products.dart';
+        '$productsPath/presentation/providers', 'product_notifier', '''
+import 'package:flutter/material.dart';
 
-final getProductsProvider = Provider<GetProducts>((ref) => sl<GetProducts>());
-
-final productsProvider = FutureProvider<List<Product>>((ref) async {
-  final getProducts = ref.watch(getProductsProvider);
-  final result = await getProducts(NoParams());
-  return result.fold(
-    (failure) => throw Exception(failure.message),
-    (products) => products,
-  );
-});
+class ProductNotifier {}
 ''');
-
+ await _createFile(
+        '$productsPath/presentation/providers/state', 'product_state', ''' 
+import 'package:flutter/material.dart';
+@immutable
+class ProductState {}
+''');
     // Presentation - Pages
-    await _createFile('$productsPath/presentation/pages', 'products_page',
+    await _createFile('$productsPath/presentation/pages', 'product_page',
         '''import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '/core/presentation/widgets/global_appbar.dart';
-import '/core/presentation/widgets/global_loader.dart';
-import '../providers/product_providers.dart';
-import '../widgets/product_card.dart';
+import '/core/presentation/widgets/global_text.dart';
 
-class ProductsPage extends ConsumerWidget {
-  const ProductsPage({Key? key}) : super(key: key);
+class ProductPage extends StatelessWidget {
+  const ProductPage({Key? key}) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final productsAsync = ref.watch(productsProvider);
+  Widget build(BuildContext context) {
 
     return Scaffold(
       appBar: const GlobalAppBar(title: 'Products'),
-      body: productsAsync.when(
-        data: (products) => ListView.builder(
-          itemCount: products.length,
-          itemBuilder: (context, index) => ProductCard(product: products[index]),
-        ),
-        loading: () => const GlobalLoader(),
-        error: (error, stack) => Center(child: Text('Error: \$error')),
-      ),
+      body: const Center(child: GlobalText(str: 'Products Page')),
     );
   }
 }
 ''');
 
     // Presentation - Widgets
-    await _createFile('$productsPath/presentation/widgets', 'product_card',
+    await _createFile('$productsPath/presentation/widgets', 'widget',
         '''import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '/core/presentation/widgets/global_text.dart';
-import '../../domain/entities/product.dart';
 
-class ProductCard extends StatelessWidget {
-  final Product product;
-
-  const ProductCard({Key? key, required this.product}) : super(key: key);
+class Widget extends StatelessWidget {
+  const Widget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: EdgeInsets.all(8.w),
-      child: ListTile(
-        leading: Image.network(product.thumbnail, width: 50.w, height: 50.h, fit: BoxFit.cover),
-        title: GlobalText(str: product.title, fontWeight: FontWeight.bold),
-        subtitle: GlobalText(str: '\\\$\${product.price}'),
-      ),
-    );
+    return const Center(child: GlobalText(str: 'Widget'));
   }
 }
 ''');
@@ -2170,54 +3005,110 @@ class ProductCard extends StatelessWidget {
     final libPath = directoryCreator.coreDir.parent.path;
     await _createFile(
         libPath, 'main', '''import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'core/constants/api_urls.dart';
-import 'core/di/service_locator.dart';
-import 'core/routes/app_routes.dart';
-import 'core/routes/navigation.dart';
-import 'core/theme/theme_helper.dart';
-import 'core/utils/enum.dart';
-import 'core/utils/preferences_helper.dart';
-import 'features/products/presentation/pages/products_page.dart';
+
+import '/core/constants/api_urls.dart';
+import '/core/di/service_locator.dart';
+import '/core/presentation/widgets/global_network_listener.dart';
+import '/core/routes/navigation.dart';
+import '/core/utils/app_version.dart';
+import '/core/utils/preferences_helper.dart';
+import '/features/auth/data/datasources/auth_local_datasource.dart';
+import 'core/presentation/widgets/app_starter_error.dart';
+import 'core/theme/theme_manager.dart';
+import '/features/products/presentation/pages/product_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize dependencies
-  await PrefHelper.init();
-  await initDependencies();
-  
-  // Set API URL
-  ApiUrlExtention.setUrl(UrlLink.isDev);
-  
-  runApp(const ProviderScope(child: MyApp()));
+
+  try {
+    // Initialize core services (preferences, API URLs, etc.)
+    await initServices();
+
+    // Initialize dependency injection (get_it service locator)
+    // This must be called before runApp() to ensure all dependencies are ready
+    await initDependencies();
+
+    // Set Portrait Mode only
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
+    runApp(const MyApp());
+  } catch (e, stackTrace) {
+    // Log initialization error
+    debugPrint('❌ App initialization failed: \$e');
+    debugPrint('Stack trace: \$stackTrace');
+
+    // Show error screen
+    runApp(
+     MaterialApp(home: AppStarterError(error: e.toString())
+    );
+  }
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+/// Initialize core services
+Future<void> initServices() async {
+  const mode = String.fromEnvironment('mode', defaultValue: 'DEV');
+  ApiUrlExtention.setUrl(mode == 'DEV' ? UrlLink.isDev : UrlLink.isLive);
+  await PrefHelper.init();
+  await AppVersion.getVersion();
+}
+
+class MyApp extends ConsumerWidget {
+  const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return ScreenUtilInit(
-      designSize: const Size(375, 812),
+      designSize: const Size(360, 800),
       minTextAdapt: true,
-      splitScreenMode: true,
-      builder: (context, child) {
+      builder: (ctx, child) {
         return MaterialApp(
-          title: '$projectName',
-          theme: ThemeHelper.lightTheme(),
+          title: '$projectName.toCapitalize()',
           navigatorKey: Navigation.key,
-          initialRoute: AppRoutes.home,
-          routes: {
-            AppRoutes.home: (context) => const ProductsPage(),
-            AppRoutes.products: (context) => const ProductsPage(),
+          debugShowCheckedModeBanner: false,
+
+          // Localization
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          locale: _getLocale(),
+
+          // Theme
+          theme: ThemeManager().themeData,
+
+          // Network listener wrapper
+          builder: (context, child) {
+            return GlobalNetworkListener(child: child ?? const SizedBox());
           },
+
+          // Initial route based on auth status
+          home: _getInitialPage(),
         );
       },
     );
   }
+
+  /// Get locale based on user preference
+  Locale _getLocale() {
+    final languageCode = PrefHelper.instance.getLanguage();
+    return languageCode == 1
+        ? const Locale('en', 'US')
+        : const Locale('bn', 'BD');
+  }
+
+  /// Determine initial page based on authentication status
+  Widget _getInitialPage() {
+    // final isLoggedIn = sl<AuthLocalDataSource>().isLoggedIn();
+    // if (isLoggedIn) {
+    //   return const ProductsPage();
+    // }
+    return const ProductsPage();
+  }
 }
+
 ''');
   }
 
