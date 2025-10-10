@@ -1,0 +1,2234 @@
+import 'dart:io';
+import 'package:ssl_cli/utils/enum.dart';
+import 'package:ssl_cli/utils/extension.dart';
+
+import '../clean_i_creators.dart';
+
+class CleanImplFileCreator implements IFileCreator {
+  final IDirectoryCreator directoryCreator;
+  final String projectName;
+
+  CleanImplFileCreator(
+    this.directoryCreator,
+    this.projectName,
+  );
+
+  @override
+  Future<void> createNecessaryFiles() async {
+    'Creating Clean Architecture files...'
+        .printWithColor(status: PrintType.success);
+
+    final corePath = directoryCreator.coreDir.path;
+    final featuresPath = directoryCreator.featuresDir.path;
+
+    // Core files
+    await _createCoreFiles(corePath);
+
+    // Feature files
+    await _createFeatureFiles(featuresPath);
+
+    // Main file
+    await _createMainFile();
+
+    'All Clean Architecture files created successfully!'
+        .printWithColor(status: PrintType.success);
+  }
+
+  Future<void> _createCoreFiles(String corePath) async {
+    // Constants
+    await _createFile('$corePath/constants', 'api_urls',
+        '''enum UrlLink { isLive, isDev, isLocalServer }
+
+enum ApiUrl { base, baseImage }
+
+extension ApiUrlExtention on ApiUrl {
+  static String _baseUrl = '';
+  static String _baseImageUrl = '';
+
+  static void setUrl(UrlLink urlLink) {
+    switch (urlLink) {
+      case UrlLink.isLive:
+        _baseUrl = '';
+        _baseImageUrl = '';
+        break;
+      case UrlLink.isDev:
+        _baseUrl = '';
+        _baseImageUrl = '';
+        break;
+      case UrlLink.isLocalServer:
+        _baseUrl = '';
+        break;
+    }
+  }
+
+  String get url {
+    switch (this) {
+      case ApiUrl.base:
+        return _baseUrl;
+      case ApiUrl.baseImage:
+        return _baseImageUrl;
+
+    }
+  }
+}
+''');
+
+    await _createFile(
+        '$corePath/constants', 'app_constants', '''enum AppConstants {
+  bearer('Bearer'),
+bearer('Bearer'),
+  applicationJson('application/json'),
+  multipartFormData('multipart/form-data'),
+  contentType('application/json'),
+  accept('application/json'),
+  android('android'),
+  ios('ios'),
+  en('en'),
+  bn('bn'),
+  userId('userId'),
+  token('token'),
+  language('language'),
+  yyyyMmDd('dd-MM-yyyy'),
+  ddMmYyyy('dd/MM/yyyy'),
+  ddMmYyyySlash('dd/MM/yyyy'),
+  dMmmYHm('d MMMM y hh:mm a'),
+  dMmmY('d MMM y'),
+  dMmY('d MMM y'),
+  yyyyMm('yyyy-MM'),
+  mmm('mmm'),
+  mmmm('mmmm'),
+  mmmmY('mmmmY'),
+  isSwitched('isSwitched'),
+  deviceId('deviceId'),
+  deviceOs('deviceOs'),
+  userAgent('userAgent'),
+  appVersion('appVersion'),
+  buildNumber('buildNumber'),
+  ipnUrl('ipnUrl'),
+  storeId('storeId'),
+  storePassword('storePassword'),
+  mobile('mobile'),
+  email('email'),
+  pushId('pushId'),
+  refreshToken('refreshToken'),
+  accessToken('accessToken'),
+  fontFamily('fontFamily'),
+  loginResponse('loginResponse'),
+  cashCartItems('cashCartItems'),
+  isDarkMode('isDarkMode'),
+  username('username');
+
+  final String key;
+  const AppConstants(this.key);
+}
+''');
+
+    // Error
+    await _createFile('$corePath/error', 'failures',
+        '''import 'package:equatable/equatable.dart';
+abstract class Failure extends Equatable {
+  final String message;
+  final int? statusCode;
+
+  const Failure({required this.message, this.statusCode});
+
+  @override
+  List<Object?> get props => [message, statusCode];
+}
+
+/// Server failures for API errors
+class ServerFailure extends Failure {
+  const ServerFailure({required super.message, super.statusCode});
+}
+
+/// Cache failures for local storage errors
+class CacheFailure extends Failure {
+  const CacheFailure({required super.message, super.statusCode});
+}
+
+/// Network failures for connectivity issues
+class NetworkFailure extends Failure {
+  const NetworkFailure({required super.message, super.statusCode});
+}
+
+/// Authentication failures for auth-related errors
+class AuthenticationFailure extends Failure {
+  const AuthenticationFailure({required super.message, super.statusCode});
+}
+
+/// Validation failures for input validation errors
+class ValidationFailure extends Failure {
+  const ValidationFailure({required super.message, super.statusCode});
+}
+
+''');
+
+    await _createFile('$corePath/error', 'exceptions',
+        '''/// Base exception class for the application
+class AppException implements Exception {
+  final String message;
+  final int? statusCode;
+
+  AppException({required this.message, this.statusCode});
+
+  @override
+  String toString() =>
+      statusCode != null ? message : '\$message (Status Code: \$statusCode)';
+}
+
+/// Server exception for API errors
+class ServerException extends AppException {
+  ServerException({required super.message, super.statusCode});
+}
+
+/// Cache exception for local storage errors
+class CacheException extends AppException {
+  CacheException({required super.message, super.statusCode});
+}
+
+/// Network exception for connectivity issues
+class NetworkException extends AppException {
+  NetworkException({required super.message, super.statusCode});
+}
+
+/// Authentication exception for auth-related errors
+class AuthenticationException extends AppException {
+  AuthenticationException({required super.message, super.statusCode});
+}
+
+/// Validation exception for input validation errors
+class ValidationException extends AppException {
+  ValidationException({required super.message, super.statusCode});
+}
+
+/// Bad request exception for 400 errors
+class BadRequestException extends AppException {
+  BadRequestException({required super.message, super.statusCode = 400});
+}
+
+/// Unauthorized exception for 401/403 errors
+class UnauthorizedException extends AppException {
+  UnauthorizedException({required super.message, super.statusCode = 401});
+}
+
+/// Not found exception for 404 errors
+class NotFoundException extends AppException {
+  NotFoundException({required super.message, super.statusCode = 404});
+}
+
+/// Timeout exception for connection timeouts
+class TimeoutException extends AppException {
+  TimeoutException({required super.message, super.statusCode});
+}
+
+/// Request cancelled exception
+class RequestCancelledException extends AppException {
+  RequestCancelledException({required super.message, super.statusCode});
+}
+
+''');
+
+    await _createFile(
+        '$corePath/models', 'global_paginator', '''class GlobalPaginator {
+  GlobalPaginator({
+    this.currentPage,
+    this.totalPages,
+    this.recordPerPage,
+  });
+
+  int? currentPage;
+  int? totalPages;
+  int? recordPerPage;
+
+  factory GlobalPaginator.fromJson(Map<String, dynamic> json) =>
+      GlobalPaginator(
+        currentPage: json["current_page"],
+        totalPages: json["total_pages"],
+        recordPerPage:
+            json["record_per_page"],
+      );
+
+  Map<String, dynamic> toJson() => {
+        "current_page": currentPage,
+        "total_pages": totalPages,
+        "record_per_page": recordPerPage,
+      };
+    }''');
+
+    await _createFile('$corePath/models', 'global_response', '''
+class GlobalResponse {
+  GlobalResponse({this.message, this.errors, this.code});
+
+  String? message;
+  List<String>? errors;
+  int? code;
+
+  factory GlobalResponse.fromJson(Map<String, dynamic> json) => GlobalResponse(
+    message: json['message'],
+    errors:
+        json['errors'] == null
+            ? null
+            : List<String>.from(json['errors'].map((x) => x)),
+    code: json['code'],
+  );
+
+  Map<String, dynamic> toJson() => {
+    'message': message,
+    'errors': errors == null ? null : List<dynamic>.from(errors!.map((x) => x)),
+    'code': code,
+  };
+}
+''');
+
+    await _createFile('$corePath/routes', 'app_routes', '''
+import 'package:flutter/material.dart';
+import '../../features/products/presentation/pages/product_page.dart';
+import '../../features/products/presentation/pages/product_details_page.dart';
+
+enum AppRoutes { product, productDetails }
+
+extension AppRoutesExtention on AppRoutes {
+  Widget buildWidget<T extends Object>({T? arguments}) {
+    switch (this) {
+      case AppRoutes.product:
+        return const ProductPage();
+      case AppRoutes.productDetails:
+        if (arguments is int) {
+          return ProductDetailsPage(productId: arguments);
+        }
+        break;
+    }
+    return const SizedBox();
+  }
+}
+''');
+
+ await _createFile('$corePath/routes', 'navigation', ''' 
+import 'package:flutter/material.dart';
+import 'app_routes.dart';
+
+class Navigation {
+  static GlobalKey<NavigatorState> key = GlobalKey<NavigatorState>();
+
+  /// Holds the information about parent context
+  /// For example when navigation from Screen A to Screen B
+  /// we can access context of Screen A from Screen B to check if it
+  /// came from Screen A. So we can trigger different logic depending on
+  /// which screen we navigated from.
+
+  //it will navigate you to one screen to another
+  static Future push<T extends Object>(
+    context, {
+    required AppRoutes appRoutes,
+    String? routeName,
+    T? arguments,
+  }) {
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        settings: RouteSettings(name: routeName),
+        builder: (context) => appRoutes.buildWidget(arguments: arguments),
+      ),
+    );
+  }
+
+  //it will pop all the screen  and take you to the new screen
+  //E:g : when you will goto the login to home page then you will use this
+  static Future pushAndRemoveUntil<T extends Object>(
+    context, {
+    required AppRoutes appRoutes,
+    String? routeName,
+    T? arguments,
+  }) {
+    return Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        settings: RouteSettings(name: routeName),
+        builder: (context) => appRoutes.buildWidget(arguments: arguments),
+      ),
+      (route) => false,
+    );
+  }
+
+  //It will replace the screen with current screen
+  //E:g :  screen A
+  //  GestureDetector(
+  // onTap: (){
+  //   ScreenB().pushReplacement
+  // },
+  // it means screen B replace in screen A .
+  //if you pressed back then you will not find screen A. it remove from stack
+
+  static Future pushReplacement<T extends Object>(
+    context, {
+    required AppRoutes appRoutes,
+    String? routeName,
+    T? arguments,
+  }) {
+    return Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        settings: RouteSettings(name: routeName),
+        builder:
+            (BuildContext context) =>
+                appRoutes.buildWidget(arguments: arguments),
+      ),
+    );
+  }
+
+  //it will pop all the screen and take you to the first screen of the stack
+  //that means you will go to the Home page
+  static Future pushAndRemoveSpecificScreen<T extends Object>(
+    context, {
+    required AppRoutes appRoutes,
+    String? routeName,
+    T? arguments,
+  }) {
+    return Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        settings: RouteSettings(name: routeName),
+        builder: (context) => appRoutes.buildWidget(arguments: arguments),
+      ),
+      (route) => route.isFirst,
+    );
+  }
+
+  // when you remove previous x count of  route
+  //from stack then please use this way
+  //E.g : if you remove 3 route from stack then pass the argument to 3
+  static popUntil(context, int removeProviousPage) {
+    int screenPop = 0;
+    return Navigator.of(
+      context,
+    ).popUntil((_) => screenPop++ >= removeProviousPage);
+  }
+
+  //Remove single page from stack
+  static void pop(context) {
+    return Navigator.pop(context);
+  }
+}
+
+ ''');
+
+
+await _createFile('$corePath/theme', 'app_colors', ''' 
+import 'package:flutter/material.dart';
+
+/// Application colors using enum
+enum AppColors {
+  scaffold(Color.fromARGB(255, 222, 242, 240)),
+  // Primary colors
+  primary(Color(0xFF26A69A)),
+  primaryLight(Color(0xFF42A5F5)),
+  primaryDark(Color(0xFF0D47A1)),
+
+  // Secondary colors
+  secondary(Color(0xFF26A69A)),
+  secondaryLight(Color(0xFF4DB6AC)),
+  secondaryDark(Color(0xFF00796B)),
+
+  accent(Color(0xFF26A69A)),
+
+  // Neutral colors
+  black(Color(0xFF000000)),
+  darkGrey(Color(0xFF4F4F4F)),
+  grey(Color(0xFF9E9E9E)),
+  lightGrey(Color(0xFFE0E0E0)),
+  white(Color(0xFFFFFFFF)),
+
+  greylish(Color(0xff303030)),
+  transparent(Colors.transparent),
+  yellow(Color(0xffF6D403)),
+  // Status colors
+  success(Color(0xFF4CAF50)),
+  warning(Color(0xFFFFC107)),
+  error(Color(0xFFF44336)),
+  info(Color(0xFF2196F3)),
+  red(Colors.red),
+  green(Colors.green),
+  orange(Colors.orange),
+
+  // Background colors
+  background(Color(0xFFF5F5F5)),
+  cardBackground(Color.fromARGB(255, 216, 213, 213)),
+
+  // Text colors
+  textPrimary(Color(0xFF212121)),
+  textSecondary(Color(0xFF757575)),
+  textHint(Color(0xFFBDBDBD));
+
+  final Color color;
+
+  const AppColors(this.color);
+}
+
+''');
+
+await _createFile('$corePath/theme', 'theme_helper', ''' 
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:test_clean/core/theme/app_colors.dart';
+
+class AppTheme {
+  static ThemeData lightTheme() {
+    return ThemeData(
+      // Enhanced dropdown styling for light theme
+      dropdownMenuTheme: DropdownMenuThemeData(
+        textStyle: TextStyle(color: AppColors.black.color),
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(AppColors.white.color),
+          shadowColor: WidgetStatePropertyAll(
+            AppColors.grey.color.withValues(alpha: 0.2),
+          ),
+          padding: WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 8.h)),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.white.color,
+          hintStyle: TextStyle(color: AppColors.grey.color),
+          labelStyle: TextStyle(color: AppColors.black.color),
+          errorStyle: TextStyle(color: AppColors.error.color),
+          errorMaxLines: 3,
+          iconColor: AppColors.black.color,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 20.w,
+            vertical: 12.h,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10.r),
+            borderSide: BorderSide(color: AppColors.grey.color),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10.r),
+            borderSide: BorderSide(color: AppColors.grey.color),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10.r),
+            borderSide: BorderSide(color: AppColors.primary.color),
+          ),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: AppColors.grey.color,
+        refreshBackgroundColor: AppColors.primary.color,
+      ),
+      checkboxTheme: CheckboxThemeData(
+        materialTapTargetSize: MaterialTapTargetSize.padded,
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => AppColors.red.color,
+        ),
+        checkColor: WidgetStateProperty.resolveWith(
+          (states) => AppColors.white.color,
+        ),
+        side: WidgetStateBorderSide.resolveWith(
+          (states) => BorderSide(color: AppColors.red.color, width: 2.w),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4.r), // Rounded corners (4px)
+        ),
+      ),
+      cardTheme: CardThemeData(color: AppColors.white.color),
+      dialogTheme: DialogThemeData(backgroundColor: AppColors.white.color),
+      drawerTheme: DrawerThemeData(backgroundColor: AppColors.white.color),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: AppColors.transparent.color,
+        modalBackgroundColor: AppColors.white.color,
+        modalElevation: 1,
+        shape: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: ButtonStyle(
+          iconColor: WidgetStateProperty.resolveWith(
+            (states) => AppColors.black.color,
+          ),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        fillColor: AppColors.greylish.color,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        hintStyle: TextStyle(color: AppColors.white.color),
+      ),
+      listTileTheme: ListTileThemeData(
+        dense: true,
+        horizontalTitleGap: 0,
+        textColor: AppColors.white.color,
+        contentPadding: EdgeInsets.zero,
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: AppColors.white.color,
+        selectedItemColor: AppColors.red.color,
+        unselectedItemColor: AppColors.grey.color,
+        type: BottomNavigationBarType.fixed,
+      ),
+      tabBarTheme: TabBarThemeData(
+        tabAlignment: TabAlignment.start,
+        indicatorSize: TabBarIndicatorSize.label,
+        labelColor: AppColors.black.color,
+        indicatorColor: AppColors.transparent.color,
+        dividerColor: AppColors.transparent.color,
+        unselectedLabelColor: AppColors.grey.color,
+        overlayColor: WidgetStateColor.resolveWith(
+          (states) => AppColors.transparent.color,
+        ),
+        labelStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 10.sp,
+          color: AppColors.red.color,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      radioTheme: RadioThemeData(
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => AppColors.white.color,
+        ),
+      ),
+      primaryColor: AppColors.white.color,
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.white.color,
+        iconTheme: IconThemeData(color: AppColors.black.color),
+        titleTextStyle: TextStyle(color: AppColors.black.color),
+      ),
+      scaffoldBackgroundColor: AppColors.white.color,
+      textTheme: TextTheme(
+        displayLarge: TextStyle(color: AppColors.black.color),
+        displayMedium: TextStyle(color: AppColors.black.color),
+        displaySmall: TextStyle(color: AppColors.black.color),
+        headlineLarge: TextStyle(color: AppColors.black.color),
+        headlineMedium: TextStyle(color: AppColors.black.color),
+        headlineSmall: TextStyle(color: AppColors.black.color),
+        titleLarge: TextStyle(color: AppColors.black.color),
+        titleMedium: TextStyle(color: AppColors.black.color),
+        titleSmall: TextStyle(color: AppColors.black.color),
+        bodyLarge: TextStyle(color: AppColors.black.color),
+        bodyMedium: TextStyle(color: AppColors.black.color),
+        bodySmall: TextStyle(color: AppColors.black.color),
+        labelLarge: TextStyle(color: AppColors.black.color),
+        labelMedium: TextStyle(color: AppColors.black.color),
+        labelSmall: TextStyle(color: AppColors.black.color),
+      ),
+      iconTheme: IconThemeData(color: AppColors.black.color),
+    );
+  }
+
+  static ThemeData darkTheme() {
+    return ThemeData(
+      // Enhanced dropdown styling for dark theme
+      dropdownMenuTheme: DropdownMenuThemeData(
+        textStyle: TextStyle(color: AppColors.white.color),
+        menuStyle: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(AppColors.greylish.color),
+          shadowColor: WidgetStatePropertyAll(
+            AppColors.black.color.withValues(alpha: 0.3),
+          ),
+          padding: WidgetStatePropertyAll(EdgeInsets.symmetric(vertical: 8.h)),
+        ),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: AppColors.greylish.color,
+          hintStyle: TextStyle(color: AppColors.lightGrey.color),
+          labelStyle: TextStyle(color: AppColors.white.color),
+          errorStyle: TextStyle(color: AppColors.error.color),
+          errorMaxLines: 3,
+          iconColor: AppColors.white.color,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 20.w,
+            vertical: 12.h,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10.r),
+            borderSide: BorderSide(color: AppColors.grey.color),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10.r),
+            borderSide: BorderSide(color: AppColors.grey.color),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10.r),
+            borderSide: BorderSide(color: AppColors.primary.color),
+          ),
+        ),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: AppColors.grey.color,
+        refreshBackgroundColor: AppColors.primary.color,
+      ),
+      checkboxTheme: CheckboxThemeData(
+        materialTapTargetSize: MaterialTapTargetSize.padded,
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => AppColors.red.color,
+        ),
+        checkColor: WidgetStateProperty.resolveWith(
+          (states) => AppColors.white.color,
+        ),
+        side: WidgetStateBorderSide.resolveWith(
+          (states) => BorderSide(color: AppColors.red.color, width: 2.w),
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(4.r), // Rounded corners (4px)
+        ),
+      ),
+      cardTheme: CardThemeData(color: AppColors.greylish.color),
+      dialogTheme: DialogThemeData(backgroundColor: AppColors.greylish.color),
+      drawerTheme: DrawerThemeData(backgroundColor: AppColors.black.color),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: AppColors.transparent.color,
+        modalBackgroundColor: AppColors.greylish.color,
+        modalElevation: 1,
+        shape: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8.r),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: ButtonStyle(
+          iconColor: WidgetStateProperty.resolveWith(
+            (states) => AppColors.white.color,
+          ),
+        ),
+      ),
+      primaryColor: AppColors.black.color,
+      inputDecorationTheme: InputDecorationTheme(
+        fillColor: AppColors.greylish.color,
+        floatingLabelBehavior: FloatingLabelBehavior.always,
+        hintStyle: TextStyle(color: AppColors.black.color),
+      ),
+      listTileTheme: ListTileThemeData(
+        dense: true,
+        horizontalTitleGap: 0,
+        textColor: AppColors.white.color,
+        contentPadding: EdgeInsets.zero,
+      ),
+      radioTheme: RadioThemeData(
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => AppColors.white.color,
+        ),
+      ),
+      tabBarTheme: TabBarThemeData(
+        indicatorSize: TabBarIndicatorSize.label,
+        tabAlignment: TabAlignment.start,
+        labelColor: AppColors.white.color,
+        indicatorColor: AppColors.transparent.color,
+        dividerColor: AppColors.transparent.color,
+        unselectedLabelColor: AppColors.grey.color,
+        overlayColor: WidgetStateColor.resolveWith(
+          (states) => AppColors.transparent.color,
+        ),
+        labelStyle: TextStyle(fontSize: 14.sp, fontWeight: FontWeight.bold),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 10.sp,
+          color: AppColors.red.color,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: AppColors.greylish.color,
+        selectedItemColor: AppColors.red.color,
+        unselectedItemColor: AppColors.grey.color,
+        type: BottomNavigationBarType.fixed,
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.black.color,
+        iconTheme: IconThemeData(color: AppColors.white.color),
+        titleTextStyle: TextStyle(color: AppColors.white.color),
+      ),
+      scaffoldBackgroundColor: AppColors.black.color,
+      textTheme: TextTheme(
+        displayLarge: TextStyle(color: AppColors.white.color),
+        displayMedium: TextStyle(color: AppColors.white.color),
+        displaySmall: TextStyle(color: AppColors.white.color),
+        headlineLarge: TextStyle(color: AppColors.white.color),
+        headlineMedium: TextStyle(color: AppColors.white.color),
+        headlineSmall: TextStyle(color: AppColors.white.color),
+        titleLarge: TextStyle(color: AppColors.white.color),
+        titleMedium: TextStyle(color: AppColors.white.color),
+        titleSmall: TextStyle(color: AppColors.white.color),
+        bodyLarge: TextStyle(color: AppColors.white.color),
+        bodyMedium: TextStyle(color: AppColors.white.color),
+        bodySmall: TextStyle(color: AppColors.white.color),
+        labelLarge: TextStyle(color: AppColors.white.color),
+        labelSmall: TextStyle(color: AppColors.white.color),
+        labelMedium: TextStyle(color: AppColors.white.color),
+      ),
+      iconTheme: IconThemeData(color: AppColors.white.color),
+    );
+  }
+}
+
+''');
+
+ await _createFile('$corePath/theme', 'theme_manager',
+        '''
+import 'package:flutter/material.dart';
+import '/core/constants/app_constants.dart';
+import '/core/theme/theme_helper.dart';
+import '../utils/preferences_helper.dart';
+
+class ThemeManager {
+  final String _themeKey = AppConstants.isDarkMode.key;
+  bool _isDarkMode = false;
+  static final ThemeManager _instance = ThemeManager._internal();
+
+  factory ThemeManager() => _instance;
+
+  ThemeManager._internal() {
+    _loadThemePreference();
+  }
+
+  bool get isDarkMode => _isDarkMode;
+
+  ThemeData get themeData =>
+      _isDarkMode ? AppTheme.darkTheme() : AppTheme.lightTheme();
+
+  /// Load saved theme preference
+  Future<void> _loadThemePreference() async {
+    try {
+      _isDarkMode = PrefHelper.instance.getBool(_themeKey);
+      // notifyListeners();
+    } catch (e) {
+      // Default to light theme if there's an error
+      _isDarkMode = false;
+    }
+  }
+
+  /// Toggle between light and dark theme
+  Future<void> toggleTheme() async {
+    _isDarkMode = !_isDarkMode;
+
+    try {
+      await PrefHelper.instance.setBool(_themeKey, _isDarkMode);
+    } catch (e) {
+      // Revert if saving fails
+      _isDarkMode = !_isDarkMode;
+    }
+    await WidgetsBinding.instance.performReassemble();
+  }
+}
+
+''');
+
+
+    // Network
+    await _createFile('$corePath/network', 'network_info',
+        '''import 'package:connectivity_plus/connectivity_plus.dart';
+import 'api_client.dart';
+
+/// Interface for network information
+abstract class NetworkInfo {
+  /// Check if the device is connected to the internet
+  Future<bool> get isConnected;
+
+  /// Stream of connectivity changes
+  Stream<List<ConnectivityResult>> get onConnectivityChanged;
+
+  /// Check internet availability
+  Future<bool> internetAvailable();
+
+  /// Get the current connectivity status
+  Future<List<ConnectivityResult>> getConnectivityStatus();
+}
+
+/// Implementation of NetworkInfo
+class NetworkInfoImpl implements NetworkInfo {
+  final Connectivity _connectivity;
+  bool _isInternet = false;
+
+  /// API requests that need to be retried when internet is available
+  final List<ApiRequest> apiStack = [];
+
+  NetworkInfoImpl({required Connectivity connectivity})
+    : _connectivity = connectivity;
+
+  /// Get whether internet is available
+  bool get isInternet => _isInternet;
+
+  @override
+  Future<bool> get isConnected async {
+    final result = await _connectivity.checkConnectivity();
+    return result.isNotEmpty &&
+        result.any((element) => element != ConnectivityResult.none);
+  }
+
+  @override
+  Stream<List<ConnectivityResult>> get onConnectivityChanged =>
+      _connectivity.onConnectivityChanged;
+
+  @override
+  Future<bool> internetAvailable() async {
+    final connectivityResult = await _connectivity.checkConnectivity();
+    _isInternet =
+        connectivityResult.isNotEmpty &&
+        connectivityResult.any((element) => element != ConnectivityResult.none);
+    return _isInternet;
+  }
+
+  @override
+  Future<List<ConnectivityResult>> getConnectivityStatus() async {
+    return await _connectivity.checkConnectivity();
+  }
+}
+
+/// Class to store API request information for retry
+class ApiRequest {
+  final String url;
+  final HttpMethod method;
+  final Map<String, dynamic> variables;
+  final dynamic Function(dynamic) onSuccessFunction;
+  final Future<dynamic> Function() execute;
+
+  ApiRequest({
+    required this.url,
+    required this.method,
+    required this.variables,
+    required this.onSuccessFunction,
+    required this.execute,
+  });
+}
+
+''');
+
+    await _createFile('$corePath/network', 'api_client', '''
+
+import 'dart:io';
+import 'package:dio/dio.dart';
+import '/core/utils/extension.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../utils/preferences_helper.dart';
+import '/core/error/exceptions.dart';
+import '/core/network/network_info.dart';
+import '../../../../core/constants/api_urls.dart';
+
+/// HTTP methods enum
+enum HttpMethod { get, post, put, delete, patch, download }
+
+/// Core API client for making HTTP requests
+class ApiClient {
+  final Dio _dio;
+  final NetworkInfo _networkInfo;
+  final PrefHelper _prefHelper;
+
+  ApiClient({
+    required Dio dio,
+    required NetworkInfo networkInfo,
+    required PrefHelper prefHelper,
+  }) : _dio = dio,
+       _networkInfo = networkInfo,
+       _prefHelper = prefHelper {
+    _initDio();
+  }
+
+  /// Initialize Dio with default options
+  void _initDio() {
+    _dio.options = BaseOptions(
+      baseUrl: ApiUrl.base.url,
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(seconds: 30),
+      sendTimeout: const Duration(seconds: 30),
+    );
+    _initInterceptors();
+  }
+
+  /// Initialize interceptors for logging and auth
+  void _initInterceptors() {
+    _dio.interceptors.addAll([
+      _createAuthInterceptor(),
+      _createLoggingInterceptor(),
+    ]);
+  }
+
+  /// Create auth interceptor
+  Interceptor _createAuthInterceptor() {
+    return InterceptorsWrapper(
+      onRequest: (options, handler) {
+        // Add common headers
+        options.headers.addAll(_getHeaders());
+        return handler.next(options);
+      },
+      onError: (error, handler) {
+        // Handle token expiration (401 errors)
+        if (error.response?.statusCode == 401) {
+          // Clear token
+          _prefHelper.setString(AppConstants.token.key, '');
+        }
+        return handler.next(error);
+      },
+    );
+  }
+
+  /// Create logging interceptor
+  Interceptor _createLoggingInterceptor() {
+    return InterceptorsWrapper(
+      onRequest: (options, handler) {
+        'REQUEST[\${options.method}] => PATH: \${ApiUrl.base.url}\${options.path} '
+                '=> Request Values: param: \${options.queryParameters}, => Time : \${DateTime.now()}, DATA: \${options.data}, => _HEADERS: \${options.headers} '
+            .log();
+        return handler.next(options);
+      },
+      onResponse: (response, handler) {
+        'RESPONSE[\${response.statusCode}] => Time : \${DateTime.now()} => DATA: \${response.data} URL: \${response.requestOptions.baseUrl}\${response.requestOptions.path} '
+            .log();
+        return handler.next(response);
+      },
+      onError: (error, handler) {
+        'ERROR[\${error.response?.statusCode}] => DATA: \${error.response?.data} Message: \${error.message} URL: \${error.response?.requestOptions.baseUrl}\${error.response?.requestOptions.path}'
+            .log();
+        return handler.next(error);
+      },
+    );
+  }
+
+  /// Get headers including auth token
+  Map<String, String> _getHeaders() {
+    Map<String, String> headers = {
+      'Content-Type': AppConstants.contentType.key,
+      'Accept': AppConstants.accept.key,
+      'app-version': _prefHelper.getString(AppConstants.appVersion.key),
+      'build-number': _prefHelper.getString(AppConstants.buildNumber.key),
+      'language':
+          _prefHelper.getLanguage() == 1
+              ? AppConstants.en.key
+              : AppConstants.bn.key,
+    };
+
+    // Add bearer token if available
+    String token = _prefHelper.getString(AppConstants.token.key);
+    if (token.isNotEmpty) {
+      headers['Authorization'] = '\${AppConstants.bearer.key} \$token';
+    }
+
+    return headers;
+  }
+
+  /// Unified request method for all HTTP methods
+  Future<T> request<T>({
+    required String endpoint,
+    required HttpMethod method,
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Map<String, String>? extraHeaders,
+    List<File>? files,
+    String? fileKeyName,
+    String? savePath,
+    ProgressCallback? onSendProgress,
+    ProgressCallback? onReceiveProgress,
+    ResponseConverter<T>? converter,
+  }) async {
+    // Check internet connectivity
+    final isConnected = await _networkInfo.internetAvailable();
+    if (!isConnected) {
+      // Queue the request for later execution
+      if (_networkInfo is NetworkInfoImpl) {
+        (_networkInfo).apiStack.add(
+          ApiRequest(
+            url: endpoint,
+            method: method,
+            variables:
+                data is Map<String, dynamic> ? data : <String, dynamic>{},
+            onSuccessFunction: (response) {
+              return converter != null ? converter(response) : response as T;
+            },
+            execute: () async {
+              // Create a function that will retry this exact request
+              try {
+                return await request<T>(
+                  endpoint: endpoint,
+                  method: method,
+                  data: data,
+                  queryParameters: queryParameters,
+                  extraHeaders: extraHeaders,
+                  files: files,
+                  fileKeyName: fileKeyName,
+                  savePath: savePath,
+                  onSendProgress: onSendProgress,
+                  onReceiveProgress: onReceiveProgress,
+                  converter: converter,
+                );
+              } catch (e) {
+                'Error retrying request: \$e'.log();
+                return null;
+              }
+            },
+          ),
+        );
+      }
+      throw NetworkException(message: 'No internet connection');
+    }
+
+    // Update headers if needed
+    if (extraHeaders != null) {
+      _dio.options.headers.addAll(extraHeaders);
+    }
+
+    // Handle file uploads
+    FormData? formData;
+    if (files != null && files.isNotEmpty && fileKeyName != null) {
+      formData = FormData();
+
+      // Add regular params to form data
+      if (data is Map<String, dynamic>) {
+        data.forEach((key, value) {
+          formData?.fields.add(MapEntry(key, value.toString()));
+        });
+      }
+
+      // Add files to form data
+      for (var file in files) {
+        formData.files.add(
+          MapEntry(
+            fileKeyName,
+            await MultipartFile.fromFile(
+              file.path,
+              filename: file.path.split('/').last,
+            ),
+          ),
+        );
+      }
+    }
+
+    try {
+      Response response;
+
+      // Execute request based on method
+      switch (method) {
+        case HttpMethod.get:
+          response = await _dio.get(
+            endpoint,
+            queryParameters: queryParameters,
+            options: Options(headers: extraHeaders),
+            onReceiveProgress: onReceiveProgress,
+          );
+          break;
+        case HttpMethod.post:
+          response = await _dio.post(
+            endpoint,
+            data: formData ?? data,
+            queryParameters: queryParameters,
+            options: Options(headers: extraHeaders),
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          );
+          break;
+        case HttpMethod.put:
+          response = await _dio.put(
+            endpoint,
+            data: formData ?? data,
+            queryParameters: queryParameters,
+            options: Options(headers: extraHeaders),
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          );
+          break;
+        case HttpMethod.delete:
+          response = await _dio.delete(
+            endpoint,
+            data: data,
+            queryParameters: queryParameters,
+            options: Options(headers: extraHeaders),
+          );
+          break;
+        case HttpMethod.patch:
+          response = await _dio.patch(
+            endpoint,
+            data: formData ?? data,
+            queryParameters: queryParameters,
+            options: Options(headers: extraHeaders),
+            onSendProgress: onSendProgress,
+            onReceiveProgress: onReceiveProgress,
+          );
+          break;
+        case HttpMethod.download:
+          if (savePath == null) {
+            throw ArgumentError('savePath is required for download method');
+          }
+          response = await _dio.download(
+            endpoint,
+            savePath,
+            queryParameters: queryParameters,
+            options: Options(headers: extraHeaders),
+            onReceiveProgress: onReceiveProgress,
+          );
+          break;
+      }
+
+      // Process response
+      final result = _handleResponse(response);
+
+      // Convert response if needed
+      if (converter != null) {
+        return converter(result);
+      }
+
+      return result as T;
+    } on DioException catch (e) {
+      throw _handleDioError(e);
+    } catch (e) {
+      throw ServerException(message: 'Something went wrong: \$e');
+    }
+  }
+
+  /// Handle response based on status code
+  dynamic _handleResponse(Response response) {
+    'RESPONSE: \${response.data}'.log();
+    switch (response.statusCode) {
+      case 200:
+      case 201:
+        return response.data;
+      case 400:
+        throw BadRequestException(message: 'Bad request');
+      case 401:
+      case 403:
+        throw UnauthorizedException(message: 'Unauthorized');
+      case 404:
+        throw NotFoundException(message: 'Not found');
+      case 500:
+      default:
+        throw ServerException(message: 'Server error: \${response.statusCode}');
+    }
+  }
+
+  /// Handle Dio errors
+  Exception _handleDioError(DioException e) {
+    switch (e.type) {
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.sendTimeout:
+      case DioExceptionType.receiveTimeout:
+        return TimeoutException(message: 'Connection timeout');
+      case DioExceptionType.badResponse:
+        final statusCode = e.response?.statusCode;
+        // Extract error message from response data if available
+        String errorMessage = 'Server error occurred';
+        if (e.response?.data != null) {
+          if (e.response?.data is Map) {
+            errorMessage = e.response?.data['message'] ?? errorMessage;
+          } else if (e.response?.data is String) {
+            errorMessage = e.response?.data;
+          }
+        }
+        'RESPONSE ERROR: \$errorMessage \$statusCode'.log();
+        // Handle specific status codes
+        if (statusCode == 401) {
+          _prefHelper.setString(AppConstants.token.key, '');
+          return UnauthorizedException(message: errorMessage, statusCode: 401);
+        } else if (statusCode == 404) {
+          return NotFoundException(message: errorMessage, statusCode: 404);
+        } else if (statusCode == 400) {
+          return BadRequestException(message: errorMessage, statusCode: 400);
+        } else if (statusCode == 500) {
+          return ServerException(message: errorMessage, statusCode: 500);
+        } else {
+          return ServerException(message: errorMessage, statusCode: statusCode);
+        }
+      case DioExceptionType.cancel:
+        return RequestCancelledException(message: 'Request cancelled');
+      case DioExceptionType.connectionError:
+        return NetworkException(message: 'Connection error');
+      default:
+        return ServerException(message: e.message ?? 'Unknown error occurred');
+    }
+  }
+}
+
+/// Type definition for response converters
+typedef ResponseConverter<T> = T Function(dynamic data);
+
+''');
+
+    // Utils
+    await _createFile('$corePath/utils', 'preferences_helper',
+        '''iimport 'package:shared_preferences/shared_preferences.dart';
+
+import '../constants/app_constants.dart';
+
+/// Singleton class for managing SharedPreferences
+/// Located in core/utils as it's shared across all features
+class PrefHelper {
+  static PrefHelper? _instance;
+  static SharedPreferences? _preferences;
+
+  // Private constructor
+  PrefHelper._();
+
+  /// Get singleton instance
+  static PrefHelper get instance {
+    _instance ??= PrefHelper._();
+    return _instance!;
+  }
+
+  /// Initialize SharedPreferences
+  /// Call this in main() before runApp()
+  static Future<void> init() async {
+    _preferences = await SharedPreferences.getInstance();
+  }
+
+  // String operations
+  Future<bool> setString(String key, String value) async {
+    return await _preferences!.setString(key, value);
+  }
+
+  String getString(String key, {String defaultValue = ''}) {
+    return _preferences!.getString(key) ?? defaultValue;
+  }
+
+  // Int operations
+  Future<bool> setInt(String key, int value) async {
+    return await _preferences!.setInt(key, value);
+  }
+
+  int getInt(String key, {int defaultValue = 0}) {
+    return _preferences!.getInt(key) ?? defaultValue;
+  }
+
+  // Bool operations
+  Future<bool> setBool(String key, bool value) async {
+    return await _preferences!.setBool(key, value);
+  }
+
+  bool getBool(String key, {bool defaultValue = false}) {
+    return _preferences!.getBool(key) ?? defaultValue;
+  }
+
+  // Double operations
+  Future<bool> setDouble(String key, double value) async {
+    return await _preferences!.setDouble(key, value);
+  }
+
+  double getDouble(String key, {double defaultValue = 0.0}) {
+    return _preferences!.getDouble(key) ?? defaultValue;
+  }
+
+  // List<String> operations
+  Future<bool> setStringList(String key, List<String> value) async {
+    return await _preferences!.setStringList(key, value);
+  }
+
+  List<String> getStringList(String key, {List<String>? defaultValue}) {
+    return _preferences!.getStringList(key) ?? defaultValue ?? [];
+  }
+
+  // Remove a key
+  Future<bool> remove(String key) async {
+    return await _preferences!.remove(key);
+  }
+
+  // Clear all preferences
+  Future<bool> clear() async {
+    return await _preferences!.clear();
+  }
+
+  // Check if key exists
+  bool containsKey(String key) {
+    return _preferences!.containsKey(key);
+  }
+
+  // Get all keys
+  Set<String> getKeys() {
+    return _preferences!.getKeys();
+  }
+
+  // Custom method for language (example)
+  int getLanguage() {
+    return getInt(
+      AppConstants.language.key,
+      defaultValue: 1,
+    ); // 1 for English, 2 for Bengali
+  }
+
+  Future<bool> setLanguage(int language) async {
+    return await setInt(AppConstants.language.key, language);
+  }
+}
+
+''');
+
+    await _createFile('$corePath/utils', 'extension', '''
+import 'dart:developer' as darttools show log;
+import 'package:flutter/material.dart';
+import '../constants/app_constants.dart';
+import '/l10n/app_localizations.dart';
+import 'package:intl/intl.dart';
+import 'preferences_helper.dart';
+
+extension ConvertNum on String {
+  static const english = [
+    '0',
+    '1',
+    '2',
+    '3',
+    '4',
+    '5',
+    '6',
+    '7',
+    '8',
+    '9',
+    '.',
+  ];
+  static const bangla = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯', '.'];
+
+  String changeNum() {
+    String input = this;
+    if (PrefHelper.instance.getLanguage() == 2) {
+      for (int i = 0; i < english.length; i++) {
+        input = input.replaceAll(english[i], bangla[i]);
+      }
+    } else {
+      for (int i = 0; i < english.length; i++) {
+        input = input.replaceAll(bangla[i], english[i]);
+      }
+    }
+    return input;
+  }
+}
+
+extension PhoneValid on String {
+  bool phoneValid(String number) {
+    if (number.isNotEmpty && number.length == 11) {
+      var prefix = number.substring(0, 3);
+      if (prefix == '017' ||
+          prefix == '016' ||
+          prefix == '018' ||
+          prefix == '015' ||
+          prefix == '019' ||
+          prefix == '013' ||
+          prefix == '014') {
+        return true;
+      }
+      return false;
+    }
+    return false;
+  }
+}
+
+extension StringFormat on String {
+  String format(List<String> args, List<dynamic> values) {
+    String input = this;
+    for (int i = 0; i < args.length; i++) {
+      input = input.replaceAll(args[i], values[i]);
+    }
+    return input;
+  }
+}
+
+extension Context on BuildContext {
+  //this extention is for localization
+  //its a shorter version of AppLocalizations
+  AppLocalizations get loc => AppLocalizations.of(this)!;
+
+  //get media query
+  MediaQueryData get mediaQuery => MediaQuery.of(this);
+
+  //get height
+  double get height => MediaQuery.of(this).size.height;
+
+  //get width
+  double get width => MediaQuery.of(this).size.width;
+
+  //Bottom Notch Check
+  bool get bottomNotch =>
+      MediaQuery.of(this).viewPadding.bottom > 0 ? true : false;
+}
+
+extension ValidationExtention on String {
+  //Check email is valid or not
+  bool get isValidEmail => RegExp(
+    r"[a-z0-9!#\$%&'*+/=?^_`{|}~-]+(?:.[a-z0-9!#\$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
+  ).hasMatch(this);
+
+  //check mobile number contain special character or not
+  bool get isMobileNumberValid =>
+      RegExp(r'(^(?:[+0]9)?[0-9]{10,12}\$)').hasMatch(this);
+}
+
+extension NumGenericExtensions<T extends String> on T {
+  double parseToDouble() {
+    if (isEmpty) {
+      return 0.0;
+    }
+    try {
+      return double.parse(this);
+    } catch (e) {
+      e.log();
+      return 0.0;
+    }
+  }
+
+  String parseToString() {
+    try {
+      return toString();
+    } catch (e) {
+      e.log();
+
+      return '';
+    }
+  }
+
+  int parseToInt() {
+    try {
+      return int.parse(this);
+    } catch (e) {
+      e.log();
+      return 0;
+    }
+  }
+}
+
+extension VersionCheck on String {
+  bool isVersionGreaterThan(String currentVersion) {
+    String serverVersion = this;
+    String currentV = currentVersion.replaceAll('.', '');
+    String serverV = serverVersion.replaceAll('.', '');
+    'serverV \$serverV'.log();
+    'currentV \$currentV'.log();
+    return int.parse(serverV) > int.parse(currentV);
+  }
+}
+
+extension Log on Object {
+  void log() => darttools.log(toString());
+}
+
+// It will formate the date which will show in our application.
+extension FormatedDateExtention on DateTime {
+  String get formattedDate => DateFormat(AppConstants.mmm.key).format(this);
+}
+
+extension FormatedDateExtentionString on String {
+  String formattedDate(String format) {
+    DateTime parsedDate = DateTime.parse(this);
+    return DateFormat(format).format(parsedDate);
+  }
+}
+
+extension FormattedYearMonthDate on String? {
+  DateTime fomateDateFromString({String? dateFormat}) {
+    return DateFormat(dateFormat ?? AppConstants.yyyyMm.key).parse(this ?? '');
+  }
+}
+
+//This extention sum the value from List<Map<String,dynamic>>
+extension StringToDoubleFoldExtention<T extends List<Map<String, dynamic>>>
+    on T {
+  String? get listOfMapStringSum => map(
+    (e) => double.tryParse(e.values.first?.toString() ?? ''),
+  ).toList().fold('0', (previous, current) {
+    var sum =
+        double.parse(previous?.toString() ?? '0') +
+        double.parse(current?.toString() ?? '0');
+    return sum.toString().parseToDouble().toStringAsFixed(3);
+  });
+}
+
+//It will capitalize the first letter of the String.
+extension CapitalizeExtention on String {
+  String toCapitalized() =>
+      length > 0 ? '\${this[0].toUpperCase()}\${substring(1).toLowerCase()}' : '';
+  String toTitleCase() => replaceAll(
+    RegExp(' +'),
+    ' ',
+  ).split(' ').map((str) => str.toCapitalized()).join(' ');
+}
+
+extension LastPathComponent on String {
+  String get lastPathComponent => split('/').last.replaceAll('_', '');
+}
+
+extension IterableExtension<T> on Iterable<T> {
+  Iterable<T> distinctBy(Object Function(T e) getCompareValue) {
+    var result = <T>[];
+    forEach((element) {
+      if (!result.any((x) => getCompareValue(x) == getCompareValue(element))) {
+        result.add(element);
+      }
+    });
+
+    return result;
+  }
+}
+
+/// it will use for finding data  from list based on same date
+extension Iterables<E> on Iterable<E> {
+  Map<K, List<E>> groupBy<K>(K Function(E) keyFunction) => fold(
+    <K, List<E>>{},
+    (Map<K, List<E>> map, E element) =>
+        map..putIfAbsent(keyFunction(element), () => <E>[]).add(element),
+  );
+}
+
+extension DateTimeGreater on DateTime {
+  bool get isDateGreater {
+    DateTime currentDate = DateTime.now();
+
+    // Create a date to compare with the current date
+    DateTime compareDate = this;
+    // Example date: May 30, 2023
+    if (compareDate.isAfter(currentDate)) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+}
+
+''');
+
+    await _createFile('$corePath/utils', 'enum', '''
+enum LanguageOption { bangla, english }
+''');
+
+    await _createFile('$corePath/utils/styles', 'k_assets', '''
+enum KAssetName { oil, closeBottom }
+
+extension AssetsExtention on KAssetName {
+  String get imagePath {
+    String rootPath = 'assets';
+    String svgDir = '\$rootPath/svg';
+    String imageDir = '\$rootPath/images';
+
+    switch (this) {
+      case KAssetName.oil:
+        return '\$imageDir/oil.png';
+      case KAssetName.closeBottom:
+        return '\$svgDir/close_bottom.svg';
+    }
+  }
+}
+
+''');
+
+    await _createFile('$corePath/utils/styles', 'k_text_style',
+        '''import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '/core/theme/app_colors.dart';
+
+class KTextStyle {
+  static TextStyle customTextStyle({
+    double fontSize = 12,
+    fontWeight = FontWeight.normal,
+    Color? color,
+  }) {
+    return GoogleFonts.poppins(
+      color: color ?? AppColors.lightGrey.color,
+      fontSize: fontSize.sp,
+      fontWeight: fontWeight,
+    );
+  }
+}
+
+''');
+
+    await _createFile('$corePath/utils/styles', 'styles', '''
+export 'k_text_style.dart';
+export 'k_assets.dart';
+''');
+
+    // Usecases
+    await _createFile(
+        '$corePath/usecases', 'usecase', '''import 'package:dartz/dartz.dart';
+import 'package:equatable/equatable.dart';
+import '/core/error/failures.dart';
+
+/// Abstract class for defining use cases
+// ignore: avoid_types_as_parameter_names
+abstract class UseCase<Type, Params> {
+  /// Call method to execute the use case
+  Future<Either<Failure, Type>> call(Params params);
+}
+
+/// Class for use cases that don't require parameters
+class NoParams extends Equatable {
+  @override
+  List<Object> get props => [];
+}
+
+''');
+
+    // DI
+    await _createFile('$corePath/di', 'service_locator', '''
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:dio/dio.dart';
+import 'package:get_it/get_it.dart';
+import '/core/network/api_client.dart';
+import '/core/network/network_info.dart';
+import '/core/utils/preferences_helper.dart';
+import '/features/products/data/datasources/product_remote_datasource.dart';
+import '/features/products/data/datasources/product_local_datasource.dart';
+import '/features/products/data/repositories/product_repository_impl.dart';
+import '/features/products/domain/repositories/product_repository.dart';
+import '/features/products/domain/usecases/get_products.dart';
+
+final sl = GetIt.instance;
+
+Future<void> initDependencies() async {
+  // External
+  sl.registerLazySingleton<Dio>(() => Dio());
+  sl.registerLazySingleton<Connectivity>(() => Connectivity());
+
+  // Core
+  sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(connectivity: sl()));
+  sl.registerLazySingleton<PrefHelper>(() => PrefHelper.instance);
+  sl.registerLazySingleton<ApiClient>(() => ApiClient(dio: sl(), networkInfo: sl(), prefHelper: sl()));
+
+  // Products Feature
+  sl.registerLazySingleton<ProductRemoteDataSource>(() => ProductRemoteDataSourceImpl(apiClient: sl()));
+  sl.registerLazySingleton<ProductLocalDataSource>(() => ProductLocalDataSourceImpl());
+  sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(
+        remoteDataSource: sl(),
+        localDataSource: sl(),
+        networkInfo: sl(),
+      ));
+  sl.registerLazySingleton(() => GetProducts(sl()));
+}
+''');
+
+    // Presentation widgets
+    await _createFile('$corePath/presentation/widgets', 'global_text',
+        '''import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+class GlobalText extends StatelessWidget {
+  final String str;
+  final double? fontSize;
+  final FontWeight? fontWeight;
+  final Color? color;
+  final int? maxLines;
+  final TextOverflow? overflow;
+
+  const GlobalText({
+    Key? key,
+    required this.str,
+    this.fontSize,
+    this.fontWeight,
+    this.color,
+    this.maxLines,
+    this.overflow,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      str,
+      style: TextStyle(
+        fontSize: fontSize?.sp ?? 14.sp,
+        fontWeight: fontWeight ?? FontWeight.normal,
+        color: color ?? Colors.black,
+      ),
+      maxLines: maxLines,
+      overflow: overflow,
+    );
+  }
+}
+''');
+
+    await _createFile('$corePath/presentation/widgets', 'global_button',
+        '''import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'global_text.dart';
+
+class GlobalButton extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final String buttonText;
+  final Color? btnBackgroundActiveColor;
+
+  const GlobalButton({
+    Key? key,
+    required this.onPressed,
+    required this.buttonText,
+    this.btnBackgroundActiveColor,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 50.h,
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: btnBackgroundActiveColor ?? Theme.of(context).primaryColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+        ),
+        child: GlobalText(str: buttonText, fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white),
+      ),
+    );
+  }
+}
+''');
+
+    await _createFile('$corePath/presentation/widgets', 'global_appbar',
+        '''import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'global_text.dart';
+
+class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
+  final String title;
+  final List<Widget>? actions;
+
+  const GlobalAppBar({Key? key, required this.title, this.actions}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return AppBar(
+      title: GlobalText(str: title, fontSize: 16, fontWeight: FontWeight.w500, color: Colors.white),
+      actions: actions,
+    );
+  }
+
+  @override
+  Size get preferredSize => Size.fromHeight(56.h);
+}
+''');
+
+    await _createFile('$corePath/presentation/widgets', 'global_loader',
+        '''import 'package:flutter/material.dart';
+
+class GlobalLoader extends StatelessWidget {
+  const GlobalLoader({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: CircularProgressIndicator());
+  }
+}
+''');
+
+    // Routes
+    await _createFile('$corePath/routes', 'app_routes', '''class AppRoutes {
+  static const String home = '/';
+  static const String products = '/products';
+}
+''');
+
+    await _createFile('$corePath/routes', 'navigation',
+        '''import 'package:flutter/material.dart';
+
+class Navigation {
+  static final GlobalKey<NavigatorState> key = GlobalKey<NavigatorState>();
+
+  static Future<dynamic> push(BuildContext context, {required String route}) {
+    return Navigator.pushNamed(context, route);
+  }
+
+  static void pop(BuildContext context) {
+    Navigator.pop(context);
+  }
+}
+''');
+
+    // Theme
+    await _createFile('$corePath/theme', 'app_colors',
+        '''import 'package:flutter/material.dart';
+
+enum KColor {
+  primary,
+  secondary,
+  accent,
+  white,
+  black,
+}
+
+extension KColorExtension on KColor {
+  Color get color {
+    switch (this) {
+      case KColor.primary:
+        return const Color(0xFF2196F3);
+      case KColor.secondary:
+        return const Color(0xFF03DAC6);
+      case KColor.accent:
+        return const Color(0xFFFF5722);
+      case KColor.white:
+        return Colors.white;
+      case KColor.black:
+        return Colors.black;
+    }
+  }
+}
+''');
+
+    await _createFile('$corePath/theme', 'theme_helper',
+        '''import 'package:flutter/material.dart';
+import 'app_colors.dart';
+
+class ThemeHelper {
+  static ThemeData lightTheme() {
+    return ThemeData(
+      primaryColor: KColor.primary.color,
+      scaffoldBackgroundColor: Colors.white,
+      appBarTheme: AppBarTheme(
+        backgroundColor: KColor.primary.color,
+        elevation: 0,
+      ),
+    );
+  }
+}
+''');
+  }
+
+  Future<void> _createFeatureFiles(String featuresPath) async {
+    final productsPath = '$featuresPath/products';
+
+    // Domain - Entities
+    await _createFile('$productsPath/domain/entities', 'product',
+        '''import 'package:equatable/equatable.dart';
+
+class Product extends Equatable {
+  final int id;
+  final String title;
+  final String description;
+  final double price;
+  final String thumbnail;
+
+  const Product({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.price,
+    required this.thumbnail,
+  });
+
+  @override
+  List<Object?> get props => [id, title, description, price, thumbnail];
+}
+''');
+
+    // Domain - Repositories
+    await _createFile('$productsPath/domain/repositories', 'product_repository',
+        '''import 'package:dartz/dartz.dart';
+import '/core/error/failures.dart';
+import '../entities/product.dart';
+
+abstract class ProductRepository {
+  Future<Either<Failure, List<Product>>> getProducts();
+}
+''');
+
+    // Domain - Usecases
+    await _createFile('$productsPath/domain/usecases', 'get_products',
+        '''import 'package:dartz/dartz.dart';
+import '/core/error/failures.dart';
+import '/core/usecases/usecase.dart';
+import '../entities/product.dart';
+import '../repositories/product_repository.dart';
+
+class GetProducts implements UseCase<List<Product>, NoParams> {
+  final ProductRepository _repository;
+
+  GetProducts(this._repository);
+
+  @override
+  Future<Either<Failure, List<Product>>> call(NoParams params) async {
+    return await _repository.getProducts();
+  }
+}
+''');
+
+    // Data - Models
+    await _createFile('$productsPath/data/models', 'product_model',
+        '''import '../../domain/entities/product.dart';
+
+class ProductModel extends Product {
+  const ProductModel({
+    required super.id,
+    required super.title,
+    required super.description,
+    required super.price,
+    required super.thumbnail,
+  });
+
+  factory ProductModel.fromJson(Map<String, dynamic> json) {
+    return ProductModel(
+      id: json['id'] ?? 0,
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
+      price: (json['price'] ?? 0).toDouble(),
+      thumbnail: json['thumbnail'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'price': price,
+      'thumbnail': thumbnail,
+    };
+  }
+}
+''');
+
+    await _createFile('$productsPath/data/models', 'product_response',
+        '''import 'product_model.dart';
+
+class ProductResponse {
+  final List<ProductModel> products;
+  final int total;
+
+  ProductResponse({required this.products, required this.total});
+
+  factory ProductResponse.fromJson(Map<String, dynamic> json) {
+    return ProductResponse(
+      products: (json['products'] as List).map((item) => ProductModel.fromJson(item)).toList(),
+      total: json['total'] ?? 0,
+    );
+  }
+}
+''');
+
+    // Data - Datasources
+    await _createFile('$productsPath/data/datasources',
+        'product_remote_datasource', '''import '/core/network/api_client.dart';
+import '/core/constants/api_urls.dart';
+import '/core/error/exceptions.dart';
+import '../models/product_model.dart';
+import '../models/product_response.dart';
+
+abstract class ProductRemoteDataSource {
+  Future<List<ProductModel>> getProducts();
+}
+
+class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
+  final ApiClient _apiClient;
+
+  ProductRemoteDataSourceImpl({required ApiClient apiClient}) : _apiClient = apiClient;
+
+  @override
+  Future<List<ProductModel>> getProducts() async {
+    try {
+      final response = await _apiClient.request(
+        endpoint: ApiUrl.products.url,
+        method: HttpMethod.get,
+      );
+      final productResponse = ProductResponse.fromJson(response);
+      return productResponse.products;
+    } catch (e) {
+      throw ServerException(message: e.toString());
+    }
+  }
+}
+''');
+
+    await _createFile('$productsPath/data/datasources',
+        'product_local_datasource', '''import '/core/error/exceptions.dart';
+import '../models/product_model.dart';
+
+abstract class ProductLocalDataSource {
+  Future<List<ProductModel>> getProducts();
+  Future<void> cacheProducts(List<ProductModel> products);
+}
+
+class ProductLocalDataSourceImpl implements ProductLocalDataSource {
+  List<ProductModel> _cachedProducts = [];
+
+  @override
+  Future<List<ProductModel>> getProducts() async {
+    if (_cachedProducts.isEmpty) {
+      throw CacheException(message: 'No cached data');
+    }
+    return _cachedProducts;
+  }
+
+  @override
+  Future<void> cacheProducts(List<ProductModel> products) async {
+    _cachedProducts = products;
+  }
+}
+''');
+
+    // Data - Repositories
+    await _createFile('$productsPath/data/repositories',
+        'product_repository_impl', '''import 'package:dartz/dartz.dart';
+import '/core/error/exceptions.dart';
+import '/core/error/failures.dart';
+import '/core/network/network_info.dart';
+import '../../domain/entities/product.dart';
+import '../../domain/repositories/product_repository.dart';
+import '../datasources/product_local_datasource.dart';
+import '../datasources/product_remote_datasource.dart';
+
+class ProductRepositoryImpl implements ProductRepository {
+  final ProductRemoteDataSource _remoteDataSource;
+  final ProductLocalDataSource _localDataSource;
+  final NetworkInfo _networkInfo;
+
+  ProductRepositoryImpl({
+    required ProductRemoteDataSource remoteDataSource,
+    required ProductLocalDataSource localDataSource,
+    required NetworkInfo networkInfo,
+  })  : _remoteDataSource = remoteDataSource,
+        _localDataSource = localDataSource,
+        _networkInfo = networkInfo;
+
+  @override
+  Future<Either<Failure, List<Product>>> getProducts() async {
+    if (await _networkInfo.internetAvailable()) {
+      try {
+        final remoteProducts = await _remoteDataSource.getProducts();
+        await _localDataSource.cacheProducts(remoteProducts);
+        return Right(remoteProducts);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(message: e.message));
+      }
+    } else {
+      try {
+        final localProducts = await _localDataSource.getProducts();
+        return Right(localProducts);
+      } on CacheException catch (e) {
+        return Left(CacheFailure(message: e.message));
+      }
+    }
+  }
+}
+''');
+
+    // Presentation - Providers
+    await _createFile(
+        '$productsPath/presentation/providers',
+        'product_providers',
+        '''import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '/core/di/service_locator.dart';
+import '/core/usecases/usecase.dart';
+import '../../domain/entities/product.dart';
+import '../../domain/usecases/get_products.dart';
+
+final getProductsProvider = Provider<GetProducts>((ref) => sl<GetProducts>());
+
+final productsProvider = FutureProvider<List<Product>>((ref) async {
+  final getProducts = ref.watch(getProductsProvider);
+  final result = await getProducts(NoParams());
+  return result.fold(
+    (failure) => throw Exception(failure.message),
+    (products) => products,
+  );
+});
+''');
+
+    // Presentation - Pages
+    await _createFile('$productsPath/presentation/pages', 'products_page',
+        '''import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '/core/presentation/widgets/global_appbar.dart';
+import '/core/presentation/widgets/global_loader.dart';
+import '../providers/product_providers.dart';
+import '../widgets/product_card.dart';
+
+class ProductsPage extends ConsumerWidget {
+  const ProductsPage({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final productsAsync = ref.watch(productsProvider);
+
+    return Scaffold(
+      appBar: const GlobalAppBar(title: 'Products'),
+      body: productsAsync.when(
+        data: (products) => ListView.builder(
+          itemCount: products.length,
+          itemBuilder: (context, index) => ProductCard(product: products[index]),
+        ),
+        loading: () => const GlobalLoader(),
+        error: (error, stack) => Center(child: Text('Error: \$error')),
+      ),
+    );
+  }
+}
+''');
+
+    // Presentation - Widgets
+    await _createFile('$productsPath/presentation/widgets', 'product_card',
+        '''import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '/core/presentation/widgets/global_text.dart';
+import '../../domain/entities/product.dart';
+
+class ProductCard extends StatelessWidget {
+  final Product product;
+
+  const ProductCard({Key? key, required this.product}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: EdgeInsets.all(8.w),
+      child: ListTile(
+        leading: Image.network(product.thumbnail, width: 50.w, height: 50.h, fit: BoxFit.cover),
+        title: GlobalText(str: product.title, fontWeight: FontWeight.bold),
+        subtitle: GlobalText(str: '\\\$\${product.price}'),
+      ),
+    );
+  }
+}
+''');
+  }
+
+  Future<void> _createMainFile() async {
+    final libPath = directoryCreator.coreDir.parent.path;
+    await _createFile(
+        libPath, 'main', '''import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'core/constants/api_urls.dart';
+import 'core/di/service_locator.dart';
+import 'core/routes/app_routes.dart';
+import 'core/routes/navigation.dart';
+import 'core/theme/theme_helper.dart';
+import 'core/utils/enum.dart';
+import 'core/utils/preferences_helper.dart';
+import 'features/products/presentation/pages/products_page.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize dependencies
+  await PrefHelper.init();
+  await initDependencies();
+  
+  // Set API URL
+  ApiUrlExtention.setUrl(UrlLink.isDev);
+  
+  runApp(const ProviderScope(child: MyApp()));
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return ScreenUtilInit(
+      designSize: const Size(375, 812),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return MaterialApp(
+          title: '$projectName',
+          theme: ThemeHelper.lightTheme(),
+          navigatorKey: Navigation.key,
+          initialRoute: AppRoutes.home,
+          routes: {
+            AppRoutes.home: (context) => const ProductsPage(),
+            AppRoutes.products: (context) => const ProductsPage(),
+          },
+        );
+      },
+    );
+  }
+}
+''');
+  }
+
+  Future<void> _createFile(String path, String fileName, String content) async {
+    try {
+      final file = File('$path/$fileName.dart');
+      await file.writeAsString(content);
+      'Created: $fileName.dart'.printWithColor(status: PrintType.success);
+    } catch (e) {
+      'Error creating $fileName.dart: $e'
+          .printWithColor(status: PrintType.error);
+    }
+  }
+}

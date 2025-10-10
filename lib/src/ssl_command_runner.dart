@@ -188,7 +188,8 @@ String? formatBoard() {
      Please Enter Your Pattern 
      1 for Mvc 
      2 for Repository
-     3 for Bloc Pattern     
+     3 for Bloc Pattern 
+     4 for Clean Architecture    
 \n''';
 
   stderr.write(content);
@@ -203,6 +204,7 @@ String? formatModuleBoard() {
      Please select module pattern
      1 for Bloc pattern 
      2 for Others
+     3 for Clean Architecture
 \n''';
 
   stderr.write(content);
