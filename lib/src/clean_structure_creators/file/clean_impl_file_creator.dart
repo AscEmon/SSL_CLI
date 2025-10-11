@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:ssl_cli/src/repo_module_creators/file/repo_module_impl_file_creator.dart';
 import 'package:ssl_cli/utils/enum.dart';
 import 'package:ssl_cli/utils/extension.dart';
 
@@ -20,14 +21,13 @@ class CleanImplFileCreator implements IFileCreator {
 
     final corePath = directoryCreator.coreDir.path;
     final featuresPath = directoryCreator.featuresDir.path;
-    final l10nPath = directoryCreator.l10nDir.path;
 
     // Core files
     await _createCoreFiles(corePath);
 
     // Feature files
     await _createFeatureFiles(featuresPath);
-    await _createLocalizationFiles(l10nPath);
+    await _createLocalizationFiles();
 
     // Main file
     await _createMainFile();
@@ -285,6 +285,7 @@ class GlobalResponse {
 
     await _createFile('$corePath/routes', 'app_routes', '''
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../features/products/presentation/pages/product_page.dart';
 
 enum AppRoutes { product }
@@ -294,11 +295,10 @@ extension AppRoutesExtention on AppRoutes {
     switch (this) {
       case AppRoutes.product:
         return const ProductPage();
-        break;
     }
-    return const SizedBox();
   }
 }
+
 ''');
 
     await _createFile('$corePath/routes', 'navigation', '''
@@ -1235,6 +1235,118 @@ typedef ResponseConverter<T> = T Function(dynamic data);
 
 ''');
 
+    await _createFile('$corePath/utils', 'app_version', '''
+import 'package:package_info_plus/package_info_plus.dart';
+import '../constants/app_constants.dart';
+import 'extension.dart';
+import 'preferences_helper.dart';
+
+class AppVersion {
+  static String currentVersion = '';
+  static String versionCode = '';
+  static Future<void> getVersion() async {
+    PackageInfo packageInfo = await PackageInfo.fromPlatform();
+    currentVersion = packageInfo.version;
+    versionCode = packageInfo.buildNumber;
+    PrefHelper.instance.setString(AppConstants.appVersion.key, currentVersion);
+    PrefHelper.instance.setString(AppConstants.buildNumber.key, versionCode);
+    'Current version is  :: \${currentVersion.toString()}'.log();
+    'App version Code is :: \${versionCode.toString()}'.log();
+  }
+}
+ 
+''');
+
+    await _createFile('$corePath/utils', 'date_util', '''
+import 'package:flutter/material.dart';
+
+import '../routes/navigation.dart';
+
+class DateUtil {
+  static DateTime? fromDate;
+  static bool isToShowPreviousDate = true;
+  static Future<DateTime?> showDatePickerDialog() async {
+    final picked = await showDatePicker(
+      context: Navigation.key.currentContext!,
+      initialDate: DateTime.now(),
+      //use to show the previous month
+      firstDate: isToShowPreviousDate == true
+          ? DateTime(2020, DateTime.december)
+          : DateTime.now(),
+      lastDate: DateTime.now(),
+    );
+
+    fromDate = picked;
+    return picked;
+  }
+}
+
+''');
+
+    await _createFile('$corePath/utils', 'validators', '''
+  
+// lib/core/utils/validators.dart
+
+class Validators {
+  // Email validation
+  static String? email(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter email';
+    }
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}\$');
+    if (!emailRegex.hasMatch(value)) {
+      return 'Please enter a valid email';
+    }
+    return null;
+  }
+
+  // Password validation
+  static String? password(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter password';
+    }
+    if (value.length < 6) {
+      return 'Password must be at least 6 characters';
+    }
+    return null;
+  }
+
+  // Required field
+  static String? required(String? value, {String? fieldName}) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter \${fieldName ?? 'this field'}';
+    }
+    return null;
+  }
+
+  // Phone number
+  static String? phone(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter phone number';
+    }
+    final phoneRegex = RegExp(r'^\+?[\d\s-]{10,}\$');
+    if (!phoneRegex.hasMatch(value)) {
+      return 'Please enter a valid phone number';
+    }
+    return null;
+  }
+
+  // Combine multiple validators
+  static String? Function(String?) combine(
+    List<String? Function(String?)> validators,
+  ) {
+    return (value) {
+      for (final validator in validators) {
+        final error = validator(value);
+        if (error != null) return error;
+      }
+      return null;
+    };
+  }
+}
+  
+''');
+
     // Utils
     await _createFile('$corePath/utils', 'preferences_helper',
         '''import 'package:shared_preferences/shared_preferences.dart';
@@ -1346,7 +1458,7 @@ class PrefHelper {
 import 'dart:developer' as darttools show log;
 import 'package:flutter/material.dart';
 import '../constants/app_constants.dart';
-import '/l10n/app_localizations.dart';
+// import '/l10n/app_localizations.dart';
 import 'package:intl/intl.dart';
 import 'preferences_helper.dart';
 
@@ -1413,7 +1525,7 @@ extension StringFormat on String {
 extension Context on BuildContext {
   //this extention is for localization
   //its a shorter version of AppLocalizations
-  AppLocalizations get loc => AppLocalizations.of(this)!;
+  // AppLocalizations get loc => AppLocalizations.of(this)!;
 
   //get media query
   MediaQueryData get mediaQuery => MediaQuery.of(this);
@@ -2188,10 +2300,8 @@ class GlobalNetworkDialog extends StatelessWidget {
     await _createFile(
         '$corePath/presentation/widgets', 'global_network_listener', '''
  
- 
  import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '/core/di/service_locator.dart';
 import '/core/network/network_info.dart';
@@ -2200,22 +2310,16 @@ import '../../routes/navigation.dart';
 import '../../utils/extension.dart';
 import '../view_util.dart';
 
-/// Provider for NetworkInfo
-/// Retrieves the singleton instance from service locator (get_it)
-/// This ensures we use the same instance throughout the app
-final networkInfoProvider = Provider<NetworkInfo>((ref) => sl<NetworkInfo>());
-
-class GlobalNetworkListener extends ConsumerStatefulWidget {
+class GlobalNetworkListener extends StatefulWidget {
   final Widget child;
 
   const GlobalNetworkListener({super.key, required this.child});
 
   @override
-  ConsumerState<GlobalNetworkListener> createState() =>
-      _GlobalNetworkListenerState();
+  State<GlobalNetworkListener> createState() => _GlobalNetworkListenerState();
 }
 
-class _GlobalNetworkListenerState extends ConsumerState<GlobalNetworkListener> {
+class _GlobalNetworkListenerState extends State<GlobalNetworkListener> {
   bool _wasConnected = true;
   bool _isShowingDialog = false;
   // Track all active dialog contexts to ensure proper dismissal
@@ -2235,7 +2339,7 @@ class _GlobalNetworkListenerState extends ConsumerState<GlobalNetworkListener> {
   }
 
   Future<void> _checkInitialConnectivity() async {
-    final networkInfo = ref.read(networkInfoProvider);
+    final networkInfo = sl<NetworkInfo>();
     _wasConnected = await networkInfo.internetAvailable();
 
     // Show dialog immediately if no internet on app start
@@ -2285,7 +2389,7 @@ class _GlobalNetworkListenerState extends ConsumerState<GlobalNetworkListener> {
               (didpop, result) {}, // Prevent back button from closing dialog
           child: GlobalNetworkDialog(
             onRetry: () async {
-              final networkInfo = ref.read(networkInfoProvider);
+              final networkInfo = sl<NetworkInfo>();
               final isConnected = await networkInfo.internetAvailable();
 
               if (isConnected) {
@@ -2325,7 +2429,7 @@ class _GlobalNetworkListenerState extends ConsumerState<GlobalNetworkListener> {
   }
 
   void _retryQueuedRequests() {
-    final networkInfo = ref.read(networkInfoProvider);
+    final networkInfo = sl<NetworkInfo>();
 
     if (networkInfo is NetworkInfoImpl) {
       if (networkInfo.apiStack.isNotEmpty) {
@@ -2342,6 +2446,7 @@ class _GlobalNetworkListenerState extends ConsumerState<GlobalNetworkListener> {
     return widget.child;
   }
 }
+
  ''');
 
     await _createFile(
@@ -2872,35 +2977,34 @@ import 'package:flutter/foundation.dart';
 class ProductState {}
 ''');
     // Presentation - Pages
-    await _createFile('$productsPath/presentation/pages', 'product_page',
-        '''import 'package:flutter/material.dart';
+    await _createFile('$productsPath/presentation/pages', 'product_page', '''
+import 'package:flutter/material.dart';
 import '/core/presentation/widgets/global_appbar.dart';
 import '/core/presentation/widgets/global_text.dart';
 
 class ProductPage extends StatelessWidget {
-  const ProductPage({Key? key}) : super(key: key);
+  const ProductPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-      appBar: const GlobalAppBar(title: 'Products'),
-      body: const Center(child: GlobalText(str: 'Products Page')),
+      appBar: const GlobalAppBar(title: 'Product List'),
+      body: const Center(child: GlobalText(str: 'Product  List')),
     );
   }
 }
 ''');
 
     // Presentation - Widgets
-    await _createFile('$productsPath/presentation/widgets', 'widget',
-        '''import 'package:flutter/material.dart';
+    await _createFile('$productsPath/presentation/widgets', 'widget', '''
+import 'package:flutter/material.dart';
 import '/core/presentation/widgets/global_text.dart';
 
 class Widget extends StatelessWidget {
   const Widget({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Center build(BuildContext context) {
     return const Center(child: GlobalText(str: 'Widget'));
   }
 }
@@ -2920,7 +3024,7 @@ import '/core/theme/theme_manager.dart';
 import '/core/utils/app_version.dart';
 import '/core/utils/preferences_helper.dart';
 import '/features/products/presentation/pages/product_page.dart';
-import '/l10n/app_localizations.dart';
+// import '/l10n/app_localizations.dart';
 import 'core/presentation/widgets/app_starter_error.dart';
 
 void main() async {
@@ -2971,13 +3075,13 @@ class MyApp extends StatelessWidget {
       minTextAdapt: true,
       builder: (ctx, child) {
         return MaterialApp(
-          title: '$projectName',
+          title: '${projectName.capitalize()}',
           navigatorKey: Navigation.key,
           debugShowCheckedModeBanner: false,
 
           // Localization
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          // supportedLocales: AppLocalizations.supportedLocales,
+          // localizationsDelegates: AppLocalizations.localizationsDelegates,
           locale: _getLocale(),
 
           // Theme
@@ -2994,6 +3098,7 @@ class MyApp extends StatelessWidget {
       },
     );
   }
+
 
   /// Get locale based on user preference
   Locale _getLocale() {
@@ -3016,10 +3121,10 @@ class MyApp extends StatelessWidget {
 ''');
   }
 
-  Future<void> _createLocalizationFiles(String l10nPath) async {
+  Future<void> _createLocalizationFiles() async {
     //localization yaml file create in project folder
     await _createFile(
-      l10nPath,
+      Directory.current.path,
       'l10n',
       """arb-dir: lib/l10n
 template-arb-file: intl_en.arb
@@ -3042,6 +3147,42 @@ output-localization-file: app_localizations.dart
 }
 ''',
       fileExtention: 'json',
+    );
+    await _createFile(
+      "lib/l10n",
+      'intl_en',
+      '''
+{
+
+    "logout_button": "Log out",
+    "note": "Note",
+    "cancel": "Cancel",
+    "yes": "Yes",
+    "delete": "Delete",
+    "item": "You have %d item",
+    "add_address":"Add Adress"
+
+
+}
+''',
+      fileExtention: 'arb',
+    );
+    await _createFile(
+      "lib/l10n",
+      'intl_bn',
+      '''
+{
+    "logout_button": "লগ আউট",
+    "note": "বিঃদ্রঃ",
+    "cancel": "বাতিল করুন",
+    "yes": "হ্যাঁ",
+    "delete": "মুছে ফেলা",
+    "item": "আপনার কাছে %d টি আইটেম আছে",
+     "add_address":"ঠিকানা যোগ করুন"
+
+}
+''',
+      fileExtention: 'arb',
     );
   }
 

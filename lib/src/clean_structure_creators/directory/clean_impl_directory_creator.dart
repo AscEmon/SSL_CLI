@@ -22,9 +22,6 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
   Directory get assetsDir => Directory('${Directory.current.path}/assets');
 
   @override
-  Directory get l10nDir => Directory('${Directory.current.path}/l10n');
-
-  @override
   Future<bool> createDirectories() async {
     try {
       final libDir = Directory("lib");
@@ -39,13 +36,12 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
       final absCorePath = coreDir.absolute.path;
       final absFeaturesPath = featuresDir.absolute.path;
       final absAssetsPath = assetsDir.absolute.path;
-      final absL10nPath = l10nDir.absolute.path;
 
       print('Creating Clean Architecture directories...\n');
 
       // Create assets folder
       print('Creating assets directory...');
-      await Directory(absAssetsPath).create();
+      await Directory('$absAssetsPath').create();
       await Directory('$absAssetsPath/fonts').create();
       await Directory('$absAssetsPath/images').create();
       await Directory('$absAssetsPath/svg').create();
@@ -93,10 +89,12 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
           .create();
       await Directory('$absFeaturesPath/products/presentation/providers')
           .create();
+      await Directory('$absFeaturesPath/products/presentation/providers/state')
+          .create();
 
       // Create l10n directory
       print('Creating l10n directory...');
-      await Directory(absL10nPath).create();
+      await Directory('$basePath/l10n').create();
 
       // print('SSL CLI build setup initiate...');
       // final appBuildGradleEdit = SetupFlavor();
