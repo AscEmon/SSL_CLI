@@ -285,7 +285,6 @@ class GlobalResponse {
 
     await _createFile('$corePath/routes', 'app_routes', '''
 import 'package:flutter/material.dart';
-import 'package:flutter/material.dart';
 import '../../features/products/presentation/pages/product_page.dart';
 
 enum AppRoutes { product }

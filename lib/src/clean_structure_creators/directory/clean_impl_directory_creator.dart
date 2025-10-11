@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:ssl_cli/utils/pubspec_edit.dart';
 
+import '../../../utils/setup_flavor.dart';
 import '../clean_i_creators.dart';
 
 class CleanImplDirectoryCreator implements IDirectoryCreator {
@@ -96,9 +97,9 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
       print('Creating l10n directory...');
       await Directory('$basePath/l10n').create();
 
-      // print('SSL CLI build setup initiate...');
-      // final appBuildGradleEdit = SetupFlavor();
-      // appBuildGradleEdit.appBuildGradleEditFunc();
+      print('SSL CLI build setup initiate...');
+      final appBuildGradleEdit = SetupFlavor();
+      appBuildGradleEdit.appBuildGradleEditFunc();
 
       // Pubspec edit file
       print('Pubspec generate with packages and other configuration...');

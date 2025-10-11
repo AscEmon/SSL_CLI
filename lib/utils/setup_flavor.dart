@@ -6,18 +6,69 @@ import 'enum.dart';
 class SetupFlavor {
   void appBuildGradleEditFunc() {
     try {
-      final filePath = "${Directory.current.path}/android/app/build.gradle";
-      final file = File(filePath);
+      // Check for both Groovy and Kotlin DSL build files
+      final groovyPath = "${Directory.current.path}/android/app/build.gradle";
+      final kotlinPath =
+          "${Directory.current.path}/android/app/build.gradle.kts";
+
+      File? file;
+      bool isKotlinDsl = false;
+
+      if (File(kotlinPath).existsSync()) {
+        file = File(kotlinPath);
+        isKotlinDsl = true;
+      } else if (File(groovyPath).existsSync()) {
+        file = File(groovyPath);
+        isKotlinDsl = false;
+      } else {
+        'Error: Neither build.gradle nor build.gradle.kts found.'
+            .printWithColor(status: PrintType.error);
+        return;
+      }
+
       List<String> lines = file.readAsLinesSync();
 
-      final int applyFormIndex = lines.indexWhere(
-          (line) => line.contains('id "dev.flutter.flutter-gradle-plugin"'));
+      // Find the plugin declaration line
+      final int applyFormIndex = isKotlinDsl
+          ? lines.indexWhere((line) =>
+              line.contains('id("dev.flutter.flutter-gradle-plugin")'))
+          : lines.indexWhere((line) =>
+              line.contains('id "dev.flutter.flutter-gradle-plugin"'));
 
       if (applyFormIndex != -1) {
-        final additionalCode = '''
+        // Different code for Kotlin DSL vs Groovy
+        final additionalCode = isKotlinDsl ? '''
+
+import java.util.Base64
+
+// Dart environment variables setup
+val dartEnvironmentVariables = mutableMapOf<String, String>()
+
+if (project.hasProperty("dart-defines")) {
+    val dartDefines = project.property("dart-defines") as String
+    dartDefines.split(",").forEach { entry ->
+        val pair = String(Base64.getDecoder().decode(entry)).split("=")
+        if (pair.size == 2) {
+            dartEnvironmentVariables[pair[0]] = pair[1]
+            if (pair[0] == "mode") {
+                project.extra["APP_FLAVOR"] = pair[1]
+            }
+        }
+    }
+}
+
+fun getAppFlavor(): String {
+    return if (project.extra.has("APP_FLAVOR")) {
+        "\${project.extra["APP_FLAVOR"]}_"
+    } else {
+        ""
+    }
+}
+''' : '''
+
 def dartEnvironmentVariables = [
     APP_FLAVOR: project.hasProperty('mode')
-];
+]
 
 if (project.hasProperty('dart-defines')) {
     dartEnvironmentVariables = dartEnvironmentVariables +
@@ -52,35 +103,103 @@ def appFlavor() {
 }
 ''';
 
-        lines.insert(applyFormIndex + 2, additionalCode);
+        // Insert after the plugins block (after closing brace)
+        int insertIndex = applyFormIndex;
+        // Find the closing brace of plugins block
+        for (int i = applyFormIndex; i < lines.length; i++) {
+          if (lines[i].trim() == '}') {
+            insertIndex = i;
+            break;
+          }
+        }
+
+        lines.insert(insertIndex + 1, additionalCode);
         file.writeAsStringSync(lines.join('\n'));
 
-        int index = lines.indexWhere(
-            (line) => line.contains('signingConfig') && line.contains('debug'));
+        // Reload lines after first modification
+        lines = file.readAsLinesSync();
+
+        // Find signingConfig line
+        int index = isKotlinDsl
+            ? lines.indexWhere((line) =>
+                line.contains('signingConfig') &&
+                line.contains('=') &&
+                line.contains('debug'))
+            : lines.indexWhere((line) =>
+                line.contains('signingConfig') && line.contains('debug'));
 
         if (index != -1) {
-          final additionalCode = '''
-            android.applicationVariants.all { variant ->
-                variant.outputs.all {
-                    if(appFlavor() != null){
-                         def appName = variant.getMergedFlavor().applicationId
-                         int lastIndex = appName.lastIndexOf('.')
-                         def modifiedAppName = lastIndex != -1 ? appName.substring(lastIndex + 1) : appName
-                         outputFileName = "\${modifiedAppName}_\${appFlavor()}\${versionName}(\${versionCode}).apk"
-                         renamePath(outputFileName)
+          final additionalCode = isKotlinDsl ? '''
+
+// Copy and rename APK based on flavor after build
+gradle.buildFinished {
+    val flavor = getAppFlavor()
+    if (flavor.isNotEmpty()) {
+        val flutterApkDir = File("\${project.buildDir}/outputs/flutter-apk")
+        val apkOutputDir = File("\${project.buildDir}/outputs/apk")
+        
+        listOf(flutterApkDir, apkOutputDir).forEach { dir ->
+            if (dir.exists()) {
+                dir.walk().forEach { file ->
+                    if (file.isFile && file.extension == "apk" && !file.name.contains("_\${flavor}")) {
+                        val appName = android.namespace?.substringAfterLast(".") ?: "app"
+                        val versionName = android.defaultConfig.versionName ?: "1.0.0"
+                        val versionCode = android.defaultConfig.versionCode ?: 1
+                        val newName = "\${appName}_\${flavor}\${versionName}(\${versionCode}).apk"
+                        val newFile = File(file.parent, newName)
+                        file.copyTo(newFile, overwrite = true)
                     }
                 }
             }
-        ''';
+        }
+    }
+}
+''' : '''
 
-          lines.insert(index + 1, additionalCode);
+    android.applicationVariants.all { variant ->
+        variant.outputs.all {
+            if(appFlavor() != null){
+                 def appName = variant.getMergedFlavor().applicationId
+                 int lastIndex = appName.lastIndexOf('.')
+                 def modifiedAppName = lastIndex != -1 ? appName.substring(lastIndex + 1) : appName
+                 outputFileName = "\${modifiedAppName}_\${appFlavor()}\${versionName}(\${versionCode}).apk"
+                 renamePath(outputFileName)
+            }
+        }
+    }
+''';
+
+          // Find the closing brace of buildTypes block
+          int buildTypesEnd = index;
+          int braceCount = 0;
+          bool foundOpenBrace = false;
+
+          for (int i = index; i < lines.length; i++) {
+            String line = lines[i];
+            if (line.contains('{')) {
+              foundOpenBrace = true;
+              braceCount++;
+            }
+            if (line.contains('}')) {
+              braceCount--;
+              if (foundOpenBrace && braceCount == 0) {
+                buildTypesEnd = i;
+                break;
+              }
+            }
+          }
+
+          lines.insert(buildTypesEnd, additionalCode);
           file.writeAsStringSync(lines.join('\n'));
           'ssl_cli build setup successfully.'
               .printWithColor(status: PrintType.success);
         } else {
-          'Error: Line pattern not found in the specified file.'
+          'Error: signingConfig line not found in the specified file.'
               .printWithColor(status: PrintType.error);
         }
+      } else {
+        'Error: Flutter Gradle Plugin declaration not found.'
+            .printWithColor(status: PrintType.error);
       }
     } catch (e) {
       print('Error: $e');
