@@ -4,7 +4,7 @@ version: 4.0.0
 homepage: https://github.com/AscEmon/SSL_CLI
 
 environment:
-  sdk: '>=2.15.1 <4.0.0'
+  sdk: ^3.7.2
 
 
 dependencies:

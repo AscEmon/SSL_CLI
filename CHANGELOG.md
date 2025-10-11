@@ -419,3 +419,13 @@
 - Automatic Doc generation integrate
 ## 3.1.6
 - override command added for  config.json
+
+## 4.0.0
+- flavorType rename to mode
+- clean architecture integrate
+- default theme integrate
+- kts file and groovy wise build.gradle update
+- release and debug build wise build.gradle update
+- pubspec.yaml package update
+
+
