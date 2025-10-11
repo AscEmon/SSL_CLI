@@ -3058,8 +3058,8 @@ void main() async {
 
 /// Initialize core services
 Future<void> initServices() async {
-  const mode = String.fromEnvironment('mode', defaultValue: 'DEV');
-  ApiUrlExtention.setUrl(mode == 'DEV' ? UrlLink.isDev : UrlLink.isLive);
+  const flavorType = String.fromEnvironment('flavorType', defaultValue: 'DEV');
+  ApiUrlExtention.setUrl(flavorType == 'DEV' ? UrlLink.isDev : UrlLink.isLive);
   await PrefHelper.init();
   await AppVersion.getVersion();
 }

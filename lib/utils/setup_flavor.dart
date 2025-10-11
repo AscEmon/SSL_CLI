@@ -59,7 +59,7 @@ if (project.hasProperty("dart-defines")) {
         val pair = String(Base64.getDecoder().decode(entry)).split("=")
         if (pair.size == 2) {
             dartEnvironmentVariables[pair[0]] = pair[1]
-            if (pair[0] == "mode") {
+            if (pair[0] == "flavorType") {
                 project.extra["APP_FLAVOR"] = pair[1]
             }
         }
@@ -83,7 +83,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 def dartEnvironmentVariables = [
-    APP_FLAVOR: project.hasProperty('mode')
+    APP_FLAVOR: project.hasProperty('flavorType')
 ]
 
 if (project.hasProperty('dart-defines')) {
@@ -92,7 +92,7 @@ if (project.hasProperty('dart-defines')) {
             .split(',')
             .collectEntries { entry ->
                 def pair = new String(entry.decodeBase64(), 'UTF-8').split('=')
-                if (pair.first() == 'mode') {
+                if (pair.first() == 'flavorType') {
                   project.ext.APP_FLAVOR = pair.last()
                 }
                 [(pair.first()): pair.last()]
@@ -306,16 +306,16 @@ gradle.buildFinished {
 
     String codeSnippet1 = 'AppUrlExtention.setUrl(UrlLink.isDev);';
     final codeSnippet2 = '''
-  const mode = String.fromEnvironment('mode', defaultValue: 'DEV');
+  const flavorType = String.fromEnvironment('flavorType', defaultValue: 'DEV');
   AppUrlExtention.setUrl(
-    mode == "DEV" ? UrlLink.isDev : UrlLink.isLive,
+    flavorType == "DEV" ? UrlLink.isDev : UrlLink.isLive,
   );
   ''';
     final codeSnippet3 = '''
-  const mode = String.fromEnvironment('mode', defaultValue: 'DEV');
-  if(mode == "LIVE"){
+  const flavorType = String.fromEnvironment('flavorType', defaultValue: 'DEV');
+  if(flavorType == "LIVE"){
     // set your production based url
-  } else if (mode == "DEV") {
+  } else if (flavorType == "DEV") {
      // set your development based url
   }
   ''';

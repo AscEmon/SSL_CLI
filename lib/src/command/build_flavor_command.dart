@@ -46,7 +46,8 @@ class BuildFlavorCommand with SentApkTelegramMixin implements ICommand {
   Future<void> processCommand(List<String> arguments) async {
     if (arguments.contains("apk")) {
       print("executing build command with dart define...");
-      arguments[3] = '--dart-define=mode=${arguments[3].replaceAll("--", "")}';
+      arguments[3] =
+          '--dart-define=flavorType=${arguments[3].replaceAll("--", "")}';
     }
 
     if (arguments.contains("run")) {
@@ -74,8 +75,9 @@ class BuildFlavorCommand with SentApkTelegramMixin implements ICommand {
 
   Future<void> runCommand(List<String> arguments) async {
     print(
-        "executing run command for ${arguments[2].replaceAll("--", "")} mode with dart define for release build...");
-    arguments[2] = '--dart-define=mode=${arguments[2].replaceAll("--", "")}';
+        "executing run command for ${arguments[2].replaceAll("--", "")} flavorType with dart define for release build...");
+    arguments[2] =
+        '--dart-define=flavorType=${arguments[2].replaceAll("--", "")}';
     arguments.add("--release");
     var process = await Process.start(
       arguments[0],

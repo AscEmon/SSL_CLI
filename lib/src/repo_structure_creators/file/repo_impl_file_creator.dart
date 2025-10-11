@@ -2511,10 +2511,8 @@ void main() async {
 /// Make sure you always init shared pref first. It has token and token is need
 /// to make API call
 initServices() async {
-  const mode = String.fromEnvironment('mode', defaultValue: 'DEV');
-  AppUrlExtention.setUrl(
-    mode == "DEV" ? UrlLink.isDev : UrlLink.isLive,
-  );
+   const flavorType = String.fromEnvironment('flavorType', defaultValue: 'DEV');
+  ApiUrlExtention.setUrl(flavorType == 'DEV' ? UrlLink.isDev : UrlLink.isLive);
   await PrefHelper.init();
   await AppVersion.getVersion();
   await NetworkConnection.instance.internetAvailable();
