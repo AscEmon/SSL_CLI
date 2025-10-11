@@ -9,6 +9,7 @@ abstract class IDirectoryCreator {
   Directory get coreDir;
   Directory get featuresDir;
   Directory get assetsDir;
+  Directory get l10nDir;
 }
 
 abstract class IFileCreator {

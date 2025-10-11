@@ -20,13 +20,14 @@ class CleanImplFileCreator implements IFileCreator {
 
     final corePath = directoryCreator.coreDir.path;
     final featuresPath = directoryCreator.featuresDir.path;
+    final l10nPath = directoryCreator.l10nDir.path;
 
     // Core files
     await _createCoreFiles(corePath);
 
     // Feature files
     await _createFeatureFiles(featuresPath);
-    await _createLocalizationFiles();
+    await _createLocalizationFiles(l10nPath);
 
     // Main file
     await _createMainFile();
@@ -285,19 +286,14 @@ class GlobalResponse {
     await _createFile('$corePath/routes', 'app_routes', '''
 import 'package:flutter/material.dart';
 import '../../features/products/presentation/pages/product_page.dart';
-import '../../features/products/presentation/pages/product_details_page.dart';
 
-enum AppRoutes { product, productDetails }
+enum AppRoutes { product }
 
 extension AppRoutesExtention on AppRoutes {
   Widget buildWidget<T extends Object>({T? arguments}) {
     switch (this) {
       case AppRoutes.product:
         return const ProductPage();
-      case AppRoutes.productDetails:
-        if (arguments is int) {
-          return ProductDetailsPage(productId: arguments);
-        }
         break;
     }
     return const SizedBox();
@@ -2815,8 +2811,8 @@ class ProductLocalDataSourceImpl implements ProductLocalDataSource {
 ''');
 
     // Data - Repositories
-    await _createFile('$productsPath/data/repositories',
-        'product_repository_impl', '''
+    await _createFile(
+        '$productsPath/data/repositories', 'product_repository_impl', '''
 import 'package:dartz/dartz.dart';
 
 import '/core/error/exceptions.dart';
@@ -2870,6 +2866,8 @@ class ProductNotifier {}
 
     await _createFile(
         '$productsPath/presentation/providers/state', 'product_state', '''
+import 'package:flutter/foundation.dart';
+
 @immutable
 class ProductState {}
 ''');
@@ -2910,9 +2908,7 @@ class Widget extends StatelessWidget {
   }
 
   Future<void> _createMainFile() async {
-    final libPath = directoryCreator.coreDir.parent.path;
-    await _createFile(
-        libPath, 'main', '''import 'package:flutter/material.dart';
+    await _createFile('lib', 'main', '''import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -2920,12 +2916,12 @@ import '/core/constants/api_urls.dart';
 import '/core/di/service_locator.dart';
 import '/core/presentation/widgets/global_network_listener.dart';
 import '/core/routes/navigation.dart';
+import '/core/theme/theme_manager.dart';
 import '/core/utils/app_version.dart';
 import '/core/utils/preferences_helper.dart';
-import '/features/auth/data/datasources/auth_local_datasource.dart';
-import 'core/presentation/widgets/app_starter_error.dart';
-import 'core/theme/theme_manager.dart';
 import '/features/products/presentation/pages/product_page.dart';
+import '/l10n/app_localizations.dart';
+import 'core/presentation/widgets/app_starter_error.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -2952,7 +2948,7 @@ void main() async {
 
     // Show error screen
     runApp(
-     MaterialApp(home: AppStarterError(error: e.toString())
+      MaterialApp(home: AppStarterError(error: e.toString())),
     );
   }
 }
@@ -2965,17 +2961,17 @@ Future<void> initServices() async {
   await AppVersion.getVersion();
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return ScreenUtilInit(
       designSize: const Size(360, 800),
       minTextAdapt: true,
       builder: (ctx, child) {
         return MaterialApp(
-          title: '$projectName.toCapitalize()',
+          title: '$projectName',
           navigatorKey: Navigation.key,
           debugShowCheckedModeBanner: false,
 
@@ -3011,19 +3007,19 @@ class MyApp extends ConsumerWidget {
   Widget _getInitialPage() {
     // final isLoggedIn = sl<AuthLocalDataSource>().isLoggedIn();
     // if (isLoggedIn) {
-    //   return const ProductsPage();
+    //   return const ProductPage();
     // }
-    return const ProductsPage();
+    return const ProductPage();
   }
 }
 
 ''');
   }
 
-  Future<void> _createLocalizationFiles() async {
+  Future<void> _createLocalizationFiles(String l10nPath) async {
     //localization yaml file create in project folder
     await _createFile(
-      Directory.current.path,
+      l10nPath,
       'l10n',
       """arb-dir: lib/l10n
 template-arb-file: intl_en.arb
