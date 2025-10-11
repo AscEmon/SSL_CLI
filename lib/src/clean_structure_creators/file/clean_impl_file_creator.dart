@@ -3197,7 +3197,7 @@ template-arb-file: intl_en.arb
 output-localization-file: app_localizations.dart
 """, fileExtention: 'yaml');
 
-    await _createFile(Directory.current.path, 'verify_obfuscation.sh', '''
+    await _createFile(Directory.current.path, 'verify_obfuscation', '''
 #!/bin/bash
 
 echo "=== APK Obfuscation Verification ==="
