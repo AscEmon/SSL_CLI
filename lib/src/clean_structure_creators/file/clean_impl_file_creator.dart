@@ -26,6 +26,7 @@ class CleanImplFileCreator implements IFileCreator {
 
     // Feature files
     await _createFeatureFiles(featuresPath);
+    await _createLocalizationFiles();
 
     // Main file
     await _createMainFile();
@@ -36,10 +37,10 @@ class CleanImplFileCreator implements IFileCreator {
 
   Future<void> _createCoreFiles(String corePath) async {
     // Constants
-    await _createFile('$corePath/constants', 'api_urls',
-        '''enum UrlLink { isLive, isDev, isLocalServer }
+    await _createFile('$corePath/constants', 'api_urls', '''
+enum UrlLink { isLive, isDev, isLocalServer }
 
-enum ApiUrl { base, baseImage }
+enum ApiUrl { base, baseImage, products }
 
 extension ApiUrlExtention on ApiUrl {
   static String _baseUrl = '';
@@ -67,16 +68,17 @@ extension ApiUrlExtention on ApiUrl {
         return _baseUrl;
       case ApiUrl.baseImage:
         return _baseImageUrl;
-
+      case ApiUrl.products:
+        return "/products";
     }
   }
 }
+
 ''');
 
     await _createFile(
         '$corePath/constants', 'app_constants', '''enum AppConstants {
   bearer('Bearer'),
-bearer('Bearer'),
   applicationJson('application/json'),
   multipartFormData('multipart/form-data'),
   contentType('application/json'),
@@ -468,7 +470,7 @@ enum AppColors {
     await _createFile('$corePath/theme', 'theme_helper', '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:test_clean/core/theme/app_colors.dart';
+import 'app_colors.dart';
 
 class AppTheme {
   static ThemeData lightTheme() {
@@ -1239,7 +1241,7 @@ typedef ResponseConverter<T> = T Function(dynamic data);
 
     // Utils
     await _createFile('$corePath/utils', 'preferences_helper',
-        '''iimport 'package:shared_preferences/shared_preferences.dart';
+        '''import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
 
@@ -2654,77 +2656,6 @@ class ViewUtil {
 }
 
 ''');
-
-    // Routes
-    await _createFile('$corePath/routes', 'app_routes', '''class AppRoutes {
-  static const String home = '/';
-  static const String products = '/products';
-}
-''');
-
-    await _createFile('$corePath/routes', 'navigation',
-        '''import 'package:flutter/material.dart';
-
-class Navigation {
-  static final GlobalKey<NavigatorState> key = GlobalKey<NavigatorState>();
-
-  static Future<dynamic> push(BuildContext context, {required String route}) {
-    return Navigator.pushNamed(context, route);
-  }
-
-  static void pop(BuildContext context) {
-    Navigator.pop(context);
-  }
-}
-''');
-
-    // Theme
-    await _createFile('$corePath/theme', 'app_colors',
-        '''import 'package:flutter/material.dart';
-
-enum KColor {
-  primary,
-  secondary,
-  accent,
-  white,
-  black,
-}
-
-extension KColorExtension on KColor {
-  Color get color {
-    switch (this) {
-      case KColor.primary:
-        return const Color(0xFF2196F3);
-      case KColor.secondary:
-        return const Color(0xFF03DAC6);
-      case KColor.accent:
-        return const Color(0xFFFF5722);
-      case KColor.white:
-        return Colors.white;
-      case KColor.black:
-        return Colors.black;
-    }
-  }
-}
-''');
-
-    await _createFile('$corePath/theme', 'theme_helper',
-        '''import 'package:flutter/material.dart';
-import 'app_colors.dart';
-
-class ThemeHelper {
-  static ThemeData lightTheme() {
-    return ThemeData(
-      primaryColor: KColor.primary.color,
-      scaffoldBackgroundColor: Colors.white,
-      appBarTheme: AppBarTheme(
-        backgroundColor: KColor.primary.color,
-        elevation: 0,
-      ),
-    );
-  }
-}
-''');
   }
 
   Future<void> _createFeatureFiles(String featuresPath) async {
@@ -2751,57 +2682,35 @@ import 'package:dartz/dartz.dart';
 
 import '/core/error/failures.dart';
 import '/features/products/domain/entities/product.dart';
-import '/features/products/domain/usecases/get_products.dart';
 
 /// Repository interface for product functionality
 abstract class ProductRepository {
   /// Get paginated list of products
-  Future<Either<Failure, Product>> getProducts(
-    GetProductsParams params,
-  );
+  Future<Either<Failure, List<Product>>> getProducts();
 }
+
 ''');
 
 // Domain - Usecases
     await _createFile('$productsPath/domain/usecases', 'get_products', '''
 import 'package:dartz/dartz.dart';
-import 'package:equatable/equatable.dart';
 import '/core/error/failures.dart';
 import '/core/usecases/usecase.dart';
 import '/features/products/domain/entities/product.dart';
 import '/features/products/domain/repositories/product_repository.dart';
 
 /// Use case for getting paginated products
-class GetProducts implements UseCase<Product, GetProductsParams> {
+class GetProducts implements UseCase<List<Product>, NoParams> {
   final ProductRepository _repository;
 
   GetProducts(this._repository);
 
   @override
-  Future<Either<Failure, Product>> call(
-    GetProductsParams params,
-  ) async {
-    return await _repository.getProducts(params);
+  Future<Either<Failure, List<Product>>> call(NoParams params) async {
+    return await _repository.getProducts();
   }
 }
 
-/// Parameters for GetProducts use case
-class GetProductsParams extends Equatable {
-  final int limit;
-  final int skip;
-  final String? searchQuery;
-  final String? category;
-
-  const GetProductsParams({
-    this.limit = 30, 
-    this.skip = 0, 
-    this.searchQuery,
-    this.category,
-  });
-
-  @override
-  List<Object?> get props => [limit, skip, searchQuery, category];
-}
 ''');
 
     // Data - Models
@@ -2907,7 +2816,9 @@ class ProductLocalDataSourceImpl implements ProductLocalDataSource {
 
     // Data - Repositories
     await _createFile('$productsPath/data/repositories',
-        'product_repository_impl', '''import 'package:dartz/dartz.dart';
+        'product_repository_impl', '''
+import 'package:dartz/dartz.dart';
+
 import '/core/error/exceptions.dart';
 import '/core/error/failures.dart';
 import '/core/network/network_info.dart';
@@ -2925,9 +2836,9 @@ class ProductRepositoryImpl implements ProductRepository {
     required ProductRemoteDataSource remoteDataSource,
     required ProductLocalDataSource localDataSource,
     required NetworkInfo networkInfo,
-  })  : _remoteDataSource = remoteDataSource,
-        _localDataSource = localDataSource,
-        _networkInfo = networkInfo;
+  }) : _remoteDataSource = remoteDataSource,
+       _localDataSource = localDataSource,
+       _networkInfo = networkInfo;
 
   @override
   Future<Either<Failure, List<Product>>> getProducts() async {
@@ -2954,13 +2865,11 @@ class ProductRepositoryImpl implements ProductRepository {
     // Presentation - Providers
     await _createFile(
         '$productsPath/presentation/providers', 'product_notifier', '''
-import 'package:flutter/material.dart';
-
 class ProductNotifier {}
 ''');
+
     await _createFile(
         '$productsPath/presentation/providers/state', 'product_state', '''
-import 'package:flutter/material.dart';
 @immutable
 class ProductState {}
 ''');
@@ -3109,7 +3018,9 @@ class MyApp extends ConsumerWidget {
 }
 
 ''');
+  }
 
+  Future<void> _createLocalizationFiles() async {
     //localization yaml file create in project folder
     await _createFile(
       Directory.current.path,

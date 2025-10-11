@@ -35,13 +35,13 @@ class PubspecEdit {
         lines.insert(indexOfCupertinoIcons + 5, '  flutter_screenutil: ^5.9.3');
         lines.insert(indexOfCupertinoIcons + 6, '  package_info_plus: ^9.0.0');
         lines.insert(indexOfCupertinoIcons + 7, '  flutter_svg: ^2.2.1');
-        lines.insert(indexOfCupertinoIcons + 8, '  google_fonts: ^6.3.2');
+        lines.insert(indexOfCupertinoIcons + 8, '  google_fonts: ^6.2.1');
         if (patternNumber != null && patternNumber == "3") {
           // for bloc pattern
           lines.insert(indexOfCupertinoIcons + 9, '  flutter_bloc: ^8.1.6');
         }
         if (patternNumber != null && patternNumber == "4") {
-          // for clean pattern
+          // for clean architecture pattern
           lines.insert(indexOfCupertinoIcons + 9, '  equatable: ^2.0.7');
           lines.insert(indexOfCupertinoIcons + 10, '  dartz: ^0.10.1');
           lines.insert(indexOfCupertinoIcons + 11, '  get_it: ^8.2.0');

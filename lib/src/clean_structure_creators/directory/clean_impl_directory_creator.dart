@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import '../../../utils/setup_flavor.dart';
-import '../../../utils/pubspec_edit.dart';
+import 'package:ssl_cli/utils/pubspec_edit.dart';
+
 import '../clean_i_creators.dart';
 
 class CleanImplDirectoryCreator implements IDirectoryCreator {
   final String projectName;
-  
+
   CleanImplDirectoryCreator(this.projectName);
 
   late final String basePath;
@@ -41,7 +41,7 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
 
       // Create assets folder
       print('Creating assets directory...');
-      await Directory('$absAssetsPath').create();
+      await Directory(absAssetsPath).create();
       await Directory('$absAssetsPath/fonts').create();
       await Directory('$absAssetsPath/images').create();
       await Directory('$absAssetsPath/svg').create();
@@ -49,7 +49,7 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
       // Create core directory structure
       print('Creating core directory...');
       await Directory(absCorePath).create();
-      
+
       // Core subdirectories
       await Directory('$absCorePath/constants').create();
       await Directory('$absCorePath/di').create();
@@ -69,38 +69,40 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
       print('Creating features directory with example module...');
       await Directory(absFeaturesPath).create();
       await Directory('$absFeaturesPath/products').create();
-      
+
       // Domain layer
       await Directory('$absFeaturesPath/products/domain').create();
       await Directory('$absFeaturesPath/products/domain/entities').create();
       await Directory('$absFeaturesPath/products/domain/repositories').create();
       await Directory('$absFeaturesPath/products/domain/usecases').create();
-      
+
       // Data layer
       await Directory('$absFeaturesPath/products/data').create();
       await Directory('$absFeaturesPath/products/data/models').create();
       await Directory('$absFeaturesPath/products/data/datasources').create();
       await Directory('$absFeaturesPath/products/data/repositories').create();
-      
+
       // Presentation layer
       await Directory('$absFeaturesPath/products/presentation').create();
       await Directory('$absFeaturesPath/products/presentation/pages').create();
-      await Directory('$absFeaturesPath/products/presentation/widgets').create();
-      await Directory('$absFeaturesPath/products/presentation/providers').create();
+      await Directory('$absFeaturesPath/products/presentation/widgets')
+          .create();
+      await Directory('$absFeaturesPath/products/presentation/providers')
+          .create();
 
       // Create l10n directory
       print('Creating l10n directory...');
       await Directory('$basePath/l10n').create();
 
-      print('SSL CLI build setup initiate...');
-      final appBuildGradleEdit = SetupFlavor();
-      appBuildGradleEdit.appBuildGradleEditFunc();
+      // print('SSL CLI build setup initiate...');
+      // final appBuildGradleEdit = SetupFlavor();
+      // appBuildGradleEdit.appBuildGradleEditFunc();
 
       // Pubspec edit file
       print('Pubspec generate with packages and other configuration...');
       final pubspecEdit = PubspecEdit();
       final pubspecFilePath = "${Directory.current.path}/pubspec.yaml";
-      pubspecEdit.pubspecEditConfig(pubspecFilePath);
+      pubspecEdit.pubspecEditConfig(pubspecFilePath, patternNumber: "4");
 
       return true;
     } catch (e, s) {
