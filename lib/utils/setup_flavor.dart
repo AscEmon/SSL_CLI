@@ -40,6 +40,15 @@ class SetupFlavor {
         final additionalCode = isKotlinDsl ? '''
 
 import java.util.Base64
+import java.util.Properties
+import java.io.FileInputStream
+
+// Load key.properties for signing configuration
+val keystorePropertiesFile = rootProject.file("key.properties")
+val keystoreProperties = Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
 
 // Dart environment variables setup
 val dartEnvironmentVariables = mutableMapOf<String, String>()
@@ -66,6 +75,13 @@ fun getAppFlavor(): String {
 }
 ''' : '''
 
+// Load key.properties for signing configuration
+def keystorePropertiesFile = rootProject.file("key.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 def dartEnvironmentVariables = [
     APP_FLAVOR: project.hasProperty('mode')
 ]
@@ -81,19 +97,6 @@ if (project.hasProperty('dart-defines')) {
                 }
                 [(pair.first()): pair.last()]
             }
-}
-
-def renamePath = { outputFileName ->
-  gradle.projectsEvaluated {
-    tasks.whenObjectAdded { task ->
-      task.doLast {
-        def flutterApkDir = new File("\${project.buildDir}/outputs/flutter-apk/app-release.apk")
-        if (flutterApkDir.exists()) {
-          flutterApkDir.renameTo(new File("\${project.buildDir}/outputs/flutter-apk/\$outputFileName"))
-        }
-      }
-    }
-  }
 }
 
 def appFlavor() {
@@ -119,8 +122,56 @@ def appFlavor() {
         // Reload lines after first modification
         lines = file.readAsLinesSync();
 
-        // Find signingConfig line
-        int index = isKotlinDsl
+        // Find defaultConfig closing brace to add signingConfigs
+        int defaultConfigEnd = -1;
+        
+        for (int i = 0; i < lines.length; i++) {
+          if (lines[i].contains('defaultConfig')) {
+            int braceCount = 0;
+            for (int j = i; j < lines.length; j++) {
+              if (lines[j].contains('{')) braceCount++;
+              if (lines[j].contains('}')) {
+                braceCount--;
+                if (braceCount == 0) {
+                  defaultConfigEnd = j;
+                  break;
+                }
+              }
+            }
+            break;
+          }
+        }
+        
+        if (defaultConfigEnd != -1) {
+          final signingConfigCode = isKotlinDsl ? '''
+
+    signingConfigs {
+        create("release") {
+            keyAlias = keystoreProperties["keyAlias"] as String?
+            keyPassword = keystoreProperties["keyPassword"] as String?
+            storeFile = keystoreProperties["storeFile"]?.let { file(it) }
+            storePassword = keystoreProperties["storePassword"] as String?
+        }
+    }
+''' : '''
+
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+''';
+          
+          lines.insert(defaultConfigEnd + 1, signingConfigCode);
+          file.writeAsStringSync(lines.join('\n'));
+          lines = file.readAsLinesSync();
+        }
+
+        // Find and replace signingConfig line in buildTypes
+        int signingConfigIndex = isKotlinDsl
             ? lines.indexWhere((line) =>
                 line.contains('signingConfig') &&
                 line.contains('=') &&
@@ -128,8 +179,44 @@ def appFlavor() {
             : lines.indexWhere((line) =>
                 line.contains('signingConfig') && line.contains('debug'));
 
-        if (index != -1) {
-          final additionalCode = isKotlinDsl ? '''
+        if (signingConfigIndex != -1) {
+          final newSigningConfig = isKotlinDsl
+              ? '''            // Use release signing config if key.properties exists, otherwise use debug
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }'''
+              : '''            // Use release signing config if key.properties exists, otherwise use debug
+            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug''';
+          
+          lines[signingConfigIndex] = newSigningConfig;
+          file.writeAsStringSync(lines.join('\n'));
+          lines = file.readAsLinesSync();
+        }
+
+        // Find buildTypes closing brace to add APK renaming logic
+        int buildTypesEnd = -1;
+        for (int i = 0; i < lines.length; i++) {
+          if (lines[i].contains('buildTypes')) {
+            int braceCount = 0;
+            for (int j = i; j < lines.length; j++) {
+              if (lines[j].contains('{')) braceCount++;
+              if (lines[j].contains('}')) {
+                braceCount--;
+                if (braceCount == 0) {
+                  buildTypesEnd = j;
+                  break;
+                }
+              }
+            }
+            break;
+          }
+        }
+
+        if (buildTypesEnd != -1) {
+          final apkRenameCode = isKotlinDsl ? '''
+}
 
 // Copy and rename APK based on flavor after build
 gradle.buildFinished {
@@ -153,8 +240,8 @@ gradle.buildFinished {
             }
         }
     }
+}''' : '''
 }
-''' : '''
 
     android.applicationVariants.all { variant ->
         variant.outputs.all {
@@ -169,32 +256,12 @@ gradle.buildFinished {
     }
 ''';
 
-          // Find the closing brace of buildTypes block
-          int buildTypesEnd = index;
-          int braceCount = 0;
-          bool foundOpenBrace = false;
-
-          for (int i = index; i < lines.length; i++) {
-            String line = lines[i];
-            if (line.contains('{')) {
-              foundOpenBrace = true;
-              braceCount++;
-            }
-            if (line.contains('}')) {
-              braceCount--;
-              if (foundOpenBrace && braceCount == 0) {
-                buildTypesEnd = i;
-                break;
-              }
-            }
-          }
-
-          lines.insert(buildTypesEnd, additionalCode);
+          lines[buildTypesEnd] = apkRenameCode;
           file.writeAsStringSync(lines.join('\n'));
           'ssl_cli build setup successfully.'
               .printWithColor(status: PrintType.success);
         } else {
-          'Error: signingConfig line not found in the specified file.'
+          'Error: buildTypes block not found in the specified file.'
               .printWithColor(status: PrintType.error);
         }
       } else {
