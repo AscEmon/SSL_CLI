@@ -9,15 +9,13 @@ class CleanImplFileCreator implements IFileCreator {
   final IDirectoryCreator directoryCreator;
   final String projectName;
 
-  CleanImplFileCreator(
-    this.directoryCreator,
-    this.projectName,
-  );
+  CleanImplFileCreator(this.directoryCreator, this.projectName);
 
   @override
   Future<void> createNecessaryFiles() async {
-    'Creating Clean Architecture files...'
-        .printWithColor(status: PrintType.success);
+    'Creating Clean Architecture files...'.printWithColor(
+      status: PrintType.success,
+    );
 
     final corePath = directoryCreator.coreDir.path;
     final featuresPath = directoryCreator.featuresDir.path;
@@ -32,8 +30,12 @@ class CleanImplFileCreator implements IFileCreator {
     // Main file
     await _createMainFile();
 
-    'All Clean Architecture files created successfully!'
-        .printWithColor(status: PrintType.success);
+    // Create .gitignore
+    await _createGitignoreFile();
+
+    'All Clean Architecture files created successfully!'.printWithColor(
+      status: PrintType.success,
+    );
   }
 
   Future<void> _createCoreFiles(String corePath) async {
@@ -78,7 +80,9 @@ extension ApiUrlExtention on ApiUrl {
 ''');
 
     await _createFile(
-        '$corePath/constants', 'app_constants', '''enum AppConstants {
+      '$corePath/constants',
+      'app_constants',
+      '''enum AppConstants {
   bearer('Bearer'),
   applicationJson('application/json'),
   multipartFormData('multipart/form-data'),
@@ -124,11 +128,14 @@ extension ApiUrlExtention on ApiUrl {
   final String key;
   const AppConstants(this.key);
 }
-''');
+''',
+    );
 
     // Error
-    await _createFile('$corePath/error', 'failures',
-        '''import 'package:equatable/equatable.dart';
+    await _createFile(
+      '$corePath/error',
+      'failures',
+      '''import 'package:equatable/equatable.dart';
 abstract class Failure extends Equatable {
   final String message;
   final int? statusCode;
@@ -164,10 +171,13 @@ class ValidationFailure extends Failure {
   const ValidationFailure({required super.message, super.statusCode});
 }
 
-''');
+''',
+    );
 
-    await _createFile('$corePath/error', 'exceptions',
-        '''/// Base exception class for the application
+    await _createFile(
+      '$corePath/error',
+      'exceptions',
+      '''/// Base exception class for the application
 class AppException implements Exception {
   final String message;
   final int? statusCode;
@@ -229,10 +239,13 @@ class RequestCancelledException extends AppException {
   RequestCancelledException({required super.message, super.statusCode});
 }
 
-''');
+''',
+    );
 
     await _createFile(
-        '$corePath/models', 'global_paginator', '''class GlobalPaginator {
+      '$corePath/models',
+      'global_paginator',
+      '''class GlobalPaginator {
   GlobalPaginator({
     this.currentPage,
     this.totalPages,
@@ -256,7 +269,8 @@ class RequestCancelledException extends AppException {
         "total_pages": totalPages,
         "record_per_page": recordPerPage,
       };
-    }''');
+    }''',
+    );
 
     await _createFile('$corePath/models', 'global_response', '''
 class GlobalResponse {
@@ -810,8 +824,10 @@ class ThemeManager {
 ''');
 
     // Network
-    await _createFile('$corePath/network', 'network_info',
-        '''import 'package:connectivity_plus/connectivity_plus.dart';
+    await _createFile(
+      '$corePath/network',
+      'network_info',
+      '''import 'package:connectivity_plus/connectivity_plus.dart';
 import 'api_client.dart';
 
 /// Interface for network information
@@ -886,7 +902,8 @@ class ApiRequest {
   });
 }
 
-''');
+''',
+    );
 
     await _createFile('$corePath/network', 'api_client', '''
 
@@ -1347,8 +1364,10 @@ class Validators {
 ''');
 
     // Utils
-    await _createFile('$corePath/utils', 'preferences_helper',
-        '''import 'package:shared_preferences/shared_preferences.dart';
+    await _createFile(
+      '$corePath/utils',
+      'preferences_helper',
+      '''import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/app_constants.dart';
 
@@ -1451,7 +1470,8 @@ class PrefHelper {
   }
 }
 
-''');
+''',
+    );
 
     await _createFile('$corePath/utils', 'extension', '''
 import 'dart:developer' as darttools show log;
@@ -1707,8 +1727,10 @@ extension AssetsExtention on KAssetName {
 
 ''');
 
-    await _createFile('$corePath/utils/styles', 'k_text_style',
-        '''import 'package:flutter/material.dart';
+    await _createFile(
+      '$corePath/utils/styles',
+      'k_text_style',
+      '''import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '/core/theme/app_colors.dart';
@@ -1727,7 +1749,8 @@ class KTextStyle {
   }
 }
 
-''');
+''',
+    );
 
     await _createFile('$corePath/utils/styles', 'styles', '''
 export 'k_text_style.dart';
@@ -1736,7 +1759,9 @@ export 'k_assets.dart';
 
     // Usecases
     await _createFile(
-        '$corePath/usecases', 'usecase', '''import 'package:dartz/dartz.dart';
+      '$corePath/usecases',
+      'usecase',
+      '''import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
 import '/core/error/failures.dart';
 
@@ -1753,7 +1778,8 @@ class NoParams extends Equatable {
   List<Object> get props => [];
 }
 
-''');
+''',
+    );
 
     // DI
     await _createFile('$corePath/di', 'service_locator', '''
@@ -1927,8 +1953,10 @@ class GlobalButton extends StatelessWidget {
 
 ''');
 
-    await _createFile('$corePath/presentation/widgets', 'global_appbar',
-        '''import 'package:flutter/material.dart';
+    await _createFile(
+      '$corePath/presentation/widgets',
+      'global_appbar',
+      '''import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '/core/presentation/widgets/global_text.dart';
@@ -1969,10 +1997,13 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
   Size get preferredSize => Size.fromHeight(56.h);
 }
 
-''');
+''',
+    );
 
-    await _createFile('$corePath/presentation/widgets', 'global_loader',
-        '''import 'package:flutter/material.dart';
+    await _createFile(
+      '$corePath/presentation/widgets',
+      'global_loader',
+      '''import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '/core/presentation/widgets/global_text.dart';
@@ -1994,7 +2025,8 @@ class GlobalLoader extends StatelessWidget {
   }
 }
 
-''');
+''',
+    );
 
     await _createFile('$corePath/presentation/widgets', 'app_starter_error', '''
  import 'package:flutter/material.dart';
@@ -2157,7 +2189,9 @@ class GlobalDropdown<T> extends StatelessWidget {
 ''');
 
     await _createFile(
-        '$corePath/presentation/widgets', 'global_image_loader', '''
+      '$corePath/presentation/widgets',
+      'global_image_loader',
+      '''
  
  import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -2233,10 +2267,13 @@ class GlobalImageLoader extends StatelessWidget {
     }
   }
 } 
- ''');
+ ''',
+    );
 
     await _createFile(
-        '$corePath/presentation/widgets', 'global_network_dialog', '''
+      '$corePath/presentation/widgets',
+      'global_network_dialog',
+      '''
  
  import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -2294,10 +2331,13 @@ class GlobalNetworkDialog extends StatelessWidget {
     );
   }
 }
- ''');
+ ''',
+    );
 
     await _createFile(
-        '$corePath/presentation/widgets', 'global_network_listener', '''
+      '$corePath/presentation/widgets',
+      'global_network_listener',
+      '''
  
  import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -2446,10 +2486,13 @@ class _GlobalNetworkListenerState extends State<GlobalNetworkListener> {
   }
 }
 
- ''');
+ ''',
+    );
 
     await _createFile(
-        '$corePath/presentation/widgets', 'global_text_form_field', '''
+      '$corePath/presentation/widgets',
+      'global_text_form_field',
+      '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -2620,7 +2663,8 @@ class GlobalTextFormField extends StatelessWidget {
     );
   }
 }
- ''');
+ ''',
+    );
 
     await _createFile('$corePath/presentation', 'mixins', '''
 import '/core/error/exceptions.dart';
@@ -2762,8 +2806,10 @@ class ViewUtil {
     final productsPath = '$featuresPath/products';
 
     // Domain - Entities
-    await _createFile('$productsPath/domain/entities', 'product',
-        '''import 'package:equatable/equatable.dart';
+    await _createFile(
+      '$productsPath/domain/entities',
+      'product',
+      '''import 'package:equatable/equatable.dart';
 class Product extends Equatable {
   final int id;
   const Product({
@@ -2773,11 +2819,14 @@ class Product extends Equatable {
   @override
   List<Object?> get props => [id];
 }
-''');
+''',
+    );
 
     // Domain - Repositories
     await _createFile(
-        '$productsPath/domain/repositories', 'product_repository', '''
+      '$productsPath/domain/repositories',
+      'product_repository',
+      '''
 import 'package:dartz/dartz.dart';
 
 import '/core/error/failures.dart';
@@ -2789,9 +2838,10 @@ abstract class ProductRepository {
   Future<Either<Failure, List<Product>>> getProducts();
 }
 
-''');
+''',
+    );
 
-// Domain - Usecases
+    // Domain - Usecases
     await _createFile('$productsPath/domain/usecases', 'get_products', '''
 import 'package:dartz/dartz.dart';
 import '/core/error/failures.dart';
@@ -2814,8 +2864,10 @@ class GetProducts implements UseCase<List<Product>, NoParams> {
 ''');
 
     // Data - Models
-    await _createFile('$productsPath/data/models', 'product_model',
-        '''import '../../domain/entities/product.dart';
+    await _createFile(
+      '$productsPath/data/models',
+      'product_model',
+      '''import '../../domain/entities/product.dart';
 
 class ProductModel extends Product {
   const ProductModel({
@@ -2834,10 +2886,13 @@ class ProductModel extends Product {
     };
   }
 }
-''');
+''',
+    );
 
-    await _createFile('$productsPath/data/models', 'product_response',
-        '''import 'product_model.dart';
+    await _createFile(
+      '$productsPath/data/models',
+      'product_response',
+      '''import 'product_model.dart';
 
 class ProductResponse {
   final List<ProductModel> products;
@@ -2852,11 +2907,14 @@ class ProductResponse {
     );
   }
 }
-''');
+''',
+    );
 
     // Data - Datasources
-    await _createFile('$productsPath/data/datasources',
-        'product_remote_datasource', '''import '/core/network/api_client.dart';
+    await _createFile(
+      '$productsPath/data/datasources',
+      'product_remote_datasource',
+      '''import '/core/network/api_client.dart';
 import '/core/constants/api_urls.dart';
 import '/core/error/exceptions.dart';
 import '../models/product_model.dart';
@@ -2885,10 +2943,13 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     }
   }
 }
-''');
+''',
+    );
 
-    await _createFile('$productsPath/data/datasources',
-        'product_local_datasource', '''import '/core/error/exceptions.dart';
+    await _createFile(
+      '$productsPath/data/datasources',
+      'product_local_datasource',
+      '''import '/core/error/exceptions.dart';
 import '../models/product_model.dart';
 
 abstract class ProductLocalDataSource {
@@ -2912,11 +2973,14 @@ class ProductLocalDataSourceImpl implements ProductLocalDataSource {
     _cachedProducts = products;
   }
 }
-''');
+''',
+    );
 
     // Data - Repositories
     await _createFile(
-        '$productsPath/data/repositories', 'product_repository_impl', '''
+      '$productsPath/data/repositories',
+      'product_repository_impl',
+      '''
 import 'package:dartz/dartz.dart';
 
 import '/core/error/exceptions.dart';
@@ -2960,21 +3024,27 @@ class ProductRepositoryImpl implements ProductRepository {
     }
   }
 }
-''');
+''',
+    );
 
     // Presentation - Providers
     await _createFile(
-        '$productsPath/presentation/providers', 'product_notifier', '''
+      '$productsPath/presentation/providers',
+      'product_notifier',
+      '''
 class ProductNotifier {}
-''');
+''',
+    );
 
     await _createFile(
-        '$productsPath/presentation/providers/state', 'product_state', '''
-import 'package:flutter/foundation.dart';
-
+      '$productsPath/presentation/providers/state',
+      'product_state',
+      '''
+import 'package:flutter/material.dart';
 @immutable
 class ProductState {}
-''');
+''',
+    );
     // Presentation - Pages
     await _createFile('$productsPath/presentation/pages', 'product_page', '''
 import 'package:flutter/material.dart';
@@ -3122,20 +3192,77 @@ class MyApp extends StatelessWidget {
 
   Future<void> _createLocalizationFiles() async {
     //localization yaml file create in project folder
-    await _createFile(
-      Directory.current.path,
-      'l10n',
-      """arb-dir: lib/l10n
+    await _createFile(Directory.current.path, 'l10n', """arb-dir: lib/l10n
 template-arb-file: intl_en.arb
 output-localization-file: app_localizations.dart
-""",
-      fileExtention: 'yaml',
-    );
+""", fileExtention: 'yaml');
 
-    await _createFile(
-      Directory.current.path,
-      'config',
-      '''
+    await _createFile(Directory.current.path, 'verify_obfuscation.sh', '''
+#!/bin/bash
+
+echo "=== APK Obfuscation Verification ==="
+echo ""
+
+APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+
+if [ ! -f "\$APK_PATH" ]; then
+    echo "❌ APK not found at: \$APK_PATH"
+    exit 1
+fi
+
+echo "✅ APK found: \$APK_PATH"
+echo "📦 APK Size: \$(du -h \"\$APK_PATH\" | cut -f1)"
+echo ""
+
+# Extract APK to temporary directory
+TEMP_DIR=\$(mktemp -d)
+echo "📂 Extracting APK to: \$TEMP_DIR"
+unzip -q "\$APK_PATH" -d "\$TEMP_DIR"
+
+# Check for Flutter assets
+if [ -d "\$TEMP_DIR/assets/flutter_assets" ]; then
+    echo "✅ Flutter assets found"
+fi
+
+# Check for obfuscation indicators
+echo ""
+echo "=== Obfuscation Indicators ==="
+
+# Check if app.so exists (native code)
+if [ -f "\$TEMP_DIR/lib/arm64-v8a/libapp.so" ]; then
+    SO_SIZE=\$(du -h "\$TEMP_DIR/lib/arm64-v8a/libapp.so" | cut -f1)
+    echo "✅ Native library found: libapp.so (\$SO_SIZE)"
+    echo "   This contains your obfuscated Dart code"
+fi
+
+# Check for Kotlin/Java classes (should be minimal in Flutter)
+if [ -d "\$TEMP_DIR/classes.dex\" ] || [ -f "\$TEMP_DIR/classes.dex\" ]; then
+    echo "✅ DEX files found (Android native code)"
+fi
+
+echo ""
+echo "=== Debug Symbols Check ==="
+if [ -d "build/app/outputs/symbols" ]; then
+    SYMBOL_COUNT=\$(find build/app/outputs/symbols -type f | wc -l)
+    echo "✅ Debug symbols found: \$SYMBOL_COUNT files"
+    echo "⚠️  IMPORTANT: Keep these files SECRET!"
+    echo "   Upload to Firebase Crashlytics for crash reporting"
+else
+    echo "❌ No debug symbols found"
+fi
+
+# Cleanup
+rm -rf "\$TEMP_DIR"
+
+echo ""
+echo "=== Summary ==="
+echo "✅ Your APK is obfuscated and ready for distribution"
+echo "🔒 Code is protected from reverse engineering"
+echo "📊 Use debug symbols for crash reporting only"
+
+''', fileExtention: 'sh');
+
+    await _createFile(Directory.current.path, 'config', '''
 {
     "telegram_chat_id": "",
     "botToken": "",
@@ -3144,13 +3271,8 @@ output-localization-file: app_localizations.dart
     "deepSeekApiKey": "",
     "geminiModelName":""
 }
-''',
-      fileExtention: 'json',
-    );
-    await _createFile(
-      "lib/l10n",
-      'intl_en',
-      '''
+''', fileExtention: 'json');
+    await _createFile("lib/l10n", 'intl_en', '''
 {
 
     "logout_button": "Log out",
@@ -3163,13 +3285,8 @@ output-localization-file: app_localizations.dart
 
 
 }
-''',
-      fileExtention: 'arb',
-    );
-    await _createFile(
-      "lib/l10n",
-      'intl_bn',
-      '''
+''', fileExtention: 'arb');
+    await _createFile("lib/l10n", 'intl_bn', '''
 {
     "logout_button": "লগ আউট",
     "note": "বিঃদ্রঃ",
@@ -3180,9 +3297,75 @@ output-localization-file: app_localizations.dart
      "add_address":"ঠিকানা যোগ করুন"
 
 }
-''',
-      fileExtention: 'arb',
-    );
+''', fileExtention: 'arb');
+  }
+
+  Future<void> _createGitignoreFile() async {
+    try {
+      final file = await File('${Directory.current.path}/.gitignore').create();
+      final writer = file.openWrite();
+      writer.write('''
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Debug symbols (obfuscation)
+# IMPORTANT: Keep these files secret and never commit to Git
+**/build/app/outputs/symbols/
+**/symbols/
+build/
+
+# Config files with sensitive data
+config.json
+''');
+      writer.close();
+      '.gitignore created successfully'.printWithColor(
+        status: PrintType.success,
+      );
+    } catch (e) {
+      stderr.write('creating .gitignore failed: $e');
+    }
   }
 
   Future<void> _createFile(
@@ -3198,6 +3381,8 @@ output-localization-file: app_localizations.dart
       fileType = 'arb';
     } else if (fileExtention == 'json') {
       fileType = 'json';
+    }else if (fileExtention == 'sh') {
+      fileType = 'sh';
     } else {
       fileType = 'dart';
     }

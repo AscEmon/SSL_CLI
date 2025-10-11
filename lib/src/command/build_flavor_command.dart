@@ -44,10 +44,20 @@ class BuildFlavorCommand with SentApkTelegramMixin implements ICommand {
   }
 
   Future<void> processCommand(List<String> arguments) async {
-    if (arguments.contains("apk")) {
-      print("executing build command with dart define...");
+    if (arguments.contains("apk") || arguments.contains("ipa") || arguments.contains("ios")) {
+      print("executing build command with dart define and obfuscation...");
+      
+      // Replace flavor argument with dart-define
       arguments[3] =
           '--dart-define=flavorType=${arguments[3].replaceAll("--", "")}';
+      
+      // Add obfuscation flags
+      if (!arguments.contains("--obfuscate")) {
+        arguments.add("--obfuscate");
+      }
+      if (!arguments.contains("--split-debug-info")) {
+        arguments.add("--split-debug-info=build/app/outputs/symbols");
+      }
     }
 
     if (arguments.contains("run")) {
@@ -56,9 +66,13 @@ class BuildFlavorCommand with SentApkTelegramMixin implements ICommand {
       Process process;
 
       if (arguments.contains("--t")) {
+        // Remove --t flag before passing to flutter command
+        final buildArgs = List<String>.from(arguments.sublist(1));
+        buildArgs.remove("--t");
+        
         process = await Process.start(
           arguments[0],
-          arguments.sublist(1, 4),
+          buildArgs,
           runInShell: runInShell,
         );
       } else {
@@ -137,13 +151,23 @@ class BuildFlavorCommand with SentApkTelegramMixin implements ICommand {
       print("Run successfully completed. Installing.....");
       exit(0);
     } else if (arguments.contains("apk")) {
-      'APK file created successfully.'
+      'APK file created successfully with obfuscation.'
           .printWithColor(status: PrintType.success);
+      if (arguments.contains("--obfuscate")) {
+        print('Debug symbols saved to: build/app/outputs/symbols');
+      }
       if (arguments.contains("--t")) {
         sentApkTelegramFunc();
       } else {
         handleApkProcessing();
       }
+    } else if (arguments.contains("ipa") || arguments.contains("ios")) {
+      'iOS build created successfully with obfuscation.'
+          .printWithColor(status: PrintType.success);
+      if (arguments.contains("--obfuscate")) {
+        print('Debug symbols saved to: build/app/outputs/symbols');
+      }
+      exit(0);
     } else if (arguments.contains("appbundle")) {
       'App Bundle file created successfully.'
           .printWithColor(status: PrintType.success);

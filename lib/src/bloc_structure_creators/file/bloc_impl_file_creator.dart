@@ -2838,6 +2838,75 @@ output-localization-file: app_localizations.dart
 }
 
 """);
+
+    // Create .gitignore
+    await _createGitignoreFile();
+  }
+
+  Future<void> _createGitignoreFile() async {
+    try {
+      final file = await File('${Directory.current.path}/.gitignore').create();
+      final writer = file.openWrite();
+      writer.write('''
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.buildlog/
+.history
+.svn/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Debug symbols (obfuscation)
+# IMPORTANT: Keep these files secret and never commit to Git
+build/
+**/build/app/outputs/symbols/
+**/symbols/
+
+# Config files with sensitive data
+config.json
+''');
+      writer.close();
+      print('.gitignore created successfully');
+    } catch (e) {
+      stderr.write('creating .gitignore failed: $e');
+    }
   }
 
   Future<void> _createFile(
