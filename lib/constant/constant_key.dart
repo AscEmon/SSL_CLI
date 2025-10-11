@@ -1,9 +1,4 @@
-enum AppConstant {
-  red,
-  green,
-  yellow,
-  reset
-}
+enum AppConstant { red, green, yellow, reset }
 
 extension AppConstantExtention on AppConstant {
   String get key {
@@ -16,11 +11,6 @@ extension AppConstantExtention on AppConstant {
         return "\x1B[33m";
       case AppConstant.reset:
         return "\x1B[0m";
-      default:
-        return "";
     }
   }
 }
-
-
-
