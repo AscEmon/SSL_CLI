@@ -102,9 +102,20 @@ class SSLCommandRunner with SentApkTelegramMixin {
     if (isWelcome) {
       final String? patternCheck = formatBoard();
       if (patternCheck != null) {
+        String? stateManagement;
+        
+        // If clean architecture is selected, ask for state management
+        if (patternCheck == "4") {
+          stateManagement = stateManagementBoard();
+          if (stateManagement == null) {
+            exit(0);
+          }
+        }
+        
         return CreateCommand(
           projectName: projectName,
           patternNumber: patternCheck,
+          stateManagement: stateManagement,
         );
       }
     } else {
@@ -154,6 +165,9 @@ class SSLCommandRunner with SentApkTelegramMixin {
     final assetName = arguments[1];
     if (assetName == "k_assets.dart") {
       return AssetGenerationCommand();
+    } else if (assetName == "build_runner") {
+      _runBuildRunner();
+      return null;
     } else if (assetName.isValidFilePath()) {
       DocGenerator docGen = DocGenerator();
       docGen.generateDocs(arguments[1]);
@@ -164,6 +178,33 @@ class SSLCommandRunner with SentApkTelegramMixin {
       exit(0);
     }
     return null;
+  }
+  
+  void _runBuildRunner() {
+    print('Running build_runner...');
+    try {
+      final result = Process.runSync(
+        'flutter',
+        ['pub', 'run', 'build_runner', 'build', '--delete-conflicting-outputs'],
+        runInShell: true,
+      );
+      
+      if (result.exitCode == 0) {
+        print(result.stdout);
+        "Build runner completed successfully!".printWithColor(
+          status: PrintType.success,
+        );
+      } else {
+        print(result.stderr);
+        "Build runner failed!".printWithColor(
+          status: PrintType.error,
+        );
+      }
+    } catch (e) {
+      "Error running build_runner: $e".printWithColor(
+        status: PrintType.error,
+      );
+    }
   }
 
   void _errorAndExit([String? command]) {

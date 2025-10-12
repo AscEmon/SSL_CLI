@@ -237,12 +237,6 @@ abstract class ${singularClassName}LocalDataSource {
   /// Get cached $moduleName
   Future<List<${singularClassName}Model>> get${className}();
 
-  /// Get a specific cached $singularModuleName by ID
-  Future<${singularClassName}Model> get${singularClassName}ById(int id);
-
-  /// Cache $moduleName
-  Future<void> cache${className}(List<${singularClassName}Model> $moduleName);
-
   /// Cache a single $singularModuleName
   Future<void> cache${singularClassName}(${singularClassName}Model $singularModuleName);
 }
@@ -250,27 +244,15 @@ abstract class ${singularClassName}LocalDataSource {
 /// Implementation of $singularModuleName local data source
 class ${singularClassName}LocalDataSourceImpl implements ${singularClassName}LocalDataSource {
   // TODO: Implement local caching using SharedPreferences, Hive, or other storage
-  
+
   @override
-  Future<List<${singularClassName}Model>> get${className}() async {
-    // TODO: Implement getting cached $moduleName
+  Future<List<ProfileModel>> getProfile() async {
     throw UnimplementedError();
   }
 
   @override
-  Future<${singularClassName}Model> get${singularClassName}ById(int id) async {
-    // TODO: Implement getting cached $singularModuleName by ID
+  Future<void> cacheProfile(ProfileModel profile) async {
     throw UnimplementedError();
-  }
-
-  @override
-  Future<void> cache${className}(List<${singularClassName}Model> $moduleName) async {
-    // TODO: Implement caching $moduleName
-  }
-
-  @override
-  Future<void> cache${singularClassName}(${singularClassName}Model $singularModuleName) async {
-    // TODO: Implement caching single $singularModuleName
   }
 }
 ''',
@@ -308,7 +290,7 @@ class ${singularClassName}RepositoryImpl implements ${singularClassName}Reposito
     if (await _networkInfo.internetAvailable()) {
       try {
         final remote${className} = await _remoteDataSource.get${className}();
-        await _localDataSource.cache${className}(remote${className});
+        await _localDataSource.cache${className}(remote${className}.first);
         return Right(remote${className});
       } catch (e) {
         return Left(ServerFailure(message: e.toString()));
@@ -414,11 +396,10 @@ class ${singularClassName}Widget extends StatelessWidget {
     await _createFile(
       '$basePath/presentation/providers/state',
       '${singularModuleName}_state',
-      content: '''import 'package:equatable/equatable.dart';
+      content: '''
+import 'package:flutter/material.dart';
 
-import '/features/$moduleName/domain/entities/$singularModuleName.dart';
-
-/// State for $singularClassName
+@immutable
 class ${singularClassName}State {
   final bool isLoading;
   final String? errorMessage;
@@ -445,7 +426,7 @@ class ${singularClassName}State {
     await _createFile(
       '$basePath/presentation/providers',
       '${singularModuleName}_provider',
-      content: '''import 'package:flutter_riverpod/flutter_riverpod.dart';
+      content: '''
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '/features/$moduleName/presentation/providers/state/${singularModuleName}_state.dart';
 
@@ -550,39 +531,11 @@ import '/features/$moduleName/presentation/bloc/state/${singularModuleName}_stat
 
 class ${singularClassName}Bloc extends Bloc<${singularClassName}Event, ${singularClassName}State> {
   ${singularClassName}Bloc() : super(const ${singularClassName}Initial()) {
-    on<Load${className}>(_onLoad${className});
-    on<Refresh${className}>(_onRefresh${className});
+ 
   }
 
-  Future<void> _onLoad${className}(
-    Load${className} event,
-    Emitter<${singularClassName}State> emit,
-  ) async {
-    emit(const ${singularClassName}Loading());
-    
-    try {
-      // TODO: Implement use case call
-      // final result = await _get${className}UseCase(NoParams());
-      
-      // result.fold(
-      //   (failure) => emit(${singularClassName}Error(failure.message)),
-      //   (data) => emit(${singularClassName}Loaded(data)),
-      // );
-      
-      // Placeholder
-      emit(const ${singularClassName}Loaded([]));
-    } catch (e) {
-      emit(${singularClassName}Error(e.toString()));
-    }
-  }
+ 
 
-  Future<void> _onRefresh${className}(
-    Refresh${className} event,
-    Emitter<${singularClassName}State> emit,
-  ) async {
-    // Same as load but can be customized
-    await _onLoad${className}(const Load${className}(), emit);
-  }
 }
 ''',
     );

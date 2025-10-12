@@ -30,6 +30,8 @@ class HelpCommand implements ICommand {
         'Generate AI-powered documentation for your project. You can generate documentation for the entire project or a single Dart file.');
     printFormattedHelp('config : ssl_cli override --config.json',
         'Override config.json file for your project.');
+     printFormattedHelp('build_runner : ssl_cli generate build_runner',
+        'Build_runner for your project.');   
     exit(0);
   }
 

@@ -7,8 +7,9 @@ import '../clean_i_creators.dart';
 
 class CleanImplDirectoryCreator implements IDirectoryCreator {
   final String projectName;
+  final String? stateManagement;
 
-  CleanImplDirectoryCreator(this.projectName);
+  CleanImplDirectoryCreator(this.projectName, this.stateManagement);
 
   late final String basePath;
   late final String projectDirPath;
@@ -88,10 +89,20 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
       await Directory('$absFeaturesPath/products/presentation/pages').create();
       await Directory('$absFeaturesPath/products/presentation/widgets')
           .create();
-      await Directory('$absFeaturesPath/products/presentation/providers')
-          .create();
-      await Directory('$absFeaturesPath/products/presentation/providers/state')
-          .create();
+      
+      // Create state management specific directories
+      if (stateManagement == "2") {
+        // Bloc pattern
+        await Directory('$absFeaturesPath/products/presentation/bloc').create();
+        await Directory('$absFeaturesPath/products/presentation/bloc/state').create();
+        await Directory('$absFeaturesPath/products/presentation/bloc/event').create();
+      } else {
+        // Riverpod pattern (default)
+        await Directory('$absFeaturesPath/products/presentation/providers')
+            .create();
+        await Directory('$absFeaturesPath/products/presentation/providers/state')
+            .create();
+      }
 
       // Create l10n directory
       print('Creating l10n directory...');
@@ -105,7 +116,7 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
       print('Pubspec generate with packages and other configuration...');
       final pubspecEdit = PubspecEdit();
       final pubspecFilePath = "${Directory.current.path}/pubspec.yaml";
-      pubspecEdit.pubspecEditConfig(pubspecFilePath, patternNumber: "4");
+      pubspecEdit.pubspecEditConfig(pubspecFilePath, patternNumber: "4", stateManagement: stateManagement);
 
       return true;
     } catch (e, s) {

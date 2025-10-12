@@ -8,8 +8,9 @@ import '../clean_i_creators.dart';
 class CleanImplFileCreator implements IFileCreator {
   final IDirectoryCreator directoryCreator;
   final String projectName;
+  final String? stateManagement;
 
-  CleanImplFileCreator(this.directoryCreator, this.projectName);
+  CleanImplFileCreator(this.directoryCreator, this.projectName, this.stateManagement);
 
   @override
   Future<void> createNecessaryFiles() async {
@@ -32,6 +33,9 @@ class CleanImplFileCreator implements IFileCreator {
 
     // Create .gitignore
     await _createGitignoreFile();
+    
+    // Create analysis_options.yaml
+    await _createAnalysisOptionsFile();
 
     'All Clean Architecture files created successfully!'.printWithColor(
       status: PrintType.success,
@@ -3027,24 +3031,15 @@ class ProductRepositoryImpl implements ProductRepository {
 ''',
     );
 
-    // Presentation - Providers
-    await _createFile(
-      '$productsPath/presentation/providers',
-      'product_notifier',
-      '''
-class ProductNotifier {}
-''',
-    );
-
-    await _createFile(
-      '$productsPath/presentation/providers/state',
-      'product_state',
-      '''
-import 'package:flutter/material.dart';
-@immutable
-class ProductState {}
-''',
-    );
+    // Presentation - State Management Files
+    if (stateManagement == "2") {
+      // Bloc pattern
+      await _createBlocPresentationFiles(productsPath);
+    } else {
+      // Riverpod pattern (default)
+      await _createRiverpodPresentationFiles(productsPath);
+    }
+    
     // Presentation - Pages
     await _createFile('$productsPath/presentation/pages', 'product_page', '''
 import 'package:flutter/material.dart';
@@ -3078,6 +3073,183 @@ class Widget extends StatelessWidget {
   }
 }
 ''');
+  }
+
+  Future<void> _createRiverpodPresentationFiles(String productsPath) async {
+    // State
+    await _createFile(
+      '$productsPath/presentation/providers/state',
+      'product_state',
+      '''
+
+import 'package:flutter/material.dart';
+
+@immutable
+class ProductState {
+  final bool isLoading;
+  final String? errorMessage;
+
+  const ProductState({
+    this.isLoading = false,
+    this.errorMessage,
+  });
+
+  ProductState copyWith({
+    bool? isLoading,
+    String? errorMessage,
+  }) {
+    return ProductState(
+      isLoading: isLoading ?? this.isLoading,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+}
+
+''',
+    );
+
+    // Provider/Notifier
+    await _createFile(
+      '$productsPath/presentation/providers',
+      'product_provider',
+      '''
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
+import '/features/products/presentation/providers/state/product_state.dart';
+
+part 'product_provider.g.dart';
+
+@riverpod
+class ProductNotifier extends _\$ProductNotifier {
+  @override
+  ProductState build() {
+    return const ProductState();
+  }
+}
+
+''',
+    );
+  }
+
+  Future<void> _createBlocPresentationFiles(String productsPath) async {
+    // State
+    await _createFile(
+      '$productsPath/presentation/bloc/state',
+      'product_state',
+      '''
+import 'package:equatable/equatable.dart';
+
+import '/features/products/domain/entities/product.dart';
+
+/// State for Product
+sealed class ProductState extends Equatable {
+  const ProductState();
+  
+  @override
+  List<Object?> get props => [];
+}
+
+class ProductInitial extends ProductState {
+  const ProductInitial();
+}
+
+class ProductLoading extends ProductState {
+  const ProductLoading();
+}
+
+class ProductLoaded extends ProductState {
+  final List<Product> products;
+  
+  const ProductLoaded(this.products);
+  
+  @override
+  List<Object?> get props => [products];
+}
+
+class ProductError extends ProductState {
+  final String message;
+  
+  const ProductError(this.message);
+  
+  @override
+  List<Object?> get props => [message];
+}
+''',
+    );
+
+    // Event
+    await _createFile(
+      '$productsPath/presentation/bloc/event',
+      'product_event',
+      '''
+import 'package:equatable/equatable.dart';
+
+/// Events for Product
+sealed class ProductEvent extends Equatable {
+  const ProductEvent();
+  
+  @override
+  List<Object?> get props => [];
+}
+
+class LoadProducts extends ProductEvent {
+  const LoadProducts();
+}
+
+class RefreshProducts extends ProductEvent {
+  const RefreshProducts();
+}
+''',
+    );
+
+    // Bloc
+    await _createFile(
+      '$productsPath/presentation/bloc',
+      'product_bloc',
+      '''
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '/features/products/presentation/bloc/event/product_event.dart';
+import '/features/products/presentation/bloc/state/product_state.dart';
+
+class ProductBloc extends Bloc<ProductEvent, ProductState> {
+  ProductBloc() : super(const ProductInitial()) {
+    on<LoadProducts>(_onLoadProducts);
+    on<RefreshProducts>(_onRefreshProducts);
+  }
+
+  Future<void> _onLoadProducts(
+    LoadProducts event,
+    Emitter<ProductState> emit,
+  ) async {
+    emit(const ProductLoading());
+    
+    try {
+      // TODO: Implement use case call
+      // final result = await _getProductsUseCase(NoParams());
+      
+      // result.fold(
+      //   (failure) => emit(ProductError(failure.message)),
+      //   (data) => emit(ProductLoaded(data)),
+      // );
+      
+      // Placeholder
+      emit(const ProductLoaded([]));
+    } catch (e) {
+      emit(ProductError(e.toString()));
+    }
+  }
+
+  Future<void> _onRefreshProducts(
+    RefreshProducts event,
+    Emitter<ProductState> emit,
+  ) async {
+    // Same as load but can be customized
+    await _onLoadProducts(const LoadProducts(), emit);
+  }
+}
+''',
+    );
   }
 
   Future<void> _createMainFile() async {
@@ -3365,6 +3537,53 @@ config.json
       );
     } catch (e) {
       stderr.write('creating .gitignore failed: $e');
+    }
+  }
+
+  Future<void> _createAnalysisOptionsFile() async {
+    try {
+      final file = await File('${Directory.current.path}/analysis_options.yaml').create();
+      final writer = file.openWrite();
+      
+      String content = '''# This file configures the analyzer, which statically analyzes Dart code to
+# check for errors, warnings, and lints.
+#
+# The issues identified by the analyzer are surfaced in the UI of Dart-enabled
+# IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
+# invoked from the command line by running `flutter analyze`.
+
+# Include both Flutter lints and Riverpod lints
+include:
+  - package:flutter_lints/flutter.yaml
+
+linter:
+  # The lint rules applied to this project can be customized in the
+  # section below to disable rules from the `package:flutter_lints/flutter.yaml` 
+  # included above or to enable additional rules. A list of all available lints
+  # and their documentation is published at https://dart.dev/lints.
+  rules:
+    avoid_print: false
+''';
+
+      // Add custom_lint plugin for Riverpod
+      if (stateManagement == "1") {
+        content += '''
+analyzer:
+  plugins:
+    - custom_lint
+
+# Additional information about this file can be found at
+# https://dart.dev/guides/language/analysis-options
+''';
+      }
+      
+      writer.write(content);
+      writer.close();
+      'analysis_options.yaml created successfully'.printWithColor(
+        status: PrintType.success,
+      );
+    } catch (e) {
+      stderr.write('creating analysis_options.yaml failed: $e');
     }
   }
 

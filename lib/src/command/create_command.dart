@@ -82,9 +82,9 @@ class CreateCommand implements ICommand {
     } else if (projectName != null &&
         patternNumber != null &&
         patternNumber == "4") {
-      final directoryCreator = CleanImplDirectoryCreator(projectName ?? "");
+      final directoryCreator = CleanImplDirectoryCreator(projectName ?? "", stateManagement);
       final fileCreator =
-          CleanImplFileCreator(directoryCreator, projectName ?? "");
+          CleanImplFileCreator(directoryCreator, projectName ?? "", stateManagement);
 
       final sslCreator = CleanImplSSLCreator(
         directoryCreator: directoryCreator,
