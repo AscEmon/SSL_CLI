@@ -28,12 +28,7 @@ After successful activation, you can use it.
 ### Now, You can easily create repository based module using this below command. Please remember create this command from root of the project.
 
     ssl_cli module <module_name>
-
-
-## 🌟 New Addition 🌟
 ### You can effortlessly generate Bloc Pattern Architecture and Bloc Pattern Module using this CLI.
-
-
 
 ### You can effortlessly generate **_k_assets.dart_** file containing all your asset paths using this command. Please remember create this command from root of the project.
 
@@ -75,3 +70,21 @@ After successful activation, you can use it.
  You will get the group chat ID. Copy the ID and paste it into the config.json file.
 
 4. All setup is done. Now you can easily send your APK to Telegram using just a single command.  
+
+
+You can create effortless documentation using AI for your project using this command.
+
+    ssl_cli generate <filepath or folderpath> 
+
+
+## 🌟 New Addition 🌟
+
+### Integrate new architecture (Clean Architecture) with State Management options (Riverpod and Bloc Pattern) 
+
+### Clean Architecture module create with State Management options (Riverpod and Bloc Pattern) 
+
+### You can effortlessly generate build_runner using this CLI.
+
+    ssl_cli generate build_runner
+
+### Now using flavorType you can build apk with code obfuscation.

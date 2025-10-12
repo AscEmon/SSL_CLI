@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:args/args.dart';
+import 'package:ssl_cli/src/command/config_command.dart';
 import 'package:ssl_cli/src/command/build_flavor_command.dart';
 import 'package:ssl_cli/utils/setup_flavor.dart';
 import 'package:ssl_cli/utils/extension.dart';
+import '../utils/doc_generation.dart';
 import '../utils/enum.dart';
 import '../utils/mixin/sent_apk_telegram_mixin.dart';
 import 'command/asset_generation_command.dart';
@@ -47,6 +49,11 @@ class SSLCommandRunner with SentApkTelegramMixin {
               _handleSentCommand();
             }
             break;
+          case 'override':
+            if (res.command!.arguments.isNotEmpty && res.command!.arguments.first == "--config.json") {
+              command = _handleOverrideCommand();
+            }
+            break;
           case 'help':
             command = HelpCommand();
             break;
@@ -76,6 +83,7 @@ class SSLCommandRunner with SentApkTelegramMixin {
       ..addCommand('run')
       ..addCommand('setup')
       ..addCommand("sent")
+      ..addCommand('override')
       ..addFlag('flavor', negatable: false, help: 'Enable flavor')
       ..addFlag('apk', negatable: false, help: 'Sent Apk to telegram group.')
       ..addFlag('t',
@@ -94,9 +102,20 @@ class SSLCommandRunner with SentApkTelegramMixin {
     if (isWelcome) {
       final String? patternCheck = formatBoard();
       if (patternCheck != null) {
+        String? stateManagement;
+        
+        // If clean architecture is selected, ask for state management
+        if (patternCheck == "4") {
+          stateManagement = stateManagementBoard();
+          if (stateManagement == null) {
+            exit(0);
+          }
+        }
+        
         return CreateCommand(
           projectName: projectName,
           patternNumber: patternCheck,
+          stateManagement: stateManagement,
         );
       }
     } else {
@@ -108,9 +127,20 @@ class SSLCommandRunner with SentApkTelegramMixin {
   ICommand? _handleModuleCommand(List<String> arguments) {
     final String? modulePattern = formatModuleBoard();
     if (modulePattern != null) {
+      String? stateManagement;
+      
+      // If clean architecture is selected, ask for state management
+      if (modulePattern == "3") {
+        stateManagement = stateManagementBoard();
+        if (stateManagement == null) {
+          return null;
+        }
+      }
+      
       return CreateCommand(
         moduleName: arguments.last,
         modulePattern: modulePattern,
+        stateManagement: stateManagement,
       );
     }
     return null;
@@ -135,14 +165,45 @@ class SSLCommandRunner with SentApkTelegramMixin {
     final assetName = arguments[1];
     if (assetName == "k_assets.dart") {
       return AssetGenerationCommand();
+    } else if (assetName == "build_runner") {
+      _runBuildRunner();
+      return null;
+    } else if (assetName.isValidFilePath()) {
+      DocGenerator docGen = DocGenerator();
+      docGen.generateDocs(arguments[1]);
     } else {
-      "Wrong Command, please use command".printWithColor(
+      "Wrong Command, please use ssl_cli help --all".printWithColor(
         status: PrintType.warning,
       );
-      "ssl_cli generate k_assets.dart".printWithColor(
-        status: PrintType.success,
-      );
       exit(0);
+    }
+    return null;
+  }
+  
+  void _runBuildRunner() {
+    print('Running build_runner...');
+    try {
+      final result = Process.runSync(
+        'flutter',
+        ['pub', 'run', 'build_runner', 'build', '--delete-conflicting-outputs'],
+        runInShell: true,
+      );
+      
+      if (result.exitCode == 0) {
+        print(result.stdout);
+        "Build runner completed successfully!".printWithColor(
+          status: PrintType.success,
+        );
+      } else {
+        print(result.stderr);
+        "Build runner failed!".printWithColor(
+          status: PrintType.error,
+        );
+      }
+    } catch (e) {
+      "Error running build_runner: $e".printWithColor(
+        status: PrintType.error,
+      );
     }
   }
 
@@ -150,6 +211,10 @@ class SSLCommandRunner with SentApkTelegramMixin {
     stderr.writeln('Command not available!');
     stderr.writeln('try ssl_cli help --all to check all available commands.');
     exit(2);
+  }
+
+  ICommand _handleOverrideCommand() {
+    return ConfigCommand(isOverride: true);
   }
 }
 
@@ -175,7 +240,8 @@ String? formatBoard() {
      Please Enter Your Pattern 
      1 for Mvc 
      2 for Repository
-     3 for Bloc Pattern     
+     3 for Bloc Pattern 
+     4 for Clean Architecture    
 \n''';
 
   stderr.write(content);
@@ -190,6 +256,21 @@ String? formatModuleBoard() {
      Please select module pattern
      1 for Bloc pattern 
      2 for Others
+     3 for Clean Architecture
+\n''';
+
+  stderr.write(content);
+
+  final answer = stdin.readLineSync();
+
+  return answer;
+}
+
+String? stateManagementBoard() {
+  String content = '''
+     Please select state management
+     1 for Riverpod 
+     2 for Bloc
 \n''';
 
   stderr.write(content);

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import '../constant/constant_key.dart';
 import 'enum.dart';
 
@@ -21,5 +23,20 @@ extension PrintExtension on String {
     } else {
       print("${AppConstant.red.key}$this${AppConstant.reset.key}");
     }
+  }
+}
+
+extension PathExtension on String {
+  bool isValidFilePath() {
+    // Ensure it contains a valid separator, but not JUST a separator
+    if (trim().isEmpty) return false; // Empty string is invalid
+    if (endsWith("/") || endsWith("\\")) {
+      return false; // Ends with "/" or "\" is invalid
+    }
+    if (!contains(Platform.pathSeparator)) {
+      return false; // Must contain at least one "/"
+    }
+
+    return true; // Otherwise, it's a valid path
   }
 }

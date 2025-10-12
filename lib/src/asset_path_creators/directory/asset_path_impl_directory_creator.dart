@@ -6,12 +6,14 @@ class AssetPathImplDirectoryCreator implements AssetPathIDirectoryCreator {
   final _assets = 'assets';
   final _utils = 'utils';
   final _styles = 'styles';
+  final _core = 'core';
   final _images = 'images';
   final _svg = 'svg';
   final _fonts = 'fonts';
 
   late final String basePath;
   late final String assetPath;
+  late final bool isCleanArchitecture;
 
   @override
   Directory get projectDir => Directory(Directory.current.path);
@@ -19,9 +21,14 @@ class AssetPathImplDirectoryCreator implements AssetPathIDirectoryCreator {
   Directory get assetsDir => Directory('${projectDir.absolute.path}/$_assets');
 
   @override
-  Directory get utilsDir => Directory('$basePath/$_utils');
+  Directory get utilsDir => isCleanArchitecture 
+      ? Directory('$basePath/$_core/$_utils')
+      : Directory('$basePath/$_utils');
+  
   @override
-  Directory get stylesSubDir => Directory('$basePath/$_utils/$_styles');
+  Directory get stylesSubDir => isCleanArchitecture
+      ? Directory('$basePath/$_core/$_utils/$_styles')
+      : Directory('$basePath/$_utils/$_styles');
 
   @override
   Future<bool> createDirectories() async {
@@ -42,9 +49,22 @@ class AssetPathImplDirectoryCreator implements AssetPathIDirectoryCreator {
 
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
+        
+        // Check if it's a clean architecture project
+        final coreDir = Directory('$basePath/$_core');
+        isCleanArchitecture = await coreDir.exists();
+        
+        if (isCleanArchitecture) {
+          print('Detected Clean Architecture project structure');
+          print('Using path: lib/core/utils/styles/k_assets.dart');
+        } else {
+          print('Detected legacy project structure');
+          print('Using path: lib/utils/styles/k_assets.dart');
+        }
       } else {
         final res = await libDir.create(recursive: true);
         basePath = res.absolute.path;
+        isCleanArchitecture = false;
       }
 
 
@@ -76,8 +96,18 @@ class AssetPathImplDirectoryCreator implements AssetPathIDirectoryCreator {
   }
 
   Future<void> createSubDirectoriesInsideUtil() async {
-    final stylesConstantPath = utilsDir.absolute.path;
     print('creating styles sub directories directory...');
-    await Directory(stylesConstantPath).create();
+    
+    if (isCleanArchitecture) {
+      // For clean architecture: lib/core/utils/styles
+      final coreUtilsPath = '$basePath/$_core/$_utils';
+      await Directory(coreUtilsPath).create(recursive: true);
+      await Directory('$coreUtilsPath/$_styles').create();
+    } else {
+      // For legacy: lib/utils/styles
+      final utilsPath = '$basePath/$_utils';
+      await Directory(utilsPath).create(recursive: true);
+      await Directory('$utilsPath/$_styles').create();
+    }
   }
 }

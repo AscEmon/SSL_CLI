@@ -346,6 +346,12 @@
 
 - repo module create
 
+## 1.6.0
+
+- Added `override --config.json` command to add AI configuration fields to existing config.json
+- Added support for geminiApiKey, openAiApiKey, deepSeekApiKey, and geminiModelName in config.json
+- Backup of existing config.json is created before any modifications
+
 ## 1.5.1
 
 - change folder name module to modules
@@ -406,5 +412,27 @@
 - bloc reinitializer and dispose integrate
 - new widget key issue resolve
 - build gradle version name and number issue resolve
+
+
+
+## 3.1.5
+- Automatic Doc generation integrate
+## 3.1.6
+- override command added for  config.json
+
+## 4.0.0
+- clean architecture integrate
+- Dependency injection integrate
+- default theme integrate
+- kts file and groovy wise build.gradle update
+- release and debug build wise build.gradle update
+- pubspec.yaml package update
+- clean architecture module integrate
+- Based on clean architecture Riverpod and Bloc pattern create
+- Asset file issue resolve
+- Riverpod and Bloc pattern module create
+- flavorType rename to mode
+
+
 
 
