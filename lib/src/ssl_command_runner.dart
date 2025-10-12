@@ -116,9 +116,20 @@ class SSLCommandRunner with SentApkTelegramMixin {
   ICommand? _handleModuleCommand(List<String> arguments) {
     final String? modulePattern = formatModuleBoard();
     if (modulePattern != null) {
+      String? stateManagement;
+      
+      // If clean architecture is selected, ask for state management
+      if (modulePattern == "3") {
+        stateManagement = stateManagementBoard();
+        if (stateManagement == null) {
+          return null;
+        }
+      }
+      
       return CreateCommand(
         moduleName: arguments.last,
         modulePattern: modulePattern,
+        stateManagement: stateManagement,
       );
     }
     return null;
@@ -205,6 +216,20 @@ String? formatModuleBoard() {
      1 for Bloc pattern 
      2 for Others
      3 for Clean Architecture
+\n''';
+
+  stderr.write(content);
+
+  final answer = stdin.readLineSync();
+
+  return answer;
+}
+
+String? stateManagementBoard() {
+  String content = '''
+     Please select state management
+     1 for Riverpod 
+     2 for Bloc
 \n''';
 
   stderr.write(content);
