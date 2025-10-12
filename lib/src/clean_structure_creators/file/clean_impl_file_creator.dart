@@ -3253,10 +3253,19 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
   }
 
   Future<void> _createMainFile() async {
-    await _createFile('lib', 'main', '''import 'package:flutter/material.dart';
+    // Generate imports based on state management
+    String imports = '''import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-
+''';
+    
+    if (stateManagement == "1") {
+      // Add Riverpod import
+      imports += '''import 'package:flutter_riverpod/flutter_riverpod.dart';
+''';
+    }
+    
+    imports += '''
 import '/core/constants/api_urls.dart';
 import '/core/di/service_locator.dart';
 import '/core/presentation/widgets/global_network_listener.dart';
@@ -3267,7 +3276,14 @@ import '/core/utils/preferences_helper.dart';
 import '/features/products/presentation/pages/product_page.dart';
 // import '/l10n/app_localizations.dart';
 import 'core/presentation/widgets/app_starter_error.dart';
+''';
 
+    // Generate runApp based on state management
+    String runAppCode = stateManagement == "1" 
+        ? '''runApp(const ProviderScope(child: MyApp()));'''
+        : '''runApp(const MyApp());''';
+
+    await _createFile('lib', 'main', '''$imports
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -3285,16 +3301,22 @@ void main() async {
       DeviceOrientation.portraitDown,
     ]);
 
-    runApp(const MyApp());
+    $runAppCode
   } catch (e, stackTrace) {
     // Log initialization error
     debugPrint('❌ App initialization failed: \$e');
     debugPrint('Stack trace: \$stackTrace');
 
     // Show error screen
-    runApp(
-      MaterialApp(home: AppStarterError(error: e.toString())),
-    );
+    if (stateManagement == "1") {
+      runApp(
+         ProviderScope(child: AppStarterError(error: e.toString())),
+      );
+    } else {
+      runApp(
+        MaterialApp(home: AppStarterError(error: e.toString())),
+      );
+    }
   }
 }
 
