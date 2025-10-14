@@ -437,4 +437,6 @@
 ## 4.0.1
 - Riverpod notifier build method return type update to FutureOr
 
-    
+
+## 4.0.2
+- build_runner and build_runner_watch command added
