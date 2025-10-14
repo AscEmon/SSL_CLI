@@ -87,4 +87,8 @@ You can create effortless documentation using AI for your project using this com
 
     ssl_cli generate build_runner
 
+### You can effortlessly generate build_runner watch using this CLI.
+
+    ssl_cli generate build_runner_watch
+
 ### Now using flavorType you can build apk with code obfuscation.
