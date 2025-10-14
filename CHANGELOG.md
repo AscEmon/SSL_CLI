@@ -434,5 +434,7 @@
 - flavorType rename to mode
 
 
+## 4.0.1
+- Riverpod notifier build method return type update to FutureOr
 
-
+    
