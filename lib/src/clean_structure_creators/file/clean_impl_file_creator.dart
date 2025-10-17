@@ -2240,7 +2240,6 @@ class GlobalImageLoader extends StatelessWidget {
           height: height,
           width: width,
           fit: fit ?? BoxFit.scaleDown,
-          colorFilter: ColorFilter.mode(color!, BlendMode.srcIn),
           placeholderBuilder: (BuildContext context) => GlobalLoader(text: ''),
         );
       } else {
@@ -2261,7 +2260,6 @@ class GlobalImageLoader extends StatelessWidget {
           height: height,
           width: width,
           fit: fit ?? BoxFit.cover,
-          colorFilter: ColorFilter.mode(color!, BlendMode.srcIn),
         );
       } else {
         return Image.asset(
