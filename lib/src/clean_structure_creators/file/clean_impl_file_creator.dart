@@ -10,7 +10,11 @@ class CleanImplFileCreator implements IFileCreator {
   final String projectName;
   final String? stateManagement;
 
-  CleanImplFileCreator(this.directoryCreator, this.projectName, this.stateManagement);
+  CleanImplFileCreator(
+    this.directoryCreator,
+    this.projectName,
+    this.stateManagement,
+  );
 
   @override
   Future<void> createNecessaryFiles() async {
@@ -33,7 +37,7 @@ class CleanImplFileCreator implements IFileCreator {
 
     // Create .gitignore
     await _createGitignoreFile();
-    
+
     // Create analysis_options.yaml
     await _createAnalysisOptionsFile();
 
@@ -2670,7 +2674,7 @@ class GlobalTextFormField extends StatelessWidget {
  ''',
     );
 
-    await _createFile('$corePath/presentation', 'mixins', '''
+    await _createFile('$corePath/presentation/mixins', 'error_handler_mixin', '''
 import '/core/error/exceptions.dart';
 import '/core/error/failures.dart';
 import '/core/presentation/view_util.dart';
@@ -3039,7 +3043,7 @@ class ProductRepositoryImpl implements ProductRepository {
       // Riverpod pattern (default)
       await _createRiverpodPresentationFiles(productsPath);
     }
-    
+
     // Presentation - Pages
     await _createFile('$productsPath/presentation/pages', 'product_page', '''
 import 'package:flutter/material.dart';
@@ -3122,7 +3126,7 @@ part 'product_provider.g.dart';
 @riverpod
 class ProductNotifier extends _\$ProductNotifier {
   @override
-  ProductState build() {
+  FutureOr<ProductState> build(){
     return const ProductState();
   }
 }
@@ -3203,10 +3207,7 @@ class RefreshProducts extends ProductEvent {
     );
 
     // Bloc
-    await _createFile(
-      '$productsPath/presentation/bloc',
-      'product_bloc',
-      '''
+    await _createFile('$productsPath/presentation/bloc', 'product_bloc', '''
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '/features/products/presentation/bloc/event/product_event.dart';
@@ -3248,8 +3249,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     await _onLoadProducts(const LoadProducts(), emit);
   }
 }
-''',
-    );
+''');
   }
 
   Future<void> _createMainFile() async {
@@ -3258,13 +3258,13 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 ''';
-    
+
     if (stateManagement == "1") {
       // Add Riverpod import
       imports += '''import 'package:flutter_riverpod/flutter_riverpod.dart';
 ''';
     }
-    
+
     imports += '''
 import '/core/constants/api_urls.dart';
 import '/core/di/service_locator.dart';
@@ -3279,9 +3279,18 @@ import 'core/presentation/widgets/app_starter_error.dart';
 ''';
 
     // Generate runApp based on state management
-    String runAppCode = stateManagement == "1" 
-        ? '''runApp(const ProviderScope(child: MyApp()));'''
-        : '''runApp(const MyApp());''';
+    String runAppCode =
+        stateManagement == "1"
+            ? '''runApp(const ProviderScope(child: MyApp()));'''
+            : '''runApp(const MyApp());''';
+    String runErrorCode =
+        stateManagement == "1"
+            ? '''runApp(
+         ProviderScope(child: AppStarterError(error: e.toString())),
+      );'''
+            : '''runApp(
+        MaterialApp(home: AppStarterError(error: e.toString())),
+      );''';
 
     await _createFile('lib', 'main', '''$imports
 void main() async {
@@ -3307,16 +3316,7 @@ void main() async {
     debugPrint('❌ App initialization failed: \$e');
     debugPrint('Stack trace: \$stackTrace');
 
-    // Show error screen
-    if (stateManagement == "1") {
-      runApp(
-         ProviderScope(child: AppStarterError(error: e.toString())),
-      );
-    } else {
-      runApp(
-        MaterialApp(home: AppStarterError(error: e.toString())),
-      );
-    }
+    $runErrorCode
   }
 }
 
@@ -3564,10 +3564,14 @@ config.json
 
   Future<void> _createAnalysisOptionsFile() async {
     try {
-      final file = await File('${Directory.current.path}/analysis_options.yaml').create();
+      final file =
+          await File(
+            '${Directory.current.path}/analysis_options.yaml',
+          ).create();
       final writer = file.openWrite();
-      
-      String content = '''# This file configures the analyzer, which statically analyzes Dart code to
+
+      String content =
+          '''# This file configures the analyzer, which statically analyzes Dart code to
 # check for errors, warnings, and lints.
 #
 # The issues identified by the analyzer are surfaced in the UI of Dart-enabled
@@ -3598,7 +3602,7 @@ analyzer:
 # https://dart.dev/guides/language/analysis-options
 ''';
       }
-      
+
       writer.write(content);
       writer.close();
       'analysis_options.yaml created successfully'.printWithColor(
@@ -3622,7 +3626,7 @@ analyzer:
       fileType = 'arb';
     } else if (fileExtention == 'json') {
       fileType = 'json';
-    }else if (fileExtention == 'sh') {
+    } else if (fileExtention == 'sh') {
       fileType = 'sh';
     } else {
       fileType = 'dart';

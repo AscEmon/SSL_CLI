@@ -50,7 +50,8 @@ class SSLCommandRunner with SentApkTelegramMixin {
             }
             break;
           case 'override':
-            if (res.command!.arguments.isNotEmpty && res.command!.arguments.first == "--config.json") {
+            if (res.command!.arguments.isNotEmpty &&
+                res.command!.arguments.first == "--config.json") {
               command = _handleOverrideCommand();
             }
             break;
@@ -86,14 +87,22 @@ class SSLCommandRunner with SentApkTelegramMixin {
       ..addCommand('override')
       ..addFlag('flavor', negatable: false, help: 'Enable flavor')
       ..addFlag('apk', negatable: false, help: 'Sent Apk to telegram group.')
-      ..addFlag('t',
-          negatable: false, help: 'Sent Apk to telegram group automatically.')
+      ..addFlag(
+        't',
+        negatable: false,
+        help: 'Sent Apk to telegram group automatically.',
+      )
       ..addFlag('DEV', negatable: false, help: 'Enable DEV mode')
       ..addFlag('LIVE', negatable: false, help: 'Enable LIVE mode')
       ..addFlag('STAGE', negatable: false, help: 'Enable STAGE mode')
       ..addFlag('LOCAL', negatable: false, help: 'Enable LOCAL mode');
-    argParser.addCommand('help').addFlag('all',
-        negatable: false, help: 'Show all available commands and options');
+    argParser
+        .addCommand('help')
+        .addFlag(
+          'all',
+          negatable: false,
+          help: 'Show all available commands and options',
+        );
   }
 
   ICommand? _handleCreateCommand(List<String> arguments) {
@@ -103,7 +112,7 @@ class SSLCommandRunner with SentApkTelegramMixin {
       final String? patternCheck = formatBoard();
       if (patternCheck != null) {
         String? stateManagement;
-        
+
         // If clean architecture is selected, ask for state management
         if (patternCheck == "4") {
           stateManagement = stateManagementBoard();
@@ -111,7 +120,7 @@ class SSLCommandRunner with SentApkTelegramMixin {
             exit(0);
           }
         }
-        
+
         return CreateCommand(
           projectName: projectName,
           patternNumber: patternCheck,
@@ -128,7 +137,7 @@ class SSLCommandRunner with SentApkTelegramMixin {
     final String? modulePattern = formatModuleBoard();
     if (modulePattern != null) {
       String? stateManagement;
-      
+
       // If clean architecture is selected, ask for state management
       if (modulePattern == "3") {
         stateManagement = stateManagementBoard();
@@ -136,7 +145,7 @@ class SSLCommandRunner with SentApkTelegramMixin {
           return null;
         }
       }
-      
+
       return CreateCommand(
         moduleName: arguments.last,
         modulePattern: modulePattern,
@@ -168,6 +177,9 @@ class SSLCommandRunner with SentApkTelegramMixin {
     } else if (assetName == "build_runner") {
       _runBuildRunner();
       return null;
+    } else if (assetName == "build_runner_watch") {
+      _runBuildRunnerWatch();
+      return null;
     } else if (assetName.isValidFilePath()) {
       DocGenerator docGen = DocGenerator();
       docGen.generateDocs(arguments[1]);
@@ -179,16 +191,18 @@ class SSLCommandRunner with SentApkTelegramMixin {
     }
     return null;
   }
-  
+
   void _runBuildRunner() {
     print('Running build_runner...');
     try {
-      final result = Process.runSync(
-        'flutter',
-        ['pub', 'run', 'build_runner', 'build', '--delete-conflicting-outputs'],
-        runInShell: true,
-      );
-      
+      final result = Process.runSync('flutter', [
+        'pub',
+        'run',
+        'build_runner',
+        'build',
+        '--delete-conflicting-outputs',
+      ], runInShell: true);
+
       if (result.exitCode == 0) {
         print(result.stdout);
         "Build runner completed successfully!".printWithColor(
@@ -196,14 +210,34 @@ class SSLCommandRunner with SentApkTelegramMixin {
         );
       } else {
         print(result.stderr);
-        "Build runner failed!".printWithColor(
-          status: PrintType.error,
-        );
+        "Build runner failed!".printWithColor(status: PrintType.error);
       }
     } catch (e) {
-      "Error running build_runner: $e".printWithColor(
-        status: PrintType.error,
-      );
+      "Error running build_runner: $e".printWithColor(status: PrintType.error);
+    }
+  }
+
+  void _runBuildRunnerWatch() {
+    print('Running build_runner...');
+    try {
+      final result = Process.runSync('dart', [
+        'run',
+        'build_runner',
+        'watch',
+        '--delete-conflicting-outputs',
+      ], runInShell: true);
+
+      if (result.exitCode == 0) {
+        print(result.stdout);
+        "Build runner completed successfully!".printWithColor(
+          status: PrintType.success,
+        );
+      } else {
+        print(result.stderr);
+        "Build runner failed!".printWithColor(status: PrintType.error);
+      }
+    } catch (e) {
+      "Error running build_runner: $e".printWithColor(status: PrintType.error);
     }
   }
 

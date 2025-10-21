@@ -435,7 +435,7 @@ part '${singularModuleName}_provider.g.dart';
 @riverpod
 class ${singularClassName}Notifier extends _\$${singularClassName}Notifier {
   @override
-  ${singularClassName}State build() {
+  FutureOr<${singularClassName}State> build() {
     return const ${singularClassName}State();
   }
 
