@@ -79,10 +79,10 @@ class CleanModuleImplFileCreator implements CleanModuleIFileCreator {
     // Entity
     await _createFile(
       '$basePath/domain/entities',
-      '$singularModuleName',
+      singularModuleName,
       content: '''import 'package:equatable/equatable.dart';
 
-/// ${singularClassName} entity - Represents $singularModuleName in the business domain
+/// $singularClassName entity - Represents $singularModuleName in the business domain
 class $singularClassName extends Equatable {
   final int id;
   // Add your entity properties here
@@ -101,7 +101,7 @@ class $singularClassName extends Equatable {
     // Repository Interface
     await _createFile(
       '$basePath/domain/repositories',
-      '${singularModuleName}_repository',
+      singularModuleName + '_repository',
       content: '''import 'package:dartz/dartz.dart';
 
 import '/core/error/failures.dart';
@@ -185,8 +185,7 @@ class ${singularClassName}Model extends $singularClassName {
     await _createFile(
       '$basePath/data/datasources',
       '${singularModuleName}_remote_datasource',
-      content: '''import 'package:dio/dio.dart';
-
+      content: '''
 import '/core/network/api_client.dart';
 import '/features/$moduleName/data/models/${singularModuleName}_model.dart';
 
@@ -214,10 +213,8 @@ class ${singularClassName}RemoteDataSourceImpl implements ${singularClassName}Re
 
       final List<dynamic> data = response as List<dynamic>;
       return data.map((json) => ${singularClassName}Model.fromJson(json)).toList();
-    } on DioException catch (e) {
-      throw Exception('Failed to load $moduleName: \${e.message}');
-    } catch (e) {
-      throw Exception('Failed to load $moduleName: \$e');
+    }  catch (e) {
+     rethrow;
     }
   }
 
@@ -235,10 +232,10 @@ class ${singularClassName}RemoteDataSourceImpl implements ${singularClassName}Re
 /// Interface for $singularModuleName local data source
 abstract class ${singularClassName}LocalDataSource {
   /// Get cached $moduleName
-  Future<List<${singularClassName}Model>> get${className}();
+  Future<List<${singularClassName}Model>> get$className();
 
   /// Cache a single $singularModuleName
-  Future<void> cache${singularClassName}(${singularClassName}Model $singularModuleName);
+  Future<void> cache$singularClassName (${singularClassName}Model $singularModuleName);
 }
 
 /// Implementation of $singularModuleName local data source
@@ -246,12 +243,12 @@ class ${singularClassName}LocalDataSourceImpl implements ${singularClassName}Loc
   // TODO: Implement local caching using SharedPreferences, Hive, or other storage
 
   @override
-  Future<List<ProfileModel>> getProfile() async {
+  Future<List<${singularClassName}Model>> get$className() async {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> cacheProfile(ProfileModel profile) async {
+  Future<void> cache$singularClassName (${singularClassName}Model $singularModuleName) async {
     throw UnimplementedError();
   }
 }
@@ -263,6 +260,7 @@ class ${singularClassName}LocalDataSourceImpl implements ${singularClassName}Loc
       '$basePath/data/repositories',
       '${singularModuleName}_repository_impl',
       content: '''import 'package:dartz/dartz.dart';
+import '../../../../core/error/exception_handler.dart';
 
 import '/core/error/failures.dart';
 import '/core/network/network_info.dart';
@@ -288,20 +286,16 @@ class ${singularClassName}RepositoryImpl implements ${singularClassName}Reposito
   @override
   Future<Either<Failure, List<$singularClassName>>> get${className}() async {
     if (await _networkInfo.internetAvailable()) {
-      try {
+        return handleException(() async {
         final remote${className} = await _remoteDataSource.get${className}();
-        await _localDataSource.cache${className}(remote${className}.first);
-        return Right(remote${className});
-      } catch (e) {
-        return Left(ServerFailure(message: e.toString()));
-      }
+        await _localDataSource.cache${singularClassName}(remote${className}.first);
+        return  remote${className};
+      });
     } else {
-      try {
+       return handleException(() async {
         final local${className} = await _localDataSource.get${className}();
-        return Right(local${className});
-      } catch (e) {
-        return Left(CacheFailure(message: e.toString()));
-      }
+        return local${className};
+      });
     }
   }
 
@@ -398,26 +392,31 @@ class ${singularClassName}Widget extends StatelessWidget {
       '${singularModuleName}_state',
       content: '''
 import 'package:flutter/material.dart';
+import 'package:equatable/equatable.dart';
+import '../../../../../core/error/failures.dart';
 
 @immutable
-class ${singularClassName}State {
+class ${singularClassName}State extends Equatable {
   final bool isLoading;
-  final String? errorMessage;
+  final Failure? failure;
 
   const ${singularClassName}State({
     this.isLoading = false,
-    this.errorMessage,
+    this.failure,
   });
 
   ${singularClassName}State copyWith({
     bool? isLoading,
-    String? errorMessage,
+    Failure? failure,
   }) {
     return ${singularClassName}State(
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage ?? this.errorMessage,
+      failure: failure,
     );
   }
+
+  @override
+  List<Object?> get props => [isLoading, failure];
 }
 ''',
     );
@@ -438,7 +437,6 @@ class ${singularClassName}Notifier extends _\$${singularClassName}Notifier {
   FutureOr<${singularClassName}State> build() {
     return const ${singularClassName}State();
   }
-
 }
 ''',
     );
