@@ -100,10 +100,10 @@ extension ApiUrlExtention on ApiUrl {
   ios('ios'),
   en('en'),
   bn('bn'),
-  userId('userId'),
+  userId('user-id'),
   token('token'),
   language('language'),
-  yyyyMmDd('dd-MM-yyyy'),
+  yyyyMmDd('yyyy-MM-dd'),
   ddMmYyyy('dd/MM/yyyy'),
   ddMmYyyySlash('dd/MM/yyyy'),
   dMmmYHm('d MMMM y hh:mm a'),
@@ -113,24 +113,30 @@ extension ApiUrlExtention on ApiUrl {
   mmm('mmm'),
   mmmm('mmmm'),
   mmmmY('mmmmY'),
-  isSwitched('isSwitched'),
-  deviceId('deviceId'),
-  deviceOs('deviceOs'),
-  userAgent('userAgent'),
-  appVersion('appVersion'),
-  buildNumber('buildNumber'),
-  ipnUrl('ipnUrl'),
-  storeId('storeId'),
-  storePassword('storePassword'),
+  isSwitched('is-switched'),
+  deviceId('device-id'),
+  deviceOs('device-os'),
+  userAgent('user-agent'),
+  appVersion('app-version'),
+  buildNumber('build-number'),
+  ipnUrl('ipn-url'),
+  storeId('store-id'),
+  storePassword('store-password'),
   mobile('mobile'),
   email('email'),
-  pushId('pushId'),
-  refreshToken('refreshToken'),
-  accessToken('accessToken'),
-  fontFamily('fontFamily'),
-  loginResponse('loginResponse'),
-  cashCartItems('cashCartItems'),
-  isDarkMode('isDarkMode'),
+  pushId('push-id'),
+  refreshToken('refresh-token'),
+  accessToken('access-token'),
+  fontFamily('font-family'),
+  loginResponse('login-response'),
+  cashCartItems('cash-cart-items'),
+  isDarkMode('is-dark-mode'),
+  user('user'),
+  deviceName('device-name'),
+  deviceModel('device-model'),
+  deviceOsVersion('device-os-version'),
+  forceUpdate('force-update'),
+
   username('username');
 
   final String key;
@@ -138,12 +144,65 @@ extension ApiUrlExtention on ApiUrl {
 }
 ''',
     );
+    await _createFile('$corePath/error', 'exception_handler', '''
+import 'package:dartz/dartz.dart';
+import 'exceptions.dart';
+import 'failures.dart';
 
+/// Converts exceptions to failures - use this in all repository methods
+///
+/// Usage:
+/// ```dart
+/// @override
+/// Future<Either<Failure, LoginResponse>> login(LoginEntity entity) async {
+///   return handleException(() async {
+///     final response = await remoteDataSource.login(model);
+///     await localDataSource.saveLoginData(response);
+///     return response;  // Just return the data, not Right()
+///   });
+/// }
+/// ```
+Future<Either<Failure, T>> handleException<T>(
+  Future<T> Function() operation,
+) async {
+  try {
+    final result = await operation();
+    return Right(result);
+  } on ValidationException catch (e) {
+    return Left(ValidationFailure(
+      message: e.message,
+      statusCode: e.statusCode,
+      errors: e.errors,
+    ));
+  } on UnauthorizedException catch (e) {
+    return Left(AuthenticationFailure(
+      message: e.message,
+      statusCode: e.statusCode,
+    ));
+  } on NetworkException catch (e) {
+    return Left(NetworkFailure(
+      message: e.message,
+      statusCode: e.statusCode,
+    ));
+  } on ServerException catch (e) {
+    return Left(ServerFailure(
+      message: e.message,
+      statusCode: e.statusCode,
+    ));
+  } on TooManyRequestsException catch (e) {
+    return Left(TooManyRequestsFailure(
+      message: e.message,
+      statusCode: e.statusCode,
+    ));
+  } catch (e) {
+    return Left(ServerFailure(message: e.toString()));
+  }
+}
+''');
     // Error
-    await _createFile(
-      '$corePath/error',
-      'failures',
-      '''import 'package:equatable/equatable.dart';
+    await _createFile('$corePath/error', 'failures', '''
+import 'package:equatable/equatable.dart';
+
 abstract class Failure extends Equatable {
   final String message;
   final int? statusCode;
@@ -174,18 +233,60 @@ class AuthenticationFailure extends Failure {
   const AuthenticationFailure({required super.message, super.statusCode});
 }
 
-/// Validation failures for input validation errors
-class ValidationFailure extends Failure {
-  const ValidationFailure({required super.message, super.statusCode});
+/// Method not allowed failures for 405 errors
+class MethodNotAllowedFailure extends Failure {
+  const MethodNotAllowedFailure({required super.message, super.statusCode = 405});
 }
 
-''',
-    );
+/// Validation failures for input validation errors
+class ValidationFailure extends Failure {
+  final Map<String, dynamic>? errors;
 
-    await _createFile(
-      '$corePath/error',
-      'exceptions',
-      '''/// Base exception class for the application
+  const ValidationFailure(
+      {required super.message, super.statusCode, this.errors});
+
+  @override
+  List<Object?> get props => [message, statusCode, errors];
+
+  /// Get all error messages as a flat list
+  List<String> get errorMessages {
+    if (errors == null || errors!.isEmpty) return [message];
+
+    final List<String> messages = [];
+    errors!.forEach((key, value) {
+      if (value is List) {
+        messages.addAll(value.map((e) => e.toString()));
+      } else {
+        messages.add(value.toString());
+      }
+    });
+    return messages;
+  }
+
+  /// Get first error message
+  String get firstError {
+    if (errors == null || errors!.isEmpty) return message;
+
+    final firstKey = errors!.keys.first;
+    final firstValue = errors![firstKey];
+
+    if (firstValue is List && firstValue.isNotEmpty) {
+      return firstValue.first.toString();
+    }
+    return firstValue.toString();
+  }
+}
+
+/// Too many requests failures for 429 errors
+class TooManyRequestsFailure extends Failure {
+  const TooManyRequestsFailure({required super.message, super.statusCode = 429});
+}
+
+
+''');
+
+    await _createFile('$corePath/error', 'exceptions', '''
+/// Base exception class for the application
 class AppException implements Exception {
   final String message;
   final int? statusCode;
@@ -219,7 +320,14 @@ class AuthenticationException extends AppException {
 
 /// Validation exception for input validation errors
 class ValidationException extends AppException {
-  ValidationException({required super.message, super.statusCode});
+  final Map<String, dynamic>? errors;
+
+  ValidationException({required super.message, super.statusCode, this.errors});
+}
+
+/// Too many requests exception for 429 errors
+class TooManyRequestsException extends AppException {
+  TooManyRequestsException({required super.message, super.statusCode = 429});
 }
 
 /// Bad request exception for 400 errors
@@ -247,8 +355,13 @@ class RequestCancelledException extends AppException {
   RequestCancelledException({required super.message, super.statusCode});
 }
 
-''',
-    );
+/// Method not allowed exception for 405 errors
+class MethodNotAllowedException extends AppException {
+  MethodNotAllowedException({required super.message, super.statusCode = 405});
+}
+
+
+''');
 
     await _createFile(
       '$corePath/models',
@@ -282,26 +395,29 @@ class RequestCancelledException extends AppException {
 
     await _createFile('$corePath/models', 'global_response', '''
 class GlobalResponse {
-  GlobalResponse({this.message, this.errors, this.code});
+  GlobalResponse({
+    this.message,
+    this.errors,
+    this.code,
+  });
 
   String? message;
-  List<String>? errors;
+  Map<String, dynamic>? errors;
   int? code;
 
   factory GlobalResponse.fromJson(Map<String, dynamic> json) => GlobalResponse(
-    message: json['message'],
-    errors:
-        json['errors'] == null
+        message: json["message"].toString(),
+        errors: json["errors"] == null
             ? null
-            : List<String>.from(json['errors'].map((x) => x)),
-    code: json['code'],
-  );
+            : Map<String, dynamic>.from(json["errors"]),
+        code: json["code"],
+      );
 
   Map<String, dynamic> toJson() => {
-    'message': message,
-    'errors': errors == null ? null : List<dynamic>.from(errors!.map((x) => x)),
-    'code': code,
-  };
+        "message": message,
+        "errors": errors,
+        "code": code,
+      };
 }
 ''');
 
@@ -388,9 +504,8 @@ class Navigation {
       context,
       MaterialPageRoute(
         settings: RouteSettings(name: routeName),
-        builder:
-            (BuildContext context) =>
-                appRoutes.buildWidget(arguments: arguments),
+        builder: (BuildContext context) =>
+            appRoutes.buildWidget(arguments: arguments),
       ),
     );
   }
@@ -424,8 +539,8 @@ class Navigation {
   }
 
   //Remove single page from stack
-  static void pop(context) {
-    return Navigator.pop(context);
+  static void pop(context, {bool result = false}) {
+    return Navigator.pop(context, result);
   }
 }
 
@@ -454,8 +569,9 @@ enum AppColors {
   darkGrey(Color(0xFF4F4F4F)),
   grey(Color(0xFF9E9E9E)),
   lightGrey(Color(0xFFE0E0E0)),
-  white(Color(0xFFFFFFFF)),
-
+  white(Color(0xFFFFFFFF)), 
+  btnText(Color(0xFF878DB5)),
+  textBlue(Color(0xFF28294D)),
   greylish(Color(0xff303030)),
   transparent(Colors.transparent),
   yellow(Color(0xffF6D403)),
@@ -832,10 +948,8 @@ class ThemeManager {
 ''');
 
     // Network
-    await _createFile(
-      '$corePath/network',
-      'network_info',
-      '''import 'package:connectivity_plus/connectivity_plus.dart';
+    await _createFile('$corePath/network', 'network_info', '''
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'api_client.dart';
 
 /// Interface for network information
@@ -910,16 +1024,15 @@ class ApiRequest {
   });
 }
 
-''',
-    );
+''');
 
     await _createFile('$corePath/network', 'api_client', '''
-
+import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import '/core/utils/extension.dart';
 import '../../../../core/constants/app_constants.dart';
-import '../utils/preferences_helper.dart';
+import '/core/utils/preferences_helper.dart';
 import '/core/error/exceptions.dart';
 import '/core/network/network_info.dart';
 import '../../../../core/constants/api_urls.dart';
@@ -937,9 +1050,9 @@ class ApiClient {
     required Dio dio,
     required NetworkInfo networkInfo,
     required PrefHelper prefHelper,
-  }) : _dio = dio,
-       _networkInfo = networkInfo,
-       _prefHelper = prefHelper {
+  })  : _dio = dio,
+        _networkInfo = networkInfo,
+        _prefHelper = prefHelper {
     _initDio();
   }
 
@@ -1005,15 +1118,26 @@ class ApiClient {
 
   /// Get headers including auth token
   Map<String, String> _getHeaders() {
+    final deviceOs =
+        Platform.isAndroid ? AppConstants.android.key : AppConstants.ios.key;
     Map<String, String> headers = {
-      'Content-Type': AppConstants.contentType.key,
-      'Accept': AppConstants.accept.key,
-      'app-version': _prefHelper.getString(AppConstants.appVersion.key),
-      'build-number': _prefHelper.getString(AppConstants.buildNumber.key),
-      'language':
-          _prefHelper.getLanguage() == 1
-              ? AppConstants.en.key
-              : AppConstants.bn.key,
+      HttpHeaders.contentTypeHeader: AppConstants.applicationJson.key,
+      AppConstants.appVersion.key:
+          _prefHelper.getString(AppConstants.appVersion.key),
+      AppConstants.buildNumber.key:
+          _prefHelper.getString(AppConstants.buildNumber.key),
+      AppConstants.deviceOs.key: deviceOs,
+      AppConstants.language.key: _prefHelper.getLanguage() == 1
+          ? AppConstants.en.key
+          : AppConstants.bn.key,
+      AppConstants.deviceId.key:
+          _prefHelper.getString(AppConstants.deviceId.key),
+      AppConstants.deviceName.key:
+          _prefHelper.getString(AppConstants.deviceName.key),
+      AppConstants.deviceModel.key:
+          _prefHelper.getString(AppConstants.deviceModel.key),
+      AppConstants.deviceOsVersion.key:
+          _prefHelper.getString(AppConstants.deviceOsVersion.key),
     };
 
     // Add bearer token if available
@@ -1032,7 +1156,7 @@ class ApiClient {
     dynamic data,
     Map<String, dynamic>? queryParameters,
     Map<String, String>? extraHeaders,
-    List<File>? files,
+    Map<String, List<File>>? files,
     String? fileKeyName,
     String? savePath,
     ProgressCallback? onSendProgress,
@@ -1045,37 +1169,39 @@ class ApiClient {
       // Queue the request for later execution
       if (_networkInfo is NetworkInfoImpl) {
         (_networkInfo).apiStack.add(
-          ApiRequest(
-            url: endpoint,
-            method: method,
-            variables:
-                data is Map<String, dynamic> ? data : <String, dynamic>{},
-            onSuccessFunction: (response) {
-              return converter != null ? converter(response) : response as T;
-            },
-            execute: () async {
-              // Create a function that will retry this exact request
-              try {
-                return await request<T>(
-                  endpoint: endpoint,
-                  method: method,
-                  data: data,
-                  queryParameters: queryParameters,
-                  extraHeaders: extraHeaders,
-                  files: files,
-                  fileKeyName: fileKeyName,
-                  savePath: savePath,
-                  onSendProgress: onSendProgress,
-                  onReceiveProgress: onReceiveProgress,
-                  converter: converter,
-                );
-              } catch (e) {
-                'Error retrying request: \$e'.log();
-                return null;
-              }
-            },
-          ),
-        );
+              ApiRequest(
+                url: endpoint,
+                method: method,
+                variables:
+                    data is Map<String, dynamic> ? data : <String, dynamic>{},
+                onSuccessFunction: (response) {
+                  return converter != null
+                      ? converter(response)
+                      : response as T;
+                },
+                execute: () async {
+                  // Create a function that will retry this exact request
+                  try {
+                    return await request<T>(
+                      endpoint: endpoint,
+                      method: method,
+                      data: data,
+                      queryParameters: queryParameters,
+                      extraHeaders: extraHeaders,
+                      files: files,
+                      fileKeyName: fileKeyName,
+                      savePath: savePath,
+                      onSendProgress: onSendProgress,
+                      onReceiveProgress: onReceiveProgress,
+                      converter: converter,
+                    );
+                  } catch (e) {
+                    'Error retrying request: \$e'.log();
+                    return null;
+                  }
+                },
+              ),
+            );
       }
       throw NetworkException(message: 'No internet connection');
     }
@@ -1085,29 +1211,43 @@ class ApiClient {
       _dio.options.headers.addAll(extraHeaders);
     }
 
-    // Handle file uploads
-    FormData? formData;
-    if (files != null && files.isNotEmpty && fileKeyName != null) {
-      formData = FormData();
+    // Create form data
+    final formData = FormData.fromMap(queryParameters ?? {});
 
-      // Add regular params to form data
-      if (data is Map<String, dynamic>) {
-        data.forEach((key, value) {
-          formData?.fields.add(MapEntry(key, value.toString()));
-        });
-      }
+    // Add files to form data if any
+    if (files != null && files.isNotEmpty) {
+      for (var entry in files.entries) {
+        final key = entry.key;
+        final fileList = entry.value;
 
-      // Add files to form data
-      for (var file in files) {
-        formData.files.add(
-          MapEntry(
-            fileKeyName,
-            await MultipartFile.fromFile(
-              file.path,
-              filename: file.path.split('/').last,
-            ),
-          ),
-        );
+        if (fileList.isNotEmpty) {
+          // If there's only one file for this key, add it directly
+          if (fileList.length == 1) {
+            formData.files.add(MapEntry(
+              key,
+              await MultipartFile.fromFile(
+                fileList.first.path,
+                filename: fileList.first.path.split('/').last,
+              ),
+            ));
+          }
+          // If there are multiple files for this key, add them as a list
+          else {
+            formData.files.addAll(
+              await Future.wait(
+                fileList.map((file) async {
+                  return MapEntry(
+                    key,
+                    await MultipartFile.fromFile(
+                      file.path,
+                      filename: file.path.split('/').last,
+                    ),
+                  );
+                }),
+              ),
+            );
+          }
+        }
       }
     }
 
@@ -1127,7 +1267,7 @@ class ApiClient {
         case HttpMethod.post:
           response = await _dio.post(
             endpoint,
-            data: formData ?? data,
+            data: formData,
             queryParameters: queryParameters,
             options: Options(headers: extraHeaders),
             onSendProgress: onSendProgress,
@@ -1137,7 +1277,7 @@ class ApiClient {
         case HttpMethod.put:
           response = await _dio.put(
             endpoint,
-            data: formData ?? data,
+            data: formData,
             queryParameters: queryParameters,
             options: Options(headers: extraHeaders),
             onSendProgress: onSendProgress,
@@ -1155,7 +1295,7 @@ class ApiClient {
         case HttpMethod.patch:
           response = await _dio.patch(
             endpoint,
-            data: formData ?? data,
+            data: formData,
             queryParameters: queryParameters,
             options: Options(headers: extraHeaders),
             onSendProgress: onSendProgress,
@@ -1187,6 +1327,9 @@ class ApiClient {
       return result as T;
     } on DioException catch (e) {
       throw _handleDioError(e);
+    } on AppException {
+      // Re-throw our custom exceptions (ValidationException, etc.)
+      rethrow;
     } catch (e) {
       throw ServerException(message: 'Something went wrong: \$e');
     }
@@ -1194,10 +1337,32 @@ class ApiClient {
 
   /// Handle response based on status code
   dynamic _handleResponse(Response response) {
-    'RESPONSE: \${response.data}'.log();
     switch (response.statusCode) {
       case 200:
       case 201:
+        if (response.data is Map) {
+          final Map data = json.decode(response.toString());
+          final verifycode = data['code'];
+          int code = int.tryParse(verifycode.toString()) ?? 0;
+          if (code == 200) {
+            return response.data;
+          } else if (code == 401) {
+            throw UnauthorizedException(message: 'Unauthorized');
+          } else if (code == 422) {
+            _handleValidationException(response.data);
+            // Never reached, but satisfies compiler
+            return response.data;
+          } else if (code == 429) {
+            _handleTooManyRequestsException(response.data);
+            // Never reached, but satisfies compiler
+            return response.data;
+          } else if (code == 405) {
+            throw MethodNotAllowedException(message: 'Method not allowed');
+          } else if (code == 500) {
+            throw ServerException(message: 'Server error');
+          }
+        }
+
         return response.data;
       case 400:
         throw BadRequestException(message: 'Bad request');
@@ -1205,8 +1370,16 @@ class ApiClient {
       case 403:
         throw UnauthorizedException(message: 'Unauthorized');
       case 404:
-        throw NotFoundException(message: 'Not found');
+        throw NotFoundException(
+            message: 'Not found', statusCode: response.statusCode);
+      case 422:
+        _handleValidationException(response.data);
+        throw ServerException(message: 'Validation error'); // Never reached
+      case 429:
+        _handleTooManyRequestsException(response.data);
+        throw TooManyRequestsException(message: 'Too many requests');
       case 500:
+        throw ServerException(message: 'Server error');
       default:
         throw ServerException(message: 'Server error: \${response.statusCode}');
     }
@@ -1239,6 +1412,12 @@ class ApiClient {
           return NotFoundException(message: errorMessage, statusCode: 404);
         } else if (statusCode == 400) {
           return BadRequestException(message: errorMessage, statusCode: 400);
+        } else if (statusCode == 422) {
+          _handleValidationException(e.response?.data);
+          return ServerException(message: errorMessage); // Never reached
+        } else if (statusCode == 429) {
+          _handleTooManyRequestsException(e.response?.data);
+          return ServerException(message: errorMessage); // Never reached
         } else if (statusCode == 500) {
           return ServerException(message: errorMessage, statusCode: 500);
         } else {
@@ -1254,9 +1433,29 @@ class ApiClient {
   }
 }
 
+ValidationException _handleValidationException(dynamic data) {
+  Map<String, dynamic>? errors;
+  String message = 'Validation error';
+
+  if (data is Map<String, dynamic>) {
+    errors = data['errors'] as Map<String, dynamic>?;
+    message = data['message']?.toString() ?? message;
+  }
+
+  throw ValidationException(message: message, statusCode: 422, errors: errors);
+}
+
+TooManyRequestsException _handleTooManyRequestsException(dynamic data) {
+  String message = 'Error';
+  if (data is Map<String, dynamic>) {
+    message = data['message']?.toString() ?? message;
+  }
+
+  throw TooManyRequestsException(message: message, statusCode: 429);
+}
+
 /// Type definition for response converters
 typedef ResponseConverter<T> = T Function(dynamic data);
-
 ''');
 
     await _createFile('$corePath/utils', 'app_version', '''
@@ -1283,33 +1482,52 @@ class AppVersion {
 
     await _createFile('$corePath/utils', 'date_util', '''
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 import '../routes/navigation.dart';
 
 class DateUtil {
   static DateTime? fromDate;
   static bool isToShowPreviousDate = true;
+  static bool isToShowFutureDate = false;
   static Future<DateTime?> showDatePickerDialog() async {
     final picked = await showDatePicker(
-      context: Navigation.key.currentContext!,
-      initialDate: DateTime.now(),
-      //use to show the previous month
-      firstDate: isToShowPreviousDate == true
-          ? DateTime(2020, DateTime.december)
-          : DateTime.now(),
-      lastDate: DateTime.now(),
-    );
+        builder: (context, child) {
+          return Theme(
+            data: ThemeData(
+              colorScheme: ColorScheme.light(
+                primary: AppColors.accent.color,
+                onPrimary: AppColors.white.color,
+                onSurface: AppColors.black.color,
+              ),
+              dialogTheme: DialogThemeData(
+                backgroundColor: AppColors.white.color,
+              ),
+            ),
+            child: child!,
+          );
+        },
+        context: Navigation.key.currentContext!,
+        initialDate: DateTime.now(),
+        //use to show the previous month
+        firstDate: isToShowPreviousDate == true
+            ? DateTime(1950, DateTime.december)
+            : DateTime.now(),
+        lastDate: isToShowFutureDate == true
+            ? DateTime(2080, DateTime.december)
+            : DateTime.now());
 
     fromDate = picked;
     return picked;
   }
 }
 
+
 ''');
 
     await _createFile('$corePath/utils', 'validators', '''
   
-// lib/core/utils/validators.dart
+/// lib/core/utils/validators.dart
 
 class Validators {
   // Email validation
@@ -1317,7 +1535,7 @@ class Validators {
     if (value == null || value.isEmpty) {
       return 'Please enter email';
     }
-    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}\$');
+    final emailRegex = RegExp(r'[a-zA-Z0-9@._\-+]');
     if (!emailRegex.hasMatch(value)) {
       return 'Please enter a valid email';
     }
@@ -1348,9 +1566,26 @@ class Validators {
     if (value == null || value.isEmpty) {
       return 'Please enter phone number';
     }
-    final phoneRegex = RegExp(r'^\+?[\d\s-]{10,}\$');
+    final phoneRegex = RegExp(r'^+?[ds-]{10,}\$');
     if (!phoneRegex.hasMatch(value)) {
       return 'Please enter a valid phone number';
+    }
+    return null;
+  }
+
+  static String? pin(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter pin';
+    }
+    return null;
+  }
+
+  static String? otp(String? value) {
+    if (value!.isEmpty) {
+      return "Please enter OTP";
+    }
+    if (value.length < 6) {
+      return "OTP must be at least 6 characters long";
     }
     return null;
   }
@@ -1367,8 +1602,18 @@ class Validators {
       return null;
     };
   }
-}
-  
+
+  static String? dropdown(dynamic value) {
+    if (value == null) {
+      return 'Please select a value';
+    }
+    // If value is a String, check if it's empty
+    if (value is String && value.isEmpty) {
+      return 'Please select a value';
+    }
+    return null;
+  }
+} 
 ''');
 
     // Utils
@@ -1489,6 +1734,7 @@ import '../constants/app_constants.dart';
 import 'package:intl/intl.dart';
 import 'preferences_helper.dart';
 
+
 extension ConvertNum on String {
   static const english = [
     '0',
@@ -1571,21 +1817,21 @@ extension Context on BuildContext {
 extension ValidationExtention on String {
   //Check email is valid or not
   bool get isValidEmail => RegExp(
-    r"[a-z0-9!#\$%&'*+/=?^_`{|}~-]+(?:.[a-z0-9!#\$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
-  ).hasMatch(this);
+        r"[a-z0-9!#\$%&'*+/=?^_`{|}~-]+(?:.[a-z0-9!#\$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
+      ).hasMatch(this);
 
   //check mobile number contain special character or not
   bool get isMobileNumberValid =>
       RegExp(r'(^(?:[+0]9)?[0-9]{10,12}\$)').hasMatch(this);
 }
 
-extension NumGenericExtensions<T extends String> on T {
+extension NumGenericExtensions<T extends String> on T? {
   double parseToDouble() {
-    if (isEmpty) {
+    if (this?.isEmpty ?? true) {
       return 0.0;
     }
     try {
-      return double.parse(this);
+      return double.parse(this!);
     } catch (e) {
       e.log();
       return 0.0;
@@ -1594,6 +1840,9 @@ extension NumGenericExtensions<T extends String> on T {
 
   String parseToString() {
     try {
+      if (this == null) {
+        return '';
+      }
       return toString();
     } catch (e) {
       e.log();
@@ -1604,10 +1853,25 @@ extension NumGenericExtensions<T extends String> on T {
 
   int parseToInt() {
     try {
-      return int.parse(this);
+      if (this == null) {
+        return 0;
+      }
+      return int.parse(this!);
     } catch (e) {
       e.log();
       return 0;
+    }
+  }
+
+  bool parseToBool() {
+    if (this?.isEmpty ?? true) {
+      return false;
+    }
+    try {
+      return bool.parse(this!);
+    } catch (e) {
+      e.log();
+      return false;
     }
   }
 }
@@ -1629,7 +1893,8 @@ extension Log on Object {
 
 // It will formate the date which will show in our application.
 extension FormatedDateExtention on DateTime {
-  String get formattedDate => DateFormat(AppConstants.mmm.key).format(this);
+  String get formattedDate =>
+      DateFormat(AppConstants.yyyyMmDd.key).format(this);
 }
 
 extension FormatedDateExtentionString on String {
@@ -1649,13 +1914,12 @@ extension FormattedYearMonthDate on String? {
 extension StringToDoubleFoldExtention<T extends List<Map<String, dynamic>>>
     on T {
   String? get listOfMapStringSum => map(
-    (e) => double.tryParse(e.values.first?.toString() ?? ''),
-  ).toList().fold('0', (previous, current) {
-    var sum =
-        double.parse(previous?.toString() ?? '0') +
-        double.parse(current?.toString() ?? '0');
-    return sum.toString().parseToDouble().toStringAsFixed(3);
-  });
+        (e) => double.tryParse(e.values.first?.toString() ?? ''),
+      ).toList().fold('0', (previous, current) {
+        var sum = double.parse(previous?.toString() ?? '0') +
+            double.parse(current?.toString() ?? '0');
+        return sum.toString().parseToDouble().toStringAsFixed(3);
+      });
 }
 
 //It will capitalize the first letter of the String.
@@ -1663,9 +1927,9 @@ extension CapitalizeExtention on String {
   String toCapitalized() =>
       length > 0 ? '\${this[0].toUpperCase()}\${substring(1).toLowerCase()}' : '';
   String toTitleCase() => replaceAll(
-    RegExp(' +'),
-    ' ',
-  ).split(' ').map((str) => str.toCapitalized()).join(' ');
+        RegExp(' +'),
+        ' ',
+      ).split(' ').map((str) => str.toCapitalized()).join(' ');
 }
 
 extension LastPathComponent on String {
@@ -1688,10 +1952,10 @@ extension IterableExtension<T> on Iterable<T> {
 /// it will use for finding data  from list based on same date
 extension Iterables<E> on Iterable<E> {
   Map<K, List<E>> groupBy<K>(K Function(E) keyFunction) => fold(
-    <K, List<E>>{},
-    (Map<K, List<E>> map, E element) =>
-        map..putIfAbsent(keyFunction(element), () => <E>[]).add(element),
-  );
+        <K, List<E>>{},
+        (Map<K, List<E>> map, E element) =>
+            map..putIfAbsent(keyFunction(element), () => <E>[]).add(element),
+      );
 }
 
 extension DateTimeGreater on DateTime {
@@ -1707,6 +1971,251 @@ extension DateTimeGreater on DateTime {
       return false;
     }
   }
+}
+
+extension FormatDuration on int {
+  String formatDuration() {
+    int minutes = this ~/ 60;
+    int remainingSeconds = this % 60;
+    return '0\$minutes:\${remainingSeconds.toString().padLeft(2, '0')}s';
+    // if (minutes != 0) {
+    //   return '\$minutesm:\${remainingSeconds.toString().padLeft(2, '0')}s';
+    // } else {
+    //   return '\${remainingSeconds.toString().padLeft(2, '0')}s';
+    // }
+  }
+}
+
+extension ValidUKMobileNumber on String {
+  bool get isValidUKMobileNumber {
+    // Remove any non-digit characters
+    final strippedNumber = replaceAll(RegExp(r'[^0-9]'), '');
+
+    // UK mobile number regex pattern
+    // Matches:
+    // - 07xxxxxxxxx (11 digits starting with 07)
+    // - 447xxxxxxxxx (12 digits starting with 447)
+    // - +447xxxxxxxxx (12 digits after +)
+    // - 00447xxxxxxxxx (14 digits starting with 00447)
+    final ukMobileRegex = RegExp(r'^(?:\+?44|0)7[0-9]{9}\$');
+
+    return ukMobileRegex.hasMatch(strippedNumber);
+  }
+}
+
+/// Extension for debugging JSON parsing issues
+/// Prints the entire JSON structure with field names, values, and types
+extension JsonDebugger on Map<String, dynamic> {
+  /// Logs the entire JSON structure with types for debugging parsing issues
+  ///
+  /// Usage:
+  /// ```dart
+  /// final response = await apiClient.request(...);
+  /// response.debugJson(); // Prints everything with types
+  /// ```
+  void debugJson({String prefix = '', int indentLevel = 0}) {
+    final indent = '  ' * indentLevel;
+
+    forEach((key, value) {
+      final fullKey = prefix.isEmpty ? key : '\$prefix.\$key';
+
+      if (value == null) {
+        '\$indent\$fullKey: null (Null)'.log();
+      } else if (value is Map<String, dynamic>) {
+        '\$indent\$fullKey: (Map)'.log();
+        value.debugJson(prefix: fullKey, indentLevel: indentLevel + 1);
+      } else if (value is List) {
+        '\$indent\$fullKey: (List[\${value.length}])'.log();
+        for (int i = 0; i < value.length; i++) {
+          final item = value[i];
+          if (item is Map<String, dynamic>) {
+            '\$indent  [\$i]: (Map)'.log();
+            item.debugJson(
+                prefix: '\$fullKey[\$i]', indentLevel: indentLevel + 2);
+          } else {
+            '\$indent  [\$i]: \$item (\${item.runtimeType})'.log();
+          }
+        }
+      } else {
+        '\$indent\$fullKey: \$value (\${value.runtimeType})'.log();
+      }
+    });
+  }
+
+  /// Quick debug for a specific nested field
+  ///
+  /// Usage:
+  /// ```dart
+  /// response.debugField('data.qr_code'); // Prints only qr_code object
+  /// ```
+  void debugField(String fieldPath) {
+    final parts = fieldPath.split('.');
+    dynamic current = this;
+
+    for (final part in parts) {
+      if (current is Map<String, dynamic>) {
+        current = current[part];
+      } else {
+        'Field "\$fieldPath" not found or invalid path'.log();
+        return;
+      }
+    }
+
+    if (current == null) {
+      'Field "\$fieldPath": null'.log();
+    } else if (current is Map<String, dynamic>) {
+      'Field "\$fieldPath":'.log();
+      current.debugJson(indentLevel: 1);
+    } else {
+      'Field "\$fieldPath": \$current (\${current.runtimeType})'.log();
+    }
+  }
+
+  /// Find fields with specific type mismatches
+  /// Helps identify which field is causing parsing errors
+  ///
+  /// Usage:
+  /// ```dart
+  /// // Find all int fields (when you expect String)
+  /// response.findFieldsByType<int>();
+  ///
+  /// // Find all String fields (when you expect int)
+  /// response.findFieldsByType<String>();
+  /// ```
+  void findFieldsByType<T>({String prefix = ''}) {
+    forEach((key, value) {
+      final fullKey = prefix.isEmpty ? key : '\$prefix.\$key';
+
+      if (value.runtimeType == T) {
+        '🔍 FOUND: \$fullKey = \$value (\${value.runtimeType})'.log();
+      } else if (value is Map<String, dynamic>) {
+        value.findFieldsByType<T>(prefix: fullKey);
+      } else if (value is List) {
+        for (int i = 0; i < value.length; i++) {
+          final item = value[i];
+          if (item is Map<String, dynamic>) {
+            item.findFieldsByType<T>(prefix: '\$fullKey[\$i]');
+          } else if (item.runtimeType == T) {
+            '🔍 FOUND: \$fullKey[\$i] = \$item (\${item.runtimeType})'.log();
+          }
+        }
+      }
+    });
+  }
+
+  /// Find type mismatches between actual data and expected types
+  ///
+  /// Usage:
+  /// ```dart
+  /// response.findTypeMismatches({
+  ///   'data.qr_code.status': String,
+  ///   'data.qr_code.scan_count': int,
+  /// });
+  /// ```
+  void findTypeMismatches(Map<String, Type> expectedTypes) {
+    '🔍 Checking for type mismatches...'.log();
+
+    expectedTypes.forEach((fieldPath, expectedType) {
+      final parts = fieldPath.split('.');
+      dynamic current = this;
+      bool found = true;
+
+      for (final part in parts) {
+        if (current is Map<String, dynamic>) {
+          current = current[part];
+        } else {
+          found = false;
+          break;
+        }
+      }
+
+      if (!found) {
+        '❌ Field "\$fieldPath" not found'.log();
+      } else if (current == null) {
+        '✅ \$fieldPath: null (OK - nullable)'.log();
+      } else if (current.runtimeType != expectedType) {
+        '❌ MISMATCH: \$fieldPath'.log();
+        '   Expected: \$expectedType'.log();
+        '   Actual: \${current.runtimeType}'.log();
+        '   Value: \$current'.log();
+      } else {
+        '✅ \$fieldPath: \${current.runtimeType} (OK)'.log();
+      }
+    });
+  }
+}
+
+/// Extension for automatic safe JSON parsing
+/// Handles ALL type conversions automatically - NO MORE TYPE ERRORS!
+extension SafeMap on Map<String, dynamic> {
+  /// Convert to SafeJsonMap - access any field without type errors!
+  ///
+  /// Usage:
+  /// ```dart
+  /// factory User.fromJson(Map<String, dynamic> json) {
+  ///   json = json.autoSafe.raw;  // ← Just add this ONE line!
+  ///   // Now ALL fields are safe - null becomes '', int becomes String, etc.
+  ///   return User(
+  ///     id: json['id'] ?? 0,
+  ///     name: json['name'] ?? '',
+  ///     // ... ALL 1000 fields work automatically!
+  ///   );
+  /// }
+  /// ```
+  SafeJsonMap get autoSafe => SafeJsonMap._convert(this);
+}
+
+/// Safe JSON Map that converts all values to prevent type errors
+class SafeJsonMap {
+  final Map<String, dynamic> _map;
+
+  SafeJsonMap._(this._map);
+
+  /// Convert entire map recursively to safe types
+  factory SafeJsonMap._convert(Map<String, dynamic> json) {
+    final converted = <String, dynamic>{};
+
+    json.forEach((key, value) {
+      converted[key] = _convertValue(value);
+    });
+
+    return SafeJsonMap._(converted);
+  }
+
+  /// Convert any value to a safe type
+  /// Simple strategy:
+  /// - null → '' (empty string)
+  /// - int/double/bool → String (prevents type mismatch)
+  /// - String stays String
+  /// - Maps and Lists are processed recursively
+  static dynamic _convertValue(dynamic value) {
+    if (value == null) {
+      // Convert null to empty string
+      return '';
+    } else if (value is Map) {
+      // Recursively process nested maps
+      final converted = <String, dynamic>{};
+      value.forEach((k, v) {
+        converted[k.toString()] = _convertValue(v);
+      });
+      return converted;
+    } else if (value is List) {
+      // Recursively process lists
+      return value.map((item) => _convertValue(item)).toList();
+    } else if (value is int || value is double || value is bool) {
+      // Convert numbers and bools to String to prevent type mismatch
+      return value.toString();
+    } else {
+      // Keep everything else as-is (String, etc.)
+      return value;
+    }
+  }
+
+  /// Get the converted map
+  Map<String, dynamic> get raw => _map;
+
+  /// Access value by key
+  dynamic operator [](String key) => _map[key];
 }
 
 ''');
@@ -1747,15 +2256,17 @@ class KTextStyle {
   static TextStyle customTextStyle({
     double fontSize = 12,
     fontWeight = FontWeight.normal,
+    fontStyle = FontStyle.normal,
     Color? color,
-  }) {
-    return GoogleFonts.poppins(
-      color: color ?? AppColors.lightGrey.color,
-      fontSize: fontSize.sp,
-      fontWeight: fontWeight,
-    );
-  }
+  }) =>
+      GoogleFonts.poppins(
+        color: color ?? AppColors.textBlue.color,
+        fontSize: fontSize.sp,
+        fontWeight: fontWeight,
+        fontStyle: fontStyle,
+      );
 }
+
 
 ''',
     );
@@ -1827,7 +2338,99 @@ Future<void> initDependencies() async {
 }
 ''');
 
-    // Presentation widgets
+    await _createFile('$corePath/presentation/widgets', 'error_dialog', '''
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '/core/theme/app_colors.dart';
+
+import 'global_text.dart';
+
+class ErrorDialog extends StatelessWidget {
+  const ErrorDialog({
+    super.key,
+    required this.erroMsg,
+  });
+
+  final List<dynamic> erroMsg;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const GlobalText(
+                str: "Error",
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              const Spacer(),
+              InkWell(
+                onTap: () {
+                  Navigator.pop(context);
+                },
+                child: Container(
+                  padding: EdgeInsets.all(8.w),
+                  decoration: BoxDecoration(
+                    color: AppColors.btnText.color,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.close, size: 16.w),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(
+            height: 10.h,
+          ),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.only(left: 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: List.generate(
+                erroMsg.length,
+                (index) => Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    Flexible(
+                      child: Container(
+                        padding: EdgeInsets.only(right: 20.w),
+                        child: GlobalText(
+                          str: erroMsg[index]
+                              .toString()
+                              .replaceAll("[", "")
+                              .replaceAll("]", ""),
+                          maxLines: 5,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.start,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.btnText.color,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+}
+
+
+''');
+
+  // Presentation widgets
     await _createFile('$corePath/presentation/widgets', 'global_text', '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -2022,16 +2625,20 @@ class GlobalLoader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const CircularProgressIndicator.adaptive(),
-        SizedBox(width: 10.w),
-        GlobalText(str: text ?? ''),
-      ],
+    return PopScope(
+      canPop: false,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const CircularProgressIndicator.adaptive(),
+          SizedBox(width: 10.w),
+          GlobalText(str: text ?? ''),
+        ],
+      ),
     );
   }
 }
+
 
 ''',
     );
@@ -2200,9 +2807,9 @@ class GlobalDropdown<T> extends StatelessWidget {
       '$corePath/presentation/widgets',
       'global_image_loader',
       '''
- 
  import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
 import '/core/presentation/widgets/global_loader.dart';
 
 enum ImageFor { asset, network }
@@ -2248,7 +2855,8 @@ class GlobalImageLoader extends StatelessWidget {
           height: height,
           width: width,
           fit: fit ?? BoxFit.cover,
-          errorBuilder: (context, exception, stackTrace) => const Text('😢'),
+          errorBuilder: (context, exception, stackTrace) =>
+              const Icon(Icons.error),
         );
       }
     }
@@ -2267,12 +2875,14 @@ class GlobalImageLoader extends StatelessWidget {
           height: height,
           width: width,
           fit: fit ?? BoxFit.cover,
-          errorBuilder: (context, exception, stackTrace) => const Text('😢'),
+          errorBuilder: (context, exception, stackTrace) =>
+              const Icon(Icons.error),
         );
       }
     }
   }
-} 
+}
+
  ''',
     );
 
@@ -2672,24 +3282,35 @@ class GlobalTextFormField extends StatelessWidget {
  ''',
     );
 
-    await _createFile('$corePath/presentation/mixins', 'error_handler_mixin', '''
+    await _createFile(
+      '$corePath/presentation/mixins',
+      'error_handler_mixin',
+      '''
+import '/core/theme/app_colors.dart';
+
 import '/core/error/exceptions.dart';
 import '/core/error/failures.dart';
 import '/core/presentation/view_util.dart';
+import '/core/presentation/widgets/error_dialog.dart';
 import '/core/presentation/widgets/global_text.dart';
 
 /// A mixin that provides error handling methods for presentation layer
 mixin ErrorHandlerMixin {
   /// Show appropriate error UI based on failure type
-  void handleError(dynamic error) {
-    if (error is AuthenticationFailure || error is UnauthorizedException) {
-      _showUnauthorizedDialog(error.toString());
+  void handleError(Failure error) {
+    if (error is ValidationFailure) {
+      _showValidationErrorDialog(error);
+    } else if (error is TooManyRequestsFailure) {
+      _showTooManyRequestsDialog(error.message);
+    } else if (error is AuthenticationFailure ||
+        error is UnauthorizedException) {
+      _showUnauthorizedDialog(error.message);
     } else if (error is ServerFailure || error is ServerException) {
-      _showServerErrorSnackBar(error.toString());
+      _showServerErrorSnackBar(error.message);
     } else if (error is NetworkFailure || error is NetworkException) {
-      _showNetworkErrorSnackBar(error.toString());
+      _showNetworkErrorSnackBar(error.message);
     } else {
-      ViewUtil.snackbar(error.toString());
+      ViewUtil.snackbar(error.message);
     }
   }
 
@@ -2703,19 +3324,38 @@ mixin ErrorHandlerMixin {
 
   /// Show snackbar for server errors
   void _showServerErrorSnackBar(String message) {
-    ViewUtil.snackbar('Server Error');
+    ViewUtil.snackbar(message);
   }
 
   /// Show snackbar for network errors
   void _showNetworkErrorSnackBar(String message) {
-    ViewUtil.snackbar('Network Error');
+    ViewUtil.snackbar(message);
+  }
+
+  /// Show dialog for validation errors with all error messages
+  void _showValidationErrorDialog(ValidationFailure failure) {
+    ViewUtil.alertDialog(
+      alertBackgroundColor: AppColors.white.color,
+      content: ErrorDialog(erroMsg: failure.errorMessages),
+    );
+  }
+
+  /// Show dialog for too many requests errors
+  void _showTooManyRequestsDialog(String message) {
+    ViewUtil.alertDialog(
+      alertBackgroundColor: AppColors.white.color,
+      content: ErrorDialog(erroMsg: [message]),
+    );
   }
 }
-''');
+
+''',
+    );
 
     await _createFile('$corePath/presentation', 'view_util', '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '/core/presentation/widgets/global_loader.dart';
 import '../routes/navigation.dart';
 import '../theme/app_colors.dart';
 import 'widgets/global_text.dart';
@@ -2782,28 +3422,39 @@ class ViewUtil {
       isScrollControlled: true,
       context: context,
       isDismissible: isDismissable ?? true,
-      builder:
-          (context) => Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16.r),
-                topRight: Radius.circular(16.r),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0x1a000000),
-                  offset: const Offset(0, 1),
-                  blurRadius: 3.r,
-                  spreadRadius: 0,
-                ),
-              ],
-              color: const Color(0xffffffff),
-            ),
-            child: content,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(16.r),
+            topRight: Radius.circular(16.r),
           ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0x1a000000),
+              offset: const Offset(0, 1),
+              blurRadius: 3.r,
+              spreadRadius: 0,
+            ),
+          ],
+          color: const Color(0xffffffff),
+        ),
+        child: content,
+      ),
     );
   }
+
+  static showLoader(BuildContext context) {
+    return alertDialog(
+      alertBackgroundColor: AppColors.white.color,
+      content: GlobalLoader(text: 'Loading...'),
+    );
+  }
+
+  static hideLoader(BuildContext context) {
+    Navigator.pop(context);
+  }
 }
+
 
 ''');
   }
@@ -2922,7 +3573,6 @@ class ProductResponse {
       'product_remote_datasource',
       '''import '/core/network/api_client.dart';
 import '/core/constants/api_urls.dart';
-import '/core/error/exceptions.dart';
 import '../models/product_model.dart';
 import '../models/product_response.dart';
 
@@ -2945,7 +3595,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       final productResponse = ProductResponse.fromJson(response);
       return productResponse.products;
     } catch (e) {
-      throw ServerException(message: e.toString());
+      rethrow;
     }
   }
 }
@@ -2989,9 +3639,9 @@ class ProductLocalDataSourceImpl implements ProductLocalDataSource {
       '''
 import 'package:dartz/dartz.dart';
 
-import '/core/error/exceptions.dart';
 import '/core/error/failures.dart';
 import '/core/network/network_info.dart';
+import '../../../../core/error/exception_handler.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/repositories/product_repository.dart';
 import '../datasources/product_local_datasource.dart';
@@ -3013,23 +3663,20 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Future<Either<Failure, List<Product>>> getProducts() async {
     if (await _networkInfo.internetAvailable()) {
-      try {
+      return handleException(() async {
         final remoteProducts = await _remoteDataSource.getProducts();
         await _localDataSource.cacheProducts(remoteProducts);
-        return Right(remoteProducts);
-      } on ServerException catch (e) {
-        return Left(ServerFailure(message: e.message));
-      }
+        return remoteProducts;
+      });
     } else {
-      try {
+      return handleException(() async {
         final localProducts = await _localDataSource.getProducts();
-        return Right(localProducts);
-      } on CacheException catch (e) {
-        return Left(CacheFailure(message: e.message));
-      }
+        return localProducts;
+      });
     }
   }
 }
+
 ''',
     );
 
@@ -3085,26 +3732,31 @@ class Widget extends StatelessWidget {
       '''
 
 import 'package:flutter/material.dart';
+import 'package:equatable/equatable.dart';
+import '/core/error/failures.dart';
 
 @immutable
-class ProductState {
+class ProductState extends Equatable{
   final bool isLoading;
-  final String? errorMessage;
+  final Failure? failure;
 
   const ProductState({
     this.isLoading = false,
-    this.errorMessage,
+    this.failure,
   });
 
   ProductState copyWith({
     bool? isLoading,
-    String? errorMessage,
+    Failure? failure,
   }) {
     return ProductState(
       isLoading: isLoading ?? this.isLoading,
-      errorMessage: errorMessage ?? this.errorMessage,
+      failure: failure,
     );
   }
+
+  @override
+  List<Object?> get props => [isLoading, failure];
 }
 
 ''',
