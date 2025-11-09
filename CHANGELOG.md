@@ -440,3 +440,17 @@
 
 ## 4.0.2
 - build_runner and build_runner_watch command added
+
+
+## 4.0.3
+- Validation failure issue resolve
+- Exception handler utility added
+- Build runner and watch issue resolve
+
+
+## 4.0.4
+- Clean architecture extension utilities refactor
+- GlobalImageLoader Icon issue resolve 
+
+
+ 

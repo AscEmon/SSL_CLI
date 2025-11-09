@@ -13,7 +13,7 @@ import 'command/help_command.dart';
 import 'command/i_command.dart';
 
 class SSLCommandRunner with SentApkTelegramMixin {
-  void run(List<String> arguments) {
+  Future<void> run(List<String> arguments) async {
     final argParser = ArgParser();
 
     _setupArgParser(argParser);
@@ -42,7 +42,7 @@ class SSLCommandRunner with SentApkTelegramMixin {
             command = _handleBuildCommand(res.arguments);
             break;
           case 'generate':
-            command = _handleGenerateCommand(arguments);
+            command = await _handleGenerateCommand(arguments);
             break;
           case 'sent':
             if (res.command!.arguments.first == "--apk") {
@@ -170,15 +170,15 @@ class SSLCommandRunner with SentApkTelegramMixin {
     sentApkTelegramFunc();
   }
 
-  ICommand? _handleGenerateCommand(List<String> arguments) {
+  Future<ICommand?> _handleGenerateCommand(List<String> arguments) async {
     final assetName = arguments[1];
     if (assetName == "k_assets.dart") {
       return AssetGenerationCommand();
     } else if (assetName == "build_runner") {
-      _runBuildRunner();
+      await _runBuildRunner();
       return null;
     } else if (assetName == "build_runner_watch") {
-      _runBuildRunnerWatch();
+      await _runBuildRunnerWatch();
       return null;
     } else if (assetName.isValidFilePath()) {
       DocGenerator docGen = DocGenerator();
@@ -192,52 +192,87 @@ class SSLCommandRunner with SentApkTelegramMixin {
     return null;
   }
 
-  void _runBuildRunner() {
+  Future<void> _runBuildRunner() async {
     print('Running build_runner...');
     try {
-      final result = Process.runSync('flutter', [
-        'pub',
-        'run',
-        'build_runner',
-        'build',
-        '--delete-conflicting-outputs',
-      ], runInShell: true);
+      final process = await Process.start(
+        'flutter',
+        [
+          'pub',
+          'run',
+          'build_runner',
+          'build',
+          '--delete-conflicting-outputs',
+        ],
+        runInShell: true,
+      );
 
-      if (result.exitCode == 0) {
-        print(result.stdout);
+      // Stream stdout and stderr in real-time and wait for completion
+      await Future.wait([
+        process.stdout.transform(SystemEncoding().decoder).forEach((data) {
+          stdout.write(data);
+        }),
+        process.stderr.transform(SystemEncoding().decoder).forEach((data) {
+          stderr.write(data);
+        }),
+      ]);
+
+      final exitCode = await process.exitCode;
+
+      if (exitCode == 0) {
         "Build runner completed successfully!".printWithColor(
           status: PrintType.success,
         );
       } else {
-        print(result.stderr);
-        "Build runner failed!".printWithColor(status: PrintType.error);
+        "Build runner failed with exit code: $exitCode".printWithColor(
+          status: PrintType.error,
+        );
       }
     } catch (e) {
       "Error running build_runner: $e".printWithColor(status: PrintType.error);
     }
   }
 
-  void _runBuildRunnerWatch() {
-    print('Running build_runner...');
+  Future<void> _runBuildRunnerWatch() async {
+    print('Running build_runner in watch mode...');
+    print('Press Ctrl+C to stop watching.');
     try {
-      final result = Process.runSync('dart', [
-        'run',
-        'build_runner',
-        'watch',
-        '--delete-conflicting-outputs',
-      ], runInShell: true);
+      final process = await Process.start(
+        'dart',
+        [
+          'run',
+          'build_runner',
+          'watch',
+          '--delete-conflicting-outputs',
+        ],
+        runInShell: true,
+      );
 
-      if (result.exitCode == 0) {
-        print(result.stdout);
-        "Build runner completed successfully!".printWithColor(
+      // Stream stdout and stderr in real-time
+      process.stdout.transform(SystemEncoding().decoder).listen((data) {
+        stdout.write(data);
+      });
+
+      process.stderr.transform(SystemEncoding().decoder).listen((data) {
+        stderr.write(data);
+      });
+
+      // Wait for the process to exit (when user presses Ctrl+C)
+      final exitCode = await process.exitCode;
+
+      if (exitCode == 0) {
+        "Build runner watch stopped.".printWithColor(
           status: PrintType.success,
         );
       } else {
-        print(result.stderr);
-        "Build runner failed!".printWithColor(status: PrintType.error);
+        "Build runner watch stopped with exit code: $exitCode".printWithColor(
+          status: PrintType.warning,
+        );
       }
     } catch (e) {
-      "Error running build_runner: $e".printWithColor(status: PrintType.error);
+      "Error running build_runner watch: $e".printWithColor(
+        status: PrintType.error,
+      );
     }
   }
 
@@ -272,10 +307,10 @@ bool welcomeBoard() {
 String? formatBoard() {
   String content = '''
      Please Enter Your Pattern 
-     1 for Mvc 
+     1 for Mvc (deprecated)
      2 for Repository
      3 for Bloc Pattern 
-     4 for Clean Architecture    
+     4 for Clean Architecture (recommended)    
 \n''';
 
   stderr.write(content);
