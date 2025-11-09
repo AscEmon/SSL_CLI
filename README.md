@@ -105,7 +105,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support ❤️
 
-If this package helped you, please give it a ⭐ on [GitHub](https://github.com/AscEmon/autosafe_json)!
+If this package helped you, please give it a ⭐ on [GitHub](https://github.com/AscEmon/SSL_CLI)!
 
 ## Changelog 📋
 
