@@ -307,10 +307,10 @@ bool welcomeBoard() {
 String? formatBoard() {
   String content = '''
      Please Enter Your Pattern 
-     1 for Mvc 
+     1 for Mvc (deprecated)
      2 for Repository
      3 for Bloc Pattern 
-     4 for Clean Architecture    
+     4 for Clean Architecture (recommended)    
 \n''';
 
   stderr.write(content);

@@ -92,3 +92,25 @@ You can create effortless documentation using AI for your project using this com
     ssl_cli generate build_runner_watch
 
 ### Now using flavorType you can build apk with code obfuscation.
+
+
+
+## Contributing 🤝
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License 📄
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Support ❤️
+
+If this package helped you, please give it a ⭐ on [GitHub](https://github.com/AscEmon/autosafe_json)!
+
+## Changelog 📋
+
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes.
+
+---
+
+Made with ❤️ by [Abu Sayed Chowdhury](https://github.com/AscEmon)
