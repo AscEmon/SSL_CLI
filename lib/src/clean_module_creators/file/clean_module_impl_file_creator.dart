@@ -263,7 +263,6 @@ class ${singularClassName}LocalDataSourceImpl implements ${singularClassName}Loc
 import '../../../../core/error/exception_handler.dart';
 
 import '/core/error/failures.dart';
-import '/core/network/network_info.dart';
 import '/features/$moduleName/data/datasources/${singularModuleName}_local_datasource.dart';
 import '/features/$moduleName/data/datasources/${singularModuleName}_remote_datasource.dart';
 import '/features/$moduleName/domain/entities/$singularModuleName.dart';
@@ -273,30 +272,21 @@ import '/features/$moduleName/domain/repositories/${singularModuleName}_reposito
 class ${singularClassName}RepositoryImpl implements ${singularClassName}Repository {
   final ${singularClassName}RemoteDataSource _remoteDataSource;
   final ${singularClassName}LocalDataSource _localDataSource;
-  final NetworkInfo _networkInfo;
 
   ${singularClassName}RepositoryImpl({
     required ${singularClassName}RemoteDataSource remoteDataSource,
     required ${singularClassName}LocalDataSource localDataSource,
-    required NetworkInfo networkInfo,
   })  : _remoteDataSource = remoteDataSource,
-        _localDataSource = localDataSource,
-        _networkInfo = networkInfo;
+        _localDataSource = localDataSource;
+
 
   @override
   Future<Either<Failure, List<$singularClassName>>> get${className}() async {
-    if (await _networkInfo.internetAvailable()) {
-        return handleException(() async {
+    return handleException(() async {
         final remote${className} = await _remoteDataSource.get${className}();
         await _localDataSource.cache${singularClassName}(remote${className}.first);
         return  remote${className};
       });
-    } else {
-       return handleException(() async {
-        final local${className} = await _localDataSource.get${className}();
-        return local${className};
-      });
-    }
   }
 
 }

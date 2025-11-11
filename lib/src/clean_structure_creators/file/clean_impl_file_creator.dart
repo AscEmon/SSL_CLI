@@ -51,7 +51,7 @@ class CleanImplFileCreator implements IFileCreator {
     await _createFile('$corePath/constants', 'api_urls', '''
 enum UrlLink { isLive, isDev, isLocalServer }
 
-enum ApiUrl { base, baseImage, products }
+enum ApiUrl { base, baseImage, homes }
 
 extension ApiUrlExtention on ApiUrl {
   static String _baseUrl = '';
@@ -79,8 +79,8 @@ extension ApiUrlExtention on ApiUrl {
         return _baseUrl;
       case ApiUrl.baseImage:
         return _baseImageUrl;
-      case ApiUrl.products:
-        return "/products";
+      case ApiUrl.homes:
+        return "/homes";
     }
   }
 }
@@ -423,15 +423,15 @@ class GlobalResponse {
 
     await _createFile('$corePath/routes', 'app_routes', '''
 import 'package:flutter/material.dart';
-import '../../features/products/presentation/pages/product_page.dart';
+import '../../features/homes/presentation/pages/home_page.dart';
 
-enum AppRoutes { product }
+enum AppRoutes { home }
 
 extension AppRoutesExtention on AppRoutes {
   Widget buildWidget<T extends Object>({T? arguments}) {
     switch (this) {
-      case AppRoutes.product:
-        return const ProductPage();
+      case AppRoutes.home:
+        return const HomePage();
     }
   }
 }
@@ -950,7 +950,6 @@ class ThemeManager {
     // Network
     await _createFile('$corePath/network', 'network_info', '''
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'api_client.dart';
 
 /// Interface for network information
 abstract class NetworkInfo {
@@ -972,11 +971,8 @@ class NetworkInfoImpl implements NetworkInfo {
   final Connectivity _connectivity;
   bool _isInternet = false;
 
-  /// API requests that need to be retried when internet is available
-  final List<ApiRequest> apiStack = [];
-
   NetworkInfoImpl({required Connectivity connectivity})
-    : _connectivity = connectivity;
+      : _connectivity = connectivity;
 
   /// Get whether internet is available
   bool get isInternet => _isInternet;
@@ -995,8 +991,7 @@ class NetworkInfoImpl implements NetworkInfo {
   @override
   Future<bool> internetAvailable() async {
     final connectivityResult = await _connectivity.checkConnectivity();
-    _isInternet =
-        connectivityResult.isNotEmpty &&
+    _isInternet = connectivityResult.isNotEmpty &&
         connectivityResult.any((element) => element != ConnectivityResult.none);
     return _isInternet;
   }
@@ -1006,36 +1001,19 @@ class NetworkInfoImpl implements NetworkInfo {
     return await _connectivity.checkConnectivity();
   }
 }
-
-/// Class to store API request information for retry
-class ApiRequest {
-  final String url;
-  final HttpMethod method;
-  final Map<String, dynamic> variables;
-  final dynamic Function(dynamic) onSuccessFunction;
-  final Future<dynamic> Function() execute;
-
-  ApiRequest({
-    required this.url,
-    required this.method,
-    required this.variables,
-    required this.onSuccessFunction,
-    required this.execute,
-  });
-}
-
 ''');
 
     await _createFile('$corePath/network', 'api_client', '''
 import 'dart:convert';
 import 'dart:io';
+
 import 'package:dio/dio.dart';
-import '/core/utils/extension.dart';
-import '../../../../core/constants/app_constants.dart';
-import '/core/utils/preferences_helper.dart';
+
 import '/core/error/exceptions.dart';
-import '/core/network/network_info.dart';
+import '/core/utils/extension.dart';
 import '../../../../core/constants/api_urls.dart';
+import '../../../../core/constants/app_constants.dart';
+import '../utils/preferences_helper.dart';
 
 /// HTTP methods enum
 enum HttpMethod { get, post, put, delete, patch, download }
@@ -1043,15 +1021,12 @@ enum HttpMethod { get, post, put, delete, patch, download }
 /// Core API client for making HTTP requests
 class ApiClient {
   final Dio _dio;
-  final NetworkInfo _networkInfo;
   final PrefHelper _prefHelper;
 
   ApiClient({
     required Dio dio,
-    required NetworkInfo networkInfo,
     required PrefHelper prefHelper,
   })  : _dio = dio,
-        _networkInfo = networkInfo,
         _prefHelper = prefHelper {
     _initDio();
   }
@@ -1163,49 +1138,6 @@ class ApiClient {
     ProgressCallback? onReceiveProgress,
     ResponseConverter<T>? converter,
   }) async {
-    // Check internet connectivity
-    final isConnected = await _networkInfo.internetAvailable();
-    if (!isConnected) {
-      // Queue the request for later execution
-      if (_networkInfo is NetworkInfoImpl) {
-        (_networkInfo).apiStack.add(
-              ApiRequest(
-                url: endpoint,
-                method: method,
-                variables:
-                    data is Map<String, dynamic> ? data : <String, dynamic>{},
-                onSuccessFunction: (response) {
-                  return converter != null
-                      ? converter(response)
-                      : response as T;
-                },
-                execute: () async {
-                  // Create a function that will retry this exact request
-                  try {
-                    return await request<T>(
-                      endpoint: endpoint,
-                      method: method,
-                      data: data,
-                      queryParameters: queryParameters,
-                      extraHeaders: extraHeaders,
-                      files: files,
-                      fileKeyName: fileKeyName,
-                      savePath: savePath,
-                      onSendProgress: onSendProgress,
-                      onReceiveProgress: onReceiveProgress,
-                      converter: converter,
-                    );
-                  } catch (e) {
-                    'Error retrying request: \$e'.log();
-                    return null;
-                  }
-                },
-              ),
-            );
-      }
-      throw NetworkException(message: 'No internet connection');
-    }
-
     // Update headers if needed
     if (extraHeaders != null) {
       _dio.options.headers.addAll(extraHeaders);
@@ -1456,6 +1388,7 @@ TooManyRequestsException _handleTooManyRequestsException(dynamic data) {
 
 /// Type definition for response converters
 typedef ResponseConverter<T> = T Function(dynamic data);
+
 ''');
 
     await _createFile('$corePath/utils', 'app_version', '''
@@ -2073,14 +2006,14 @@ class NoParams extends Equatable {
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 import 'package:get_it/get_it.dart';
+import '../../features/homes/domain/usecases/get_home.dart';
 import '/core/network/api_client.dart';
 import '/core/network/network_info.dart';
 import '/core/utils/preferences_helper.dart';
-import '/features/products/data/datasources/product_remote_datasource.dart';
-import '/features/products/data/datasources/product_local_datasource.dart';
-import '/features/products/data/repositories/product_repository_impl.dart';
-import '/features/products/domain/repositories/product_repository.dart';
-import '/features/products/domain/usecases/get_products.dart';
+import '/features/homes/data/datasources/home_remote_datasource.dart';
+import '/features/homes/data/datasources/home_local_datasource.dart';
+import '/features/homes/data/repositories/home_repository_impl.dart';
+import '/features/homes/domain/repositories/home_repository.dart';
 
 final sl = GetIt.instance;
 
@@ -2090,20 +2023,27 @@ Future<void> initDependencies() async {
   sl.registerLazySingleton<Connectivity>(() => Connectivity());
 
   // Core
-  sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(connectivity: sl()));
+  sl.registerLazySingleton<NetworkInfo>(
+    () => NetworkInfoImpl(connectivity: sl()),
+  );
   sl.registerLazySingleton<PrefHelper>(() => PrefHelper.instance);
-  sl.registerLazySingleton<ApiClient>(() => ApiClient(dio: sl(), networkInfo: sl(), prefHelper: sl()));
+  sl.registerLazySingleton<ApiClient>(
+    () => ApiClient(dio: sl(), prefHelper: sl()),
+  );
 
-  // Products Feature
-  sl.registerLazySingleton<ProductRemoteDataSource>(() => ProductRemoteDataSourceImpl(apiClient: sl()));
-  sl.registerLazySingleton<ProductLocalDataSource>(() => ProductLocalDataSourceImpl());
-  sl.registerLazySingleton<ProductRepository>(() => ProductRepositoryImpl(
-        remoteDataSource: sl(),
-        localDataSource: sl(),
-        networkInfo: sl(),
-      ));
-  sl.registerLazySingleton(() => GetProducts(sl()));
+  // Homes Feature
+  sl.registerLazySingleton<HomeRemoteDataSource>(
+    () => HomeRemoteDataSourceImpl(apiClient: sl()),
+  );
+  sl.registerLazySingleton<HomeLocalDataSource>(
+    () => HomeLocalDataSourceImpl(),
+  );
+  sl.registerLazySingleton<HomeRepository>(
+    () => HomeRepositoryImpl(remoteDataSource: sl(), localDataSource: sl()),
+  );
+  sl.registerLazySingleton(() => GetHomes(sl()));
 }
+
 ''');
 
     await _createFile('$corePath/presentation/widgets', 'error_dialog', '''
@@ -2198,7 +2138,7 @@ class ErrorDialog extends StatelessWidget {
 
 ''');
 
-  // Presentation widgets
+    // Presentation widgets
     await _createFile('$corePath/presentation/widgets', 'global_text', '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -2658,7 +2598,6 @@ class GlobalImageLoader extends StatelessWidget {
       '$corePath/presentation/widgets',
       'global_network_dialog',
       '''
- 
  import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -2691,8 +2630,17 @@ class GlobalNetworkDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.wifi_off, color: AppColors.error.color),
-            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  icon: Icon(Icons.close, color: AppColors.black.color),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+              ],
+            ),
             const GlobalText(
               str: 'No Internet Connection',
               fontSize: 18,
@@ -2715,6 +2663,7 @@ class GlobalNetworkDialog extends StatelessWidget {
     );
   }
 }
+
  ''',
     );
 
@@ -2722,16 +2671,17 @@ class GlobalNetworkDialog extends StatelessWidget {
       '$corePath/presentation/widgets',
       'global_network_listener',
       '''
- 
- import 'package:connectivity_plus/connectivity_plus.dart';
+ import 'dart:io';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 
 import '/core/di/service_locator.dart';
 import '/core/network/network_info.dart';
-import 'global_network_dialog.dart';
 import '../../routes/navigation.dart';
 import '../../utils/extension.dart';
 import '../view_util.dart';
+import 'global_network_dialog.dart';
 
 class GlobalNetworkListener extends StatefulWidget {
   final Widget child;
@@ -2770,16 +2720,17 @@ class _GlobalNetworkListenerState extends State<GlobalNetworkListener> {
       _showNetworkErrorDialog();
     }
 
-    // Listen for connectivity changes
-    networkInfo.onConnectivityChanged.listen(_handleConnectivityChange);
+    if (Platform.isAndroid) {
+      // Listen for connectivity changes
+      networkInfo.onConnectivityChanged.listen(_handleConnectivityChange);
+    }
   }
 
   void _handleConnectivityChange(List<ConnectivityResult> connectivityResult) {
-    final isConnected =
-        connectivityResult.isNotEmpty &&
+    final isConnected = connectivityResult.isNotEmpty &&
         connectivityResult.any((element) => element != ConnectivityResult.none);
 
-    'isNetworkAvailable :: \$isConnected'.log();
+    'isNetworkAvailable ::\$isConnected'.log();
 
     // If network was connected but now disconnected
     if (_wasConnected && !isConnected) {
@@ -2788,7 +2739,6 @@ class _GlobalNetworkListenerState extends State<GlobalNetworkListener> {
     // If network was disconnected but now connected
     else if (!_wasConnected && isConnected) {
       _dismissAllNetworkDialogs();
-      _retryQueuedRequests();
     }
 
     _wasConnected = isConnected;
@@ -2817,7 +2767,6 @@ class _GlobalNetworkListenerState extends State<GlobalNetworkListener> {
 
               if (isConnected) {
                 _dismissAllNetworkDialogs();
-                _retryQueuedRequests();
               }
             },
           ),
@@ -2849,19 +2798,6 @@ class _GlobalNetworkListenerState extends State<GlobalNetworkListener> {
     // Clear the tracking list
     _activeDialogContexts.clear();
     _isShowingDialog = false;
-  }
-
-  void _retryQueuedRequests() {
-    final networkInfo = sl<NetworkInfo>();
-
-    if (networkInfo is NetworkInfoImpl) {
-      if (networkInfo.apiStack.isNotEmpty) {
-        for (final request in networkInfo.apiStack) {
-          request.execute();
-        }
-        networkInfo.apiStack.clear();
-      }
-    }
   }
 
   @override
@@ -3054,63 +2990,76 @@ class GlobalTextFormField extends StatelessWidget {
       '$corePath/presentation/mixins',
       'error_handler_mixin',
       '''
-import '/core/theme/app_colors.dart';
-
+import 'package:flutter/material.dart';
+import '../../routes/navigation.dart';
 import '/core/error/exceptions.dart';
 import '/core/error/failures.dart';
 import '/core/presentation/view_util.dart';
 import '/core/presentation/widgets/error_dialog.dart';
-import '/core/presentation/widgets/global_text.dart';
+import '/core/theme/app_colors.dart';
 
 /// A mixin that provides error handling methods for presentation layer
 mixin ErrorHandlerMixin {
   /// Show appropriate error UI based on failure type
-  void handleError(Failure error) {
+  void handleError(Failure error, {BuildContext? context}) {
     if (error is ValidationFailure) {
-      _showValidationErrorDialog(error);
+      _showValidationErrorDialog(error, context: context);
     } else if (error is TooManyRequestsFailure) {
-      _showTooManyRequestsDialog(error.message);
+      _showTooManyRequestsDialog(error.message, context: context);
     } else if (error is AuthenticationFailure ||
         error is UnauthorizedException) {
-      _showUnauthorizedDialog(error.message);
+      _makeUnauthorizedDecision(error.message, context: context);
     } else if (error is ServerFailure || error is ServerException) {
-      _showServerErrorSnackBar(error.message);
+      _showServerErrorSnackBar(error.message, context: context);
     } else if (error is NetworkFailure || error is NetworkException) {
-      _showNetworkErrorSnackBar(error.message);
+      _showNetworkErrorSnackBar(error.message, context: context);
     } else {
-      ViewUtil.snackbar(error.message);
+      ViewUtil.snackbar(error.message, context: context);
     }
   }
 
-  /// Show dialog for authentication errors
-  void _showUnauthorizedDialog(String message) {
-    ViewUtil.alertDialog(
-      title: GlobalText(str: 'Authentication Error'),
-      content: GlobalText(str: message),
-    );
+  /// Make decision for authentication errors
+  void _makeUnauthorizedDecision(String message, {BuildContext? context}) {
+    // Navigation.pushAndRemoveUntil(
+    //   context ?? Navigation.key.currentContext,
+    //   appRoutes: AppRoutes.login,
+    // );
   }
 
   /// Show snackbar for server errors
-  void _showServerErrorSnackBar(String message) {
-    ViewUtil.snackbar(message);
+  void _showServerErrorSnackBar(String message, {BuildContext? context}) {
+    ViewUtil.snackbar(
+      message,
+      context: context ?? Navigation.key.currentContext,
+    );
   }
 
   /// Show snackbar for network errors
-  void _showNetworkErrorSnackBar(String message) {
-    ViewUtil.snackbar(message);
+  void _showNetworkErrorSnackBar(String message, {BuildContext? context}) {
+    ViewUtil.snackbar(
+      message,
+      context: context ?? Navigation.key.currentContext,
+    );
   }
 
   /// Show dialog for validation errors with all error messages
-  void _showValidationErrorDialog(ValidationFailure failure) {
+  void _showValidationErrorDialog(
+    ValidationFailure failure, {
+    BuildContext? context,
+  }) {
     ViewUtil.alertDialog(
+      context: context ?? Navigation.key.currentContext,
       alertBackgroundColor: AppColors.white.color,
-      content: ErrorDialog(erroMsg: failure.errorMessages),
+      content: ErrorDialog(
+        erroMsg: failure.errorMessages,
+      ),
     );
   }
 
   /// Show dialog for too many requests errors
-  void _showTooManyRequestsDialog(String message) {
+  void _showTooManyRequestsDialog(String message, {BuildContext? context}) {
     ViewUtil.alertDialog(
+      context: context ?? Navigation.key.currentContext,
       alertBackgroundColor: AppColors.white.color,
       content: ErrorDialog(erroMsg: [message]),
     );
@@ -3129,9 +3078,16 @@ import '../theme/app_colors.dart';
 import 'widgets/global_text.dart';
 
 class ViewUtil {
-  static snackbar(String msg, {String? btnName, void Function()? onPressed}) {
-    return ScaffoldMessenger.of(Navigation.key.currentContext!).showSnackBar(
+  static snackbar(
+    String msg, {
+    String? btnName,
+    void Function()? onPressed,
+    BuildContext? context,
+  }) {
+    return ScaffoldMessenger.of(context ?? Navigation.key.currentContext!)
+        .showSnackBar(
       SnackBar(
+        behavior: SnackBarBehavior.floating,
         content: GlobalText(
           str: msg,
           fontWeight: FontWeight.w500,
@@ -3156,12 +3112,13 @@ class ViewUtil {
     bool? barrierDismissible,
     BorderRadius? borderRadius,
     EdgeInsetsGeometry? contentPadding,
+    BuildContext? context,
   }) async {
     // flutter defined function.
     await showDialog(
-      context: Navigation.key.currentContext!,
+      context: context ?? Navigation.key.currentContext!,
       barrierDismissible: barrierDismissible ?? true,
-      builder: (BuildContext context) {
+      builder: (context) {
         // return object of type Dialog.
         return AlertDialog(
           backgroundColor: alertBackgroundColor ?? Colors.transparent,
@@ -3213,31 +3170,31 @@ class ViewUtil {
 
   static showLoader(BuildContext context) {
     return alertDialog(
+      context: context,
       alertBackgroundColor: AppColors.white.color,
       content: GlobalLoader(text: 'Loading...'),
     );
   }
 
   static hideLoader(BuildContext context) {
-    Navigator.pop(context);
+    Navigation.pop(context);
   }
 }
-
 
 ''');
   }
 
   Future<void> _createFeatureFiles(String featuresPath) async {
-    final productsPath = '$featuresPath/products';
+    final homesPath = '$featuresPath/homes';
 
     // Domain - Entities
     await _createFile(
-      '$productsPath/domain/entities',
-      'product',
+      '$homesPath/domain/entities',
+      'home',
       '''import 'package:equatable/equatable.dart';
-class Product extends Equatable {
+class Home extends Equatable {
   final int id;
-  const Product({
+  const Home({
     required this.id,
   });
 
@@ -3248,41 +3205,37 @@ class Product extends Equatable {
     );
 
     // Domain - Repositories
-    await _createFile(
-      '$productsPath/domain/repositories',
-      'product_repository',
-      '''
+    await _createFile('$homesPath/domain/repositories', 'home_repository', '''
 import 'package:dartz/dartz.dart';
 
 import '/core/error/failures.dart';
-import '/features/products/domain/entities/product.dart';
+import '/features/homes/domain/entities/home.dart';
 
-/// Repository interface for product functionality
-abstract class ProductRepository {
-  /// Get paginated list of products
-  Future<Either<Failure, List<Product>>> getProducts();
+/// Repository interface for Home functionality
+abstract class HomeRepository {
+  /// Get paginated list of Homes
+  Future<Either<Failure, List<Home>>> getHomes();
 }
 
-''',
-    );
+''');
 
     // Domain - Usecases
-    await _createFile('$productsPath/domain/usecases', 'get_products', '''
+    await _createFile('$homesPath/domain/usecases', 'get_home', '''
 import 'package:dartz/dartz.dart';
 import '/core/error/failures.dart';
 import '/core/usecases/usecase.dart';
-import '/features/products/domain/entities/product.dart';
-import '/features/products/domain/repositories/product_repository.dart';
+import '/features/homes/domain/entities/home.dart';
+import '/features/homes/domain/repositories/home_repository.dart';
 
-/// Use case for getting paginated products
-class GetProducts implements UseCase<List<Product>, NoParams> {
-  final ProductRepository _repository;
+/// Use case for getting paginated Homes
+class GetHomes implements UseCase<List<Home>, NoParams> {
+  final HomeRepository _repository;
 
-  GetProducts(this._repository);
+  GetHomes(this._repository);
 
   @override
-  Future<Either<Failure, List<Product>>> call(NoParams params) async {
-    return await _repository.getProducts();
+  Future<Either<Failure, List<Home>>> call(NoParams params) async {
+    return await _repository.getHomes();
   }
 }
 
@@ -3290,17 +3243,18 @@ class GetProducts implements UseCase<List<Product>, NoParams> {
 
     // Data - Models
     await _createFile(
-      '$productsPath/data/models',
-      'product_model',
-      '''import '../../domain/entities/product.dart';
+      '$homesPath/data/models',
+      'home_model',
+      '''
+import '../../domain/entities/home.dart';
 
-class ProductModel extends Product {
-  const ProductModel({
+class HomeModel extends Home {
+  const HomeModel({
     required super.id,
   });
 
-  factory ProductModel.fromJson(Map<String, dynamic> json) {
-    return ProductModel(
+  factory HomeModel.fromJson(Map<String, dynamic> json) {
+    return HomeModel(
       id: json['id'] ?? 0,
     );
   }
@@ -3311,139 +3265,140 @@ class ProductModel extends Product {
     };
   }
 }
+
 ''',
     );
 
     await _createFile(
-      '$productsPath/data/models',
-      'product_response',
-      '''import 'product_model.dart';
+      '$homesPath/data/models',
+      'home_response',
+      '''
+import 'home_model.dart';
 
-class ProductResponse {
-  final List<ProductModel> products;
+class HomeResponse {
+  final List<HomeModel> homes;
   final int total;
 
-  ProductResponse({required this.products, required this.total});
+  HomeResponse({required this.homes, required this.total});
 
-  factory ProductResponse.fromJson(Map<String, dynamic> json) {
-    return ProductResponse(
-      products: (json['products'] as List).map((item) => ProductModel.fromJson(item)).toList(),
+  factory HomeResponse.fromJson(Map<String, dynamic> json) {
+    return HomeResponse(
+      homes: (json['homes'] as List)
+          .map((item) => HomeModel.fromJson(item))
+          .toList(),
       total: json['total'] ?? 0,
     );
   }
 }
+
 ''',
     );
 
     // Data - Datasources
     await _createFile(
-      '$productsPath/data/datasources',
-      'product_remote_datasource',
-      '''import '/core/network/api_client.dart';
+      '$homesPath/data/datasources',
+      'home_remote_datasource',
+      '''
+import '/core/network/api_client.dart';
 import '/core/constants/api_urls.dart';
-import '../models/product_model.dart';
-import '../models/product_response.dart';
+import '../models/home_model.dart';
+import '../models/home_response.dart';
 
-abstract class ProductRemoteDataSource {
-  Future<List<ProductModel>> getProducts();
+abstract class HomeRemoteDataSource {
+  Future<List<HomeModel>> getHomes();
 }
 
-class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
+class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
   final ApiClient _apiClient;
 
-  ProductRemoteDataSourceImpl({required ApiClient apiClient}) : _apiClient = apiClient;
+  HomeRemoteDataSourceImpl({required ApiClient apiClient})
+    : _apiClient = apiClient;
 
   @override
-  Future<List<ProductModel>> getProducts() async {
+  Future<List<HomeModel>> getHomes() async {
     try {
       final response = await _apiClient.request(
-        endpoint: ApiUrl.products.url,
+        endpoint: ApiUrl.homes.url,
         method: HttpMethod.get,
       );
-      final productResponse = ProductResponse.fromJson(response);
-      return productResponse.products;
+      final homeResponse = HomeResponse.fromJson(response);
+      return homeResponse.homes;
     } catch (e) {
       rethrow;
     }
   }
 }
+
 ''',
     );
 
     await _createFile(
-      '$productsPath/data/datasources',
-      'product_local_datasource',
-      '''import '/core/error/exceptions.dart';
-import '../models/product_model.dart';
+      '$homesPath/data/datasources',
+      'home_local_datasource',
+      '''
+import '/core/error/exceptions.dart';
+import '../models/home_model.dart';
 
-abstract class ProductLocalDataSource {
-  Future<List<ProductModel>> getProducts();
-  Future<void> cacheProducts(List<ProductModel> products);
+abstract class HomeLocalDataSource {
+  Future<List<HomeModel>> getHomes();
+  Future<void> cacheHomes(List<HomeModel> homes);
 }
 
-class ProductLocalDataSourceImpl implements ProductLocalDataSource {
-  List<ProductModel> _cachedProducts = [];
+class HomeLocalDataSourceImpl implements HomeLocalDataSource {
+  List<HomeModel> _cachedHomes = [];
 
   @override
-  Future<List<ProductModel>> getProducts() async {
-    if (_cachedProducts.isEmpty) {
+  Future<List<HomeModel>> getHomes() async {
+    if (_cachedHomes.isEmpty) {
       throw CacheException(message: 'No cached data');
     }
-    return _cachedProducts;
+    return _cachedHomes;
   }
 
   @override
-  Future<void> cacheProducts(List<ProductModel> products) async {
-    _cachedProducts = products;
+  Future<void> cacheHomes(List<HomeModel> homes) async {
+    _cachedHomes = homes;
   }
 }
+
 ''',
     );
 
     // Data - Repositories
     await _createFile(
-      '$productsPath/data/repositories',
-      'product_repository_impl',
+      '$homesPath/data/repositories',
+      'home_repository_impl',
       '''
 import 'package:dartz/dartz.dart';
 
 import '/core/error/failures.dart';
-import '/core/network/network_info.dart';
 import '../../../../core/error/exception_handler.dart';
-import '../../domain/entities/product.dart';
-import '../../domain/repositories/product_repository.dart';
-import '../datasources/product_local_datasource.dart';
-import '../datasources/product_remote_datasource.dart';
+import '../../domain/entities/home.dart';
+import '../../domain/repositories/home_repository.dart';
+import '../datasources/home_local_datasource.dart';
+import '../datasources/home_remote_datasource.dart';
 
-class ProductRepositoryImpl implements ProductRepository {
-  final ProductRemoteDataSource _remoteDataSource;
-  final ProductLocalDataSource _localDataSource;
-  final NetworkInfo _networkInfo;
+class HomeRepositoryImpl implements HomeRepository {
+  final HomeRemoteDataSource _remoteDataSource;
+  final HomeLocalDataSource _localDataSource;
 
-  ProductRepositoryImpl({
-    required ProductRemoteDataSource remoteDataSource,
-    required ProductLocalDataSource localDataSource,
-    required NetworkInfo networkInfo,
+  HomeRepositoryImpl({
+    required HomeRemoteDataSource remoteDataSource,
+    required HomeLocalDataSource localDataSource,
   }) : _remoteDataSource = remoteDataSource,
-       _localDataSource = localDataSource,
-       _networkInfo = networkInfo;
+       _localDataSource = localDataSource;
 
   @override
-  Future<Either<Failure, List<Product>>> getProducts() async {
-    if (await _networkInfo.internetAvailable()) {
-      return handleException(() async {
-        final remoteProducts = await _remoteDataSource.getProducts();
-        await _localDataSource.cacheProducts(remoteProducts);
-        return remoteProducts;
-      });
-    } else {
-      return handleException(() async {
-        final localProducts = await _localDataSource.getProducts();
-        return localProducts;
-      });
-    }
+  Future<Either<Failure, List<Home>>> getHomes() async {
+    return handleException(() async {
+      final remoteHomes = await _remoteDataSource.getHomes();
+      await _localDataSource.cacheHomes(remoteHomes);
+      return remoteHomes;
+    });
   }
 }
+
+
 
 ''',
     );
@@ -3451,33 +3406,33 @@ class ProductRepositoryImpl implements ProductRepository {
     // Presentation - State Management Files
     if (stateManagement == "2") {
       // Bloc pattern
-      await _createBlocPresentationFiles(productsPath);
+      await _createBlocPresentationFiles(homesPath);
     } else {
       // Riverpod pattern (default)
-      await _createRiverpodPresentationFiles(productsPath);
+      await _createRiverpodPresentationFiles(homesPath);
     }
 
     // Presentation - Pages
-    await _createFile('$productsPath/presentation/pages', 'product_page', '''
+    await _createFile('$homesPath/presentation/pages', 'home_page', '''
 import 'package:flutter/material.dart';
 import '/core/presentation/widgets/global_appbar.dart';
 import '/core/presentation/widgets/global_text.dart';
 
-class ProductPage extends StatelessWidget {
-  const ProductPage({super.key});
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const GlobalAppBar(title: 'Product List'),
-      body: const Center(child: GlobalText(str: 'Product  List')),
+      appBar: const GlobalAppBar(title: 'Home List'),
+      body: const Center(child: GlobalText(str: 'Home  List')),
     );
   }
 }
 ''');
 
     // Presentation - Widgets
-    await _createFile('$productsPath/presentation/widgets', 'widget', '''
+    await _createFile('$homesPath/presentation/widgets', 'widget', '''
 import 'package:flutter/material.dart';
 import '/core/presentation/widgets/global_text.dart';
 
@@ -3492,11 +3447,11 @@ class Widget extends StatelessWidget {
 ''');
   }
 
-  Future<void> _createRiverpodPresentationFiles(String productsPath) async {
+  Future<void> _createRiverpodPresentationFiles(String homesPath) async {
     // State
     await _createFile(
-      '$productsPath/presentation/providers/state',
-      'product_state',
+      '$homesPath/presentation/providers/state',
+      'home_state',
       '''
 
 import 'package:flutter/material.dart';
@@ -3504,20 +3459,20 @@ import 'package:equatable/equatable.dart';
 import '/core/error/failures.dart';
 
 @immutable
-class ProductState extends Equatable{
+class HomeState extends Equatable{
   final bool isLoading;
   final Failure? failure;
 
-  const ProductState({
+  const HomeState({
     this.isLoading = false,
     this.failure,
   });
 
-  ProductState copyWith({
+  HomeState copyWith({
     bool? isLoading,
     Failure? failure,
   }) {
-    return ProductState(
+    return HomeState(
       isLoading: isLoading ?? this.isLoading,
       failure: failure,
     );
@@ -3531,140 +3486,125 @@ class ProductState extends Equatable{
     );
 
     // Provider/Notifier
-    await _createFile(
-      '$productsPath/presentation/providers',
-      'product_provider',
-      '''
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+    await _createFile('$homesPath/presentation/providers', 'home_provider', '''
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '/features/products/presentation/providers/state/product_state.dart';
+import '/features/Homes/presentation/providers/state/home_state.dart';
 
-part 'product_provider.g.dart';
-
-@riverpod
-class ProductNotifier extends _\$ProductNotifier {
+class HomeNotifier extends Notifier<HomeState> {
   @override
-  FutureOr<ProductState> build(){
-    return const ProductState();
+  HomeState build() {
+    return const HomeState();
   }
 }
 
-''',
-    );
+''');
   }
 
-  Future<void> _createBlocPresentationFiles(String productsPath) async {
+  Future<void> _createBlocPresentationFiles(String homesPath) async {
     // State
-    await _createFile(
-      '$productsPath/presentation/bloc/state',
-      'product_state',
-      '''
+    await _createFile('$homesPath/presentation/bloc/state', 'home_state', '''
 import 'package:equatable/equatable.dart';
 
-import '/features/products/domain/entities/product.dart';
+import '/features/homes/domain/entities/home.dart';
 
-/// State for Product
-sealed class ProductState extends Equatable {
-  const ProductState();
+/// State for Home
+sealed class HomeState extends Equatable {
+  const HomeState();
   
   @override
   List<Object?> get props => [];
 }
 
-class ProductInitial extends ProductState {
-  const ProductInitial();
+class HomeInitial extends HomeState {
+  const HomeInitial();
 }
 
-class ProductLoading extends ProductState {
-  const ProductLoading();
+class HomeLoading extends HomeState {
+  const HomeLoading();
 }
 
-class ProductLoaded extends ProductState {
-  final List<Product> products;
+class HomeLoaded extends HomeState {
+  final List<Home> Homes;
   
-  const ProductLoaded(this.products);
+  const HomeLoaded(this.Homes);
   
   @override
-  List<Object?> get props => [products];
+  List<Object?> get props => [Homes];
 }
 
-class ProductError extends ProductState {
+class HomeError extends HomeState {
   final String message;
   
-  const ProductError(this.message);
+  const HomeError(this.message);
   
   @override
   List<Object?> get props => [message];
 }
-''',
-    );
+''');
 
     // Event
-    await _createFile(
-      '$productsPath/presentation/bloc/event',
-      'product_event',
-      '''
+    await _createFile('$homesPath/presentation/bloc/event', 'home_event', '''
 import 'package:equatable/equatable.dart';
 
-/// Events for Product
-sealed class ProductEvent extends Equatable {
-  const ProductEvent();
+/// Events for Home
+sealed class HomeEvent extends Equatable {
+  const HomeEvent();
   
   @override
   List<Object?> get props => [];
 }
 
-class LoadProducts extends ProductEvent {
-  const LoadProducts();
+class LoadHomes extends HomeEvent {
+  const LoadHomes();
 }
 
-class RefreshProducts extends ProductEvent {
-  const RefreshProducts();
+class RefreshHomes extends HomeEvent {
+  const RefreshHomes();
 }
-''',
-    );
+''');
 
     // Bloc
-    await _createFile('$productsPath/presentation/bloc', 'product_bloc', '''
+    await _createFile('$homesPath/presentation/bloc', 'home_bloc', '''
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '/features/products/presentation/bloc/event/product_event.dart';
-import '/features/products/presentation/bloc/state/product_state.dart';
+import '/features/homes/presentation/bloc/event/home_event.dart';
+import '/features/homes/presentation/bloc/state/home_state.dart';
 
-class ProductBloc extends Bloc<ProductEvent, ProductState> {
-  ProductBloc() : super(const ProductInitial()) {
-    on<LoadProducts>(_onLoadProducts);
-    on<RefreshProducts>(_onRefreshProducts);
+class HomeBloc extends Bloc<HomeEvent, HomeState> {
+  HomeBloc() : super(const HomeInitial()) {
+    on<LoadHomes>(_onLoadHomes);
+    on<RefreshHomes>(_onRefreshHomes);
   }
 
-  Future<void> _onLoadProducts(
-    LoadProducts event,
-    Emitter<ProductState> emit,
+  Future<void> _onLoadHomes(
+    LoadHomes event,
+    Emitter<HomeState> emit,
   ) async {
-    emit(const ProductLoading());
+    emit(const HomeLoading());
     
     try {
       // TODO: Implement use case call
-      // final result = await _getProductsUseCase(NoParams());
+      // final result = await _getHomesUseCase(NoParams());
       
       // result.fold(
-      //   (failure) => emit(ProductError(failure.message)),
-      //   (data) => emit(ProductLoaded(data)),
+      //   (failure) => emit(HomeError(failure.message)),
+      //   (data) => emit(HomeLoaded(data)),
       // );
       
       // Placeholder
-      emit(const ProductLoaded([]));
+      emit(const HomeLoaded([]));
     } catch (e) {
-      emit(ProductError(e.toString()));
+      emit(HomeError(e.toString()));
     }
   }
 
-  Future<void> _onRefreshProducts(
-    RefreshProducts event,
-    Emitter<ProductState> emit,
+  Future<void> _onRefreshHomes(
+    RefreshHomes event,
+    Emitter<HomeState> emit,
   ) async {
     // Same as load but can be customized
-    await _onLoadProducts(const LoadProducts(), emit);
+    await _onLoadHomes(const LoadHomes(), emit);
   }
 }
 ''');
@@ -3691,7 +3631,7 @@ import '/core/routes/navigation.dart';
 import '/core/theme/theme_manager.dart';
 import '/core/utils/app_version.dart';
 import '/core/utils/preferences_helper.dart';
-import '/features/products/presentation/pages/product_page.dart';
+import '/features/homes/presentation/pages/home_page.dart';
 // import '/l10n/app_localizations.dart';
 import 'core/presentation/widgets/app_starter_error.dart';
 ''';
@@ -3793,9 +3733,9 @@ class MyApp extends StatelessWidget {
   Widget _getInitialPage() {
     // final isLoggedIn = sl<AuthLocalDataSource>().isLoggedIn();
     // if (isLoggedIn) {
-    //   return const ProductPage();
+    //   return const HomePage();
     // }
-    return const ProductPage();
+    return const HomePage();
   }
 }
 
@@ -3808,8 +3748,6 @@ class MyApp extends StatelessWidget {
 template-arb-file: intl_en.arb
 output-localization-file: app_localizations.dart
 """, fileExtention: 'yaml');
-
-    
 
     await _createFile(Directory.current.path, 'config', '''
 {
