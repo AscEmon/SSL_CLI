@@ -454,3 +454,8 @@
 
 
  
+## 4.0.5
+- Removed NetworkInfo checks from repository implementations to simplify data flow
+- Eliminated API request queuing mechanism from NetworkInfoImpl
+- Updated dependency injection to remove NetworkInfo from ApiClient and repositories
+- Changed example feature from "products" to "homes" throughout the codebase
