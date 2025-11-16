@@ -125,7 +125,31 @@ ssl_cli module <module_name>       # Add a new feature module (select Clean Arch
 
 ```bash
 ssl_cli generate k_assets.dart     # Build the assets enum (rerun after adding new assets)
+ssl_cli generate k_assets.dart --t # Build theme-based assets enum with dark/light folder support
 ssl_cli generate <path>            # Create AI-assisted documentation for a file or folder
+```
+
+**Theme-based Assets (`--t` flag):**
+When your assets are organized with `dark/` and `light/` subfolders (e.g., `assets/images/dark/`, `assets/images/light/`), use the `--t` flag. This generates:
+- Automatic theme switching between dark and light variants
+- Fallback to common assets (files outside dark/light folders)
+- Helper methods `_themedSvg()` and `_themedPng()` that check `ThemeManager().isDarkMode`
+
+**Folder structure example:**
+```
+assets/
+  ├─ images/
+  │  ├─ dark/
+  │  │  └─ bg.png
+  │  ├─ light/
+  │  │  └─ bg.png
+  │  └─ common_image.png
+  └─ svg/
+     ├─ dark/
+     │  └─ icon.svg
+     ├─ light/
+     │  └─ icon.svg
+     └─ common_icon.svg
 ```
 
 ### Code Generation Helpers

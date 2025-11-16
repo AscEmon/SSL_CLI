@@ -45,8 +45,10 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
       print('Creating assets directory...');
       await Directory('$absAssetsPath').create();
       await Directory('$absAssetsPath/fonts').create();
-      await Directory('$absAssetsPath/images').create();
-      await Directory('$absAssetsPath/svg').create();
+      await Directory('$absAssetsPath/images/dark').create(recursive: true);
+      await Directory('$absAssetsPath/images/light').create(recursive: true);
+      await Directory('$absAssetsPath/svg/dark').create(recursive: true);
+      await Directory('$absAssetsPath/svg/light').create(recursive: true);
 
       // Create core directory structure
       print('Creating core directory...');

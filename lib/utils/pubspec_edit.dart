@@ -5,7 +5,11 @@ import 'package:ssl_cli/utils/extension.dart';
 import 'enum.dart';
 
 class PubspecEdit {
-  void pubspecEditConfig(String filePath, {String? patternNumber, String? stateManagement}) {
+  void pubspecEditConfig(
+    String filePath, {
+    String? patternNumber,
+    String? stateManagement,
+  }) {
     try {
       // Read the content of the file
       final file = File(filePath);
@@ -13,18 +17,22 @@ class PubspecEdit {
 
       // Remove lines containing '#'
       lines = lines.where((line) => !line.contains('#')).toList();
-      int indexOfDescriptionFlutter =
-          lines.indexOf('description: A new Flutter project.');
+      int indexOfDescriptionFlutter = lines.indexOf(
+        'description: A new Flutter project.',
+      );
       lines.insert(indexOfDescriptionFlutter + 1, 'publish_to: "none"');
 
       int indexOfSdkFlutter = lines.indexOf('dependencies:');
       lines.insert(
-          indexOfSdkFlutter + 1, '  flutter_localizations:\n    sdk: flutter');
+        indexOfSdkFlutter + 1,
+        '  flutter_localizations:\n    sdk: flutter',
+      );
 
       // Find the index of 'cupertino_icons: ^1.0.2'
       // Find the index of the line containing 'cupertino_icons'
-      int indexOfCupertinoIcons =
-          lines.indexWhere((line) => line.contains('cupertino_icons'));
+      int indexOfCupertinoIcons = lines.indexWhere(
+        (line) => line.contains('cupertino_icons'),
+      );
 
       if (indexOfCupertinoIcons != -1) {
         // Add lines for dio and shared_preferences after 'cupertino_icons: ^1.0.2'
@@ -46,7 +54,7 @@ class PubspecEdit {
           lines.insert(currentIndex++, '  equatable: ^2.0.7');
           lines.insert(currentIndex++, '  dartz: ^0.10.1');
           lines.insert(currentIndex++, '  get_it: ^8.2.0');
-          
+
           // Add state management specific packages
           if (stateManagement == "1") {
             // Riverpod
@@ -64,7 +72,8 @@ class PubspecEdit {
           if (devDepsIndex != -1) {
             // Find the last dev dependency
             int lastDevDepIndex = devDepsIndex + 1;
-            while (lastDevDepIndex < lines.length && lines[lastDevDepIndex].startsWith('  ')) {
+            while (lastDevDepIndex < lines.length &&
+                lines[lastDevDepIndex].startsWith('  ')) {
               lastDevDepIndex++;
             }
             // Insert Riverpod dev dependencies
@@ -75,12 +84,13 @@ class PubspecEdit {
           }
         }
 
-        int indexOfUsesMaterialDesign =
-            lines.indexOf('  uses-material-design: true');
+        int indexOfUsesMaterialDesign = lines.indexOf(
+          '  uses-material-design: true',
+        );
         lines.insert(indexOfUsesMaterialDesign + 1, '  generate: true');
         lines.insert(
           indexOfUsesMaterialDesign + 2,
-          '  assets:\n    - assets/images/\n    - assets/svg/',
+          '  assets:\n    - assets/images/\n    - assets/svg/\n    - assets/svg/light/\n    - assets/svg/dark/\n    - assets/images/light/\n    - assets/images/dark/ ',
         );
         lines.insert(indexOfUsesMaterialDesign + 3, '''\n
   # fonts:
@@ -98,9 +108,9 @@ class PubspecEdit {
 
         // Run 'flutter pub get' to fetch and add the specified versions of the packages
         Process.runSync('flutter', ['pub', 'get']);
-        'Packages added successfully.'
-            .printWithColor(status: PrintType.success);
-            
+        'Packages added successfully.'.printWithColor(
+          status: PrintType.success,
+        );
       } else {
         'Something went wrong'.printWithColor(status: PrintType.warning);
       }

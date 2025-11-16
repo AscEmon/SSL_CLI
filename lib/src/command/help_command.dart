@@ -18,6 +18,10 @@ class HelpCommand implements ICommand {
       'Generate image and SVG path in utils/k_assets.dart file automatically based on your assets folder.',
     );
     printFormattedHelp(
+      'generate : ssl_cli generate k_assets.dart --t',
+      'Generate theme-based image and SVG paths with dark/light folder support. Use this when your assets are organized in dark/light subfolders.',
+    );
+    printFormattedHelp(
       'generate : ssl_cli generate <folder/file path>',
       'Generate AI-powered documentation for your project. You can generate documentation for the entire project or a single Dart file.',
     );

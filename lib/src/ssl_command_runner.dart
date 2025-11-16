@@ -173,7 +173,9 @@ class SSLCommandRunner with SentApkTelegramMixin {
   Future<ICommand?> _handleGenerateCommand(List<String> arguments) async {
     final assetName = arguments[1];
     if (assetName == "k_assets.dart") {
-      return AssetGenerationCommand();
+      // Check if --t flag is present for theme-based generation
+      final isThemeBased = arguments.contains('--t');
+      return AssetGenerationCommand(isThemeBased: isThemeBased);
     } else if (assetName == "build_runner") {
       await _runBuildRunner();
       return null;
