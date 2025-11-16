@@ -459,3 +459,4 @@
 - Eliminated API request queuing mechanism from NetworkInfoImpl
 - Updated dependency injection to remove NetworkInfo from ApiClient and repositories
 - Changed example feature from "products" to "homes" throughout the codebase
+- themebased asset handle using cli
