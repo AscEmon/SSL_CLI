@@ -1,3 +1,4 @@
+
 # ssl_cli 🚀
 
 **ssl_cli** is your opinionated command-line companion for building production-ready Flutter apps in record time. It bakes in Clean Architecture, modular scaling, design-system best practices, and DevOps automation so your team can stay focused on shipping features—not wiring boilerplate.
@@ -254,6 +255,10 @@ If **ssl_cli** streamlines your workflow, please give it a ⭐ on [GitHub](https
 ## Changelog 📋
 
 See [CHANGELOG.md](CHANGELOG.md) for a history of updates and new features.
+
+## AI CODING RULES
+
+See [AI_CODING_RULES.md](AI_CODING_RULES.md) for a history of updates and new features.
 
 ---
 
