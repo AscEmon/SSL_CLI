@@ -45,8 +45,10 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
       print('Creating assets directory...');
       await Directory('$absAssetsPath').create();
       await Directory('$absAssetsPath/fonts').create();
-      await Directory('$absAssetsPath/images').create();
-      await Directory('$absAssetsPath/svg').create();
+      await Directory('$absAssetsPath/images/dark').create(recursive: true);
+      await Directory('$absAssetsPath/images/light').create(recursive: true);
+      await Directory('$absAssetsPath/svg/dark').create(recursive: true);
+      await Directory('$absAssetsPath/svg/light').create(recursive: true);
 
       // Create core directory structure
       print('Creating core directory...');
@@ -67,40 +69,40 @@ class CleanImplDirectoryCreator implements IDirectoryCreator {
       await Directory('$absCorePath/utils').create();
       await Directory('$absCorePath/utils/styles').create();
 
-      // Create features directory with example feature (products)
+      // Create features directory with example feature (homes)
       print('Creating features directory with example module...');
       await Directory(absFeaturesPath).create();
-      await Directory('$absFeaturesPath/products').create();
+      await Directory('$absFeaturesPath/homes').create();
 
       // Domain layer
-      await Directory('$absFeaturesPath/products/domain').create();
-      await Directory('$absFeaturesPath/products/domain/entities').create();
-      await Directory('$absFeaturesPath/products/domain/repositories').create();
-      await Directory('$absFeaturesPath/products/domain/usecases').create();
+      await Directory('$absFeaturesPath/homes/domain').create();
+      await Directory('$absFeaturesPath/homes/domain/entities').create();
+      await Directory('$absFeaturesPath/homes/domain/repositories').create();
+      await Directory('$absFeaturesPath/homes/domain/usecases').create();
 
       // Data layer
-      await Directory('$absFeaturesPath/products/data').create();
-      await Directory('$absFeaturesPath/products/data/models').create();
-      await Directory('$absFeaturesPath/products/data/datasources').create();
-      await Directory('$absFeaturesPath/products/data/repositories').create();
+      await Directory('$absFeaturesPath/homes/data').create();
+      await Directory('$absFeaturesPath/homes/data/models').create();
+      await Directory('$absFeaturesPath/homes/data/datasources').create();
+      await Directory('$absFeaturesPath/homes/data/repositories').create();
 
       // Presentation layer
-      await Directory('$absFeaturesPath/products/presentation').create();
-      await Directory('$absFeaturesPath/products/presentation/pages').create();
-      await Directory('$absFeaturesPath/products/presentation/widgets')
+      await Directory('$absFeaturesPath/homes/presentation').create();
+      await Directory('$absFeaturesPath/homes/presentation/pages').create();
+      await Directory('$absFeaturesPath/homes/presentation/widgets')
           .create();
       
       // Create state management specific directories
       if (stateManagement == "2") {
         // Bloc pattern
-        await Directory('$absFeaturesPath/products/presentation/bloc').create();
-        await Directory('$absFeaturesPath/products/presentation/bloc/state').create();
-        await Directory('$absFeaturesPath/products/presentation/bloc/event').create();
+        await Directory('$absFeaturesPath/homes/presentation/bloc').create();
+        await Directory('$absFeaturesPath/homes/presentation/bloc/state').create();
+        await Directory('$absFeaturesPath/homes/presentation/bloc/event').create();
       } else {
         // Riverpod pattern (default)
-        await Directory('$absFeaturesPath/products/presentation/providers')
+        await Directory('$absFeaturesPath/homes/presentation/providers')
             .create();
-        await Directory('$absFeaturesPath/products/presentation/providers/state')
+        await Directory('$absFeaturesPath/homes/presentation/providers/state')
             .create();
       }
 

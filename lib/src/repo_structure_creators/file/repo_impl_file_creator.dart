@@ -7,10 +7,7 @@ import '../repo_i_creators.dart';
 class RepoImplFileCreator implements IFileCreator {
   final IDirectoryCreator directoryCreator;
   final String projectName;
-  RepoImplFileCreator(
-    this.directoryCreator,
-    this.projectName,
-  );
+  RepoImplFileCreator(this.directoryCreator, this.projectName);
 
   @override
   Future<void> createNecessaryFiles() async {
@@ -191,8 +188,10 @@ extension AppConstantExtention on AppConstant {
     );
 
     //dataProvider folder file
-    await _createFile(directoryCreator.dataProviderDir.path, 'api_client',
-        content: """
+    await _createFile(
+      directoryCreator.dataProviderDir.path,
+      'api_client',
+      content: """
 
 import 'dart:convert';
 import 'dart:io';
@@ -534,7 +533,8 @@ class ApiClient {
  }   
 }
 
-""");
+""",
+    );
     await _createFile(
       directoryCreator.dataProviderDir.path,
       'graph_client',
@@ -747,8 +747,10 @@ void _dioErrorHandler(bool isLoaderShowing, DioException error) {
  """,
     );
 
-    await _createFile(directoryCreator.dataProviderDir.path, 'pref_helper',
-        content: """
+    await _createFile(
+      directoryCreator.dataProviderDir.path,
+      'pref_helper',
+      content: """
 
 import '/constant/constant_key.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -825,9 +827,10 @@ class PrefHelper {
   }
 }
 
-""");
+""",
+    );
 
-//global model folder
+    //global model folder
     await _createFile(
       directoryCreator.globalDir.path + '/model',
       'graph_ql_error_response',
@@ -936,8 +939,9 @@ class Errors {
     );
 
     await _createFile(
-        directoryCreator.globalDir.path + '/widget', 'global_appbar',
-        content: '''
+      directoryCreator.globalDir.path + '/widget',
+      'global_appbar',
+      content: '''
   import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../utils/styles/styles.dart';
@@ -981,10 +985,12 @@ class GlobalAppBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 
- ''');
+ ''',
+    );
     await _createFile(
-        directoryCreator.globalDir.path + '/widget', 'error_dialog',
-        content: '''
+      directoryCreator.globalDir.path + '/widget',
+      'error_dialog',
+      content: '''
  import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/svg.dart';
@@ -1054,11 +1060,13 @@ class ErrorDialog extends StatelessWidget {
     );
   }
 }
- ''');
+ ''',
+    );
 
     await _createFile(
-        directoryCreator.globalDir.path + '/widget', 'global_button',
-        content: '''
+      directoryCreator.globalDir.path + '/widget',
+      'global_button',
+      content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:$projectName/global/widget/global_text.dart';
@@ -1128,10 +1136,12 @@ class GlobalButton extends StatelessWidget {
 
 
 
- ''');
+ ''',
+    );
     await _createFile(
-        directoryCreator.globalDir.path + '/widget', 'global_textformfield',
-        content: '''
+      directoryCreator.globalDir.path + '/widget',
+      'global_textformfield',
+      content: '''
 import 'package:flutter/material.dart';
 import '/utils/styles/styles.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -1271,11 +1281,13 @@ class GlobalTextFormField extends StatelessWidget {
     );
   }
 }
- ''');
+ ''',
+    );
 
     await _createFile(
-        directoryCreator.globalDir.path + '/widget', 'global_text',
-        content: '''
+      directoryCreator.globalDir.path + '/widget',
+      'global_text',
+      content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '/constant/constant_key.dart';
@@ -1337,11 +1349,13 @@ class GlobalText extends StatelessWidget {
     );
   }
 }
- ''');
+ ''',
+    );
 
     await _createFile(
-        directoryCreator.globalDir.path + '/widget', 'global_dropdown',
-        content: '''
+      directoryCreator.globalDir.path + '/widget',
+      'global_dropdown',
+      content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'global_text.dart';
@@ -1405,11 +1419,13 @@ class GlobalDropdown extends StatelessWidget {
 }
 
 
- ''');
+ ''',
+    );
 
     await _createFile(
-        directoryCreator.globalDir.path + '/widget', 'global_loader',
-        content: '''
+      directoryCreator.globalDir.path + '/widget',
+      'global_loader',
+      content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'global_text.dart';
@@ -1431,11 +1447,13 @@ class GlobalLoader extends StatelessWidget {
   }
 }
 
- ''');
+ ''',
+    );
 
     await _createFile(
-        directoryCreator.globalDir.path + '/widget', 'global_svg_loader',
-        content: '''
+      directoryCreator.globalDir.path + '/widget',
+      'global_svg_loader',
+      content: '''
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -1480,11 +1498,13 @@ class GlobalSvgLoader extends StatelessWidget {
     }
   }
 }
- ''');
+ ''',
+    );
 
     await _createFile(
-        directoryCreator.globalDir.path + '/widget', 'global_image_loader',
-        content: '''
+      directoryCreator.globalDir.path + '/widget',
+      'global_image_loader',
+      content: '''
 import 'package:flutter/material.dart';
 import 'package:$projectName/utils/enum.dart';
 
@@ -1510,7 +1530,8 @@ class GlobalImageLoader extends StatelessWidget {
         height: height,
         width: width,
         fit: fit,
-        errorBuilder: (context, exception, stackTrace) => const Text('😢'),
+         errorBuilder: (context, exception, stackTrace) =>
+              const Icon(Icons.error),
       );
     } else {
       return Image.asset(
@@ -1518,13 +1539,15 @@ class GlobalImageLoader extends StatelessWidget {
         height: height,
         width: width,
         fit: fit,
-        errorBuilder: (context, exception, stackTrace) => const Text('😢'),
+        errorBuilder: (context, exception, stackTrace) =>
+              const Icon(Icons.error),
       );
     }
   }
 }
 
- ''');
+ ''',
+    );
 
     //localization file
     await _createFile(
@@ -1570,9 +1593,9 @@ class GlobalImageLoader extends StatelessWidget {
       'dashboard_state',
     );
     await _createFile(
-        directoryCreator.modulesDir.path + '/dashboard' + '/controller',
-        'dashboard_controller',
-        content: '''
+      directoryCreator.modulesDir.path + '/dashboard' + '/controller',
+      'dashboard_controller',
+      content: '''
 import '../repository/dashboard_interface.dart';
 import '../repository/dashboard_repository.dart';
 
@@ -1580,15 +1603,16 @@ class DashboardController {
   final IDashboardRepository _dashboardRepository = DashboardRepository();
 }
 
-''');
+''',
+    );
     await _createFile(
       directoryCreator.modulesDir.path + '/dashboard' + '/model',
       'model_class_name',
     );
     await _createFile(
-        directoryCreator.modulesDir.path + '/dashboard' + '/repository',
-        'dashboard_api',
-        content: '''
+      directoryCreator.modulesDir.path + '/dashboard' + '/repository',
+      'dashboard_api',
+      content: '''
 import 'package:$projectName/data_provider/api_client.dart';
 class DashboardApi {
   final ApiClient _apiClient = ApiClient();
@@ -1598,11 +1622,12 @@ class DashboardApi {
  
 }
 
-''');
+''',
+    );
     await _createFile(
-        directoryCreator.modulesDir.path + '/dashboard' + '/repository',
-        'dashboard_interface',
-        content: '''
+      directoryCreator.modulesDir.path + '/dashboard' + '/repository',
+      'dashboard_interface',
+      content: '''
 import 'package:flutter/material.dart';
 
 @immutable
@@ -1613,11 +1638,12 @@ abstract class IDashboardRepository {
 
 
 
-''');
+''',
+    );
     await _createFile(
-        directoryCreator.modulesDir.path + '/dashboard' + '/repository',
-        'dashboard_repository',
-        content: '''
+      directoryCreator.modulesDir.path + '/dashboard' + '/repository',
+      'dashboard_repository',
+      content: '''
 import 'dashboard_api.dart';
 import 'dashboard_interface.dart';
 
@@ -1627,12 +1653,13 @@ class DashboardRepository implements IDashboardRepository {
 
 
 
-''');
+''',
+    );
 
     await _createFile(
-        directoryCreator.modulesDir.path + '/dashboard' + '/views',
-        'dashboard_screen',
-        content: """
+      directoryCreator.modulesDir.path + '/dashboard' + '/views',
+      'dashboard_screen',
+      content: """
 import '/global/widget/global_appbar.dart';
 import '/global/widget/global_text.dart';
 import 'package:flutter/material.dart';
@@ -1653,7 +1680,8 @@ class DashboardScreen extends StatelessWidget {
   }
 }
 
-""");
+""",
+    );
     await _createFile(
       directoryCreator.modulesDir.path +
           '/dashboard' +
@@ -1662,9 +1690,12 @@ class DashboardScreen extends StatelessWidget {
       'widget_name',
     );
 
-//Utils file
+    //Utils file
 
-    await _createFile(directoryCreator.utilsDir.path, 'extension', content: """
+    await _createFile(
+      directoryCreator.utilsDir.path,
+      'extension',
+      content: """
 
 import 'dart:developer' as darttools show log;
 
@@ -1906,9 +1937,12 @@ extension DateTimeGreater on DateTime {
   }
 }
 
-""");
-    await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_assets',
-        content: """enum KAssetName {
+""",
+    );
+    await _createFile(
+      directoryCreator.utilsDir.path + '/styles',
+      'k_assets',
+      content: """enum KAssetName {
   oil,
   close_bottom,
 }
@@ -1931,9 +1965,12 @@ extension AssetsExtention on KAssetName {
   }
 }
 
-""");
-    await _createFile(directoryCreator.utilsDir.path + '/styles', 'k_colors',
-        content: """import 'package:flutter/material.dart';
+""",
+    );
+    await _createFile(
+      directoryCreator.utilsDir.path + '/styles',
+      'k_colors',
+      content: """import 'package:flutter/material.dart';
 
 
 enum KColor {
@@ -2004,11 +2041,13 @@ extension KColorExtention on KColor {
     }
   }
 }
-""");
+""",
+    );
 
     await _createFile(
-        directoryCreator.utilsDir.path + '/styles', 'k_text_style',
-        content: """import 'package:flutter/material.dart';
+      directoryCreator.utilsDir.path + '/styles',
+      'k_text_style',
+      content: """import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'styles.dart';
@@ -2022,14 +2061,21 @@ class KTextStyle {
         fontWeight: fontWeight,
       );
 }
-""");
+""",
+    );
 
-    await _createFile(directoryCreator.utilsDir.path + '/styles', 'styles',
-        content: """export 'k_colors.dart';
+    await _createFile(
+      directoryCreator.utilsDir.path + '/styles',
+      'styles',
+      content: """export 'k_colors.dart';
 export 'k_text_style.dart';
 export 'k_assets.dart';
-""");
-    await _createFile(directoryCreator.utilsDir.path, 'app_routes', content: """
+""",
+    );
+    await _createFile(
+      directoryCreator.utilsDir.path,
+      'app_routes',
+      content: """
 import 'package:flutter/material.dart';
 import '../modules/dashboard/views/dashboard_screen.dart';
 
@@ -2048,10 +2094,13 @@ extension AppRoutesExtention on AppRoutes {
 }
 
 
-""");
+""",
+    );
 
-    await _createFile(directoryCreator.utilsDir.path, 'app_version',
-        content: """
+    await _createFile(
+      directoryCreator.utilsDir.path,
+      'app_version',
+      content: """
 
 import 'package:flutter/material.dart';
 import '/constant/constant_key.dart';
@@ -2072,9 +2121,13 @@ class AppVersion {
   }
 }
 
-""");
+""",
+    );
 
-    await _createFile(directoryCreator.utilsDir.path, 'date_util', content: """
+    await _createFile(
+      directoryCreator.utilsDir.path,
+      'date_util',
+      content: """
 import 'package:flutter/material.dart';
 import '/utils/navigation.dart';
 
@@ -2097,10 +2150,13 @@ class DateUtil {
   }
 }
 
-""");
+""",
+    );
 
-    await _createFile(directoryCreator.utilsDir.path, 'enum',
-        content: """enum LanguageOption {
+    await _createFile(
+      directoryCreator.utilsDir.path,
+      'enum',
+      content: """enum LanguageOption {
   Bangla,
   English,
 }
@@ -2132,10 +2188,13 @@ enum SvgFor {
 }
 
 
-""");
+""",
+    );
 
-    await _createFile(directoryCreator.utilsDir.path, 'navigation',
-        content: """import 'package:flutter/material.dart';
+    await _createFile(
+      directoryCreator.utilsDir.path,
+      'navigation',
+      content: """import 'package:flutter/material.dart';
 import '/utils/app_routes.dart';
 
 class Navigation {
@@ -2246,9 +2305,12 @@ class Navigation {
   }
 }
 
-""");
-    await _createFile(directoryCreator.utilsDir.path, 'network_connection',
-        content: """
+""",
+    );
+    await _createFile(
+      directoryCreator.utilsDir.path,
+      'network_connection',
+      content: """
 import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
@@ -2324,8 +2386,12 @@ class APIParams {
 }
 
 
-""");
-    await _createFile(directoryCreator.utilsDir.path, 'view_util', content: """
+""",
+    );
+    await _createFile(
+      directoryCreator.utilsDir.path,
+      'view_util',
+      content: """
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '/global/widget/global_button.dart';
@@ -2475,7 +2541,8 @@ class ViewUtil {
   }
 }
 
-""");
+""",
+    );
     await _createFile(
       'lib',
       'main',
@@ -2562,20 +2629,28 @@ class MyApp extends StatelessWidget {
     );
 
     //localization yaml file create in project folder
-    await _createFile(Directory.current.path, 'l10n',
-        fileExtention: 'yaml', content: """arb-dir: lib/l10n
+    await _createFile(
+      Directory.current.path,
+      'l10n',
+      fileExtention: 'yaml',
+      content: """arb-dir: lib/l10n
 template-arb-file: intl_en.arb
 output-localization-file: app_localizations.dart
-""");
+""",
+    );
 
-    await _createFile(Directory.current.path, 'config',
-        fileExtention: 'json', content: """
+    await _createFile(
+      Directory.current.path,
+      'config',
+      fileExtention: 'json',
+      content: """
 {
     "telegram_chat_id": "",
     "botToken": ""
 }
 
-""");
+""",
+    );
 
     // Create .gitignore
     await _createGitignoreFile();
