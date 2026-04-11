@@ -153,8 +153,9 @@ class Get${className} implements UseCase<List<$singularClassName>, NoParams> {
     await _createFile(
       '$basePath/data/models',
       '${singularModuleName}_model',
-      content:
-          '''import '/features/$moduleName/domain/entities/$singularModuleName.dart';
+      content: '''import 'package:autosafe_json/autosafe_json.dart';
+
+import '/features/$moduleName/domain/entities/$singularModuleName.dart';
 
 /// Model class for $singularClassName that extends the domain entity
 class ${singularClassName}Model extends $singularClassName {
@@ -164,9 +165,9 @@ class ${singularClassName}Model extends $singularClassName {
 
   /// Create a ${singularClassName}Model from JSON
   factory ${singularClassName}Model.fromJson(Map<String, dynamic> json) {
+    json = json.autoSafe.raw;
     return ${singularClassName}Model(
-      id: json['id'] as int,
-    
+      id: SafeJson.asInt(json['id']),
     );
   }
 
@@ -174,7 +175,6 @@ class ${singularClassName}Model extends $singularClassName {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-     
     };
   }
 }
@@ -186,6 +186,8 @@ class ${singularClassName}Model extends $singularClassName {
       '$basePath/data/datasources',
       '${singularModuleName}_remote_datasource',
       content: '''
+import 'package:autosafe_json/autosafe_json.dart';
+
 import '/core/network/api_client.dart';
 import '/features/$moduleName/data/models/${singularModuleName}_model.dart';
 
@@ -193,7 +195,6 @@ import '/features/$moduleName/data/models/${singularModuleName}_model.dart';
 abstract class ${singularClassName}RemoteDataSource {
   /// Get $moduleName from the remote API
   Future<List<${singularClassName}Model>> get${className}();
-
 }
 
 /// Implementation of $singularModuleName remote data source
@@ -211,13 +212,14 @@ class ${singularClassName}RemoteDataSourceImpl implements ${singularClassName}Re
         method: HttpMethod.get,
       );
 
-      final List<dynamic> data = response as List<dynamic>;
-      return data.map((json) => ${singularClassName}Model.fromJson(json)).toList();
-    }  catch (e) {
-     rethrow;
+      final List<dynamic> data = SafeJson.asList(response);
+      return data
+          .map((item) => ${singularClassName}Model.fromJson(SafeJson.asMap(item)))
+          .toList();
+    } catch (e) {
+      rethrow;
     }
   }
-
 }
 ''',
     );
@@ -380,54 +382,73 @@ class ${singularClassName}Widget extends StatelessWidget {
     await _createFile(
       '$basePath/presentation/providers/state',
       '${singularModuleName}_state',
-      content: '''
-import 'package:flutter/material.dart';
-import 'package:equatable/equatable.dart';
-import '../../../../../core/error/failures.dart';
+      content: '''import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
+
+import '/core/error/failures.dart';
+import '/features/$moduleName/domain/entities/$singularModuleName.dart';
 
 @immutable
 class ${singularClassName}State extends Equatable {
   final bool isLoading;
+  final List<$singularClassName> ${moduleName};
   final Failure? failure;
 
   const ${singularClassName}State({
     this.isLoading = false,
+    this.${moduleName} = const [],
     this.failure,
   });
 
   ${singularClassName}State copyWith({
     bool? isLoading,
+    List<$singularClassName>? ${moduleName},
     Failure? failure,
   }) {
     return ${singularClassName}State(
       isLoading: isLoading ?? this.isLoading,
+      ${moduleName}: ${moduleName} ?? this.${moduleName},
       failure: failure,
     );
   }
 
   @override
-  List<Object?> get props => [isLoading, failure];
+  List<Object?> get props => [isLoading, ${moduleName}, failure];
 }
 ''',
     );
 
-    // Provider
+    // Notifier + Provider (no code generation)
     await _createFile(
       '$basePath/presentation/providers',
       '${singularModuleName}_provider',
-      content: '''
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+      content: '''import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/di/service_locator.dart';
+import '/core/usecases/usecase.dart';
+import '/features/$moduleName/domain/usecases/get_$moduleName.dart';
 import '/features/$moduleName/presentation/providers/state/${singularModuleName}_state.dart';
 
-part '${singularModuleName}_provider.g.dart';
-
-@riverpod
-class ${singularClassName}Notifier extends _\$${singularClassName}Notifier {
+class ${singularClassName}Notifier extends Notifier<${singularClassName}State> {
   @override
-  FutureOr<${singularClassName}State> build() {
+  ${singularClassName}State build() {
     return const ${singularClassName}State();
   }
+
+  Future<void> get${className}() async {
+    state = state.copyWith(isLoading: true);
+    final result = await sl<Get${className}>().call(NoParams());
+    result.fold(
+      (failure) => state = state.copyWith(isLoading: false, failure: failure),
+      (data) => state = state.copyWith(isLoading: false, ${moduleName}: data),
+    );
+  }
 }
+
+final ${singularModuleName}NotifierProvider =
+    NotifierProvider<${singularClassName}Notifier, ${singularClassName}State>(
+  ${singularClassName}Notifier.new,
+);
 ''',
     );
   }

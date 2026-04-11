@@ -56,10 +56,12 @@ class PubspecEdit {
           lines.insert(currentIndex++, '  get_it: ^8.2.0');
 
           // Add state management specific packages
+          lines.insert(currentIndex++, '  autosafe_json: ^1.0.0');
+          lines.insert(currentIndex++, '  envied: ^1.3.0');
+
           if (stateManagement == "1") {
             // Riverpod
             lines.insert(currentIndex++, '  flutter_riverpod: ^3.0.1');
-            lines.insert(currentIndex++, '  riverpod_annotation: ^3.0.1');
           } else if (stateManagement == "2") {
             // Bloc
             lines.insert(currentIndex++, '  flutter_bloc: ^8.1.6');
@@ -78,7 +80,7 @@ class PubspecEdit {
             }
             // Insert Riverpod dev dependencies
             lines.insert(lastDevDepIndex, '  build_runner: ^2.4.8');
-            lines.insert(lastDevDepIndex + 1, '  riverpod_generator: ^3.0.1');
+            lines.insert(lastDevDepIndex + 1, '  envied_generator: ^1.3.1');
             lines.insert(lastDevDepIndex + 2, '  custom_lint: ^0.8.0');
             lines.insert(lastDevDepIndex + 3, '  riverpod_lint: ^3.0.1');
           }
