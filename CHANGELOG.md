@@ -454,3 +454,30 @@
 
 
  
+## 4.0.5
+- Removed NetworkInfo checks from repository implementations to simplify data flow
+- Eliminated API request queuing mechanism from NetworkInfoImpl
+- Updated dependency injection to remove NetworkInfo from ApiClient and repositories
+- Changed example feature from "products" to "homes" throughout the codebase
+- themebased asset handle using cli
+
+
+## 4.0.6
+- **`.claude` folder integration** — generates a complete `.claude/` directory on project creation:
+  - `.claude/AI_CODING_RULES.md` — strict coding rules, patterns, and conventions for AI agents
+  - `.claude/docs/SECURITY.md` — comprehensive secret management guide (envied + setup script + CI/CD)
+  - `.claude/scripts/setup_secrets.sh` — reads `.env` and generates `key.properties`, `Secret.xcconfig`, decodes base64 JKS & Firebase configs
+  - `.claude/settings.local.json` — pre-configured Claude Code permissions for CLI tools
+  - `CLAUDE.md` — root-level AI entry point with project context, architecture overview, and development pipeline
+- **`flutter_secure_storage` replaces `shared_preferences`** in Clean Architecture template:
+  - `PrefHelper` now uses `FlutterSecureStorage` for encrypted key-value storage
+  - In-memory cache layer for synchronous read access while writes go to secure storage
+  - Same public API maintained — no breaking changes for consuming code
+- **`envied` integration** for secret management:
+  - `.env` / `.env.example` files generated with all common secret fields (API URLs, Maps key, payment keys, keystore credentials, Firebase base64 configs)
+  - `lib/core/config/env.dart` generated with `@Envied(obfuscate: true)` — all secrets XOR-obfuscated at compile time
+  - `env.g.dart` auto-generated via `build_runner` and gitignored
+  - API URLs in `api_urls.dart` now read from `Env.*` instead of hardcoded strings
+- **Removed `custom_lint`** from generated `pubspec.yaml` dev_dependencies (redundant with `riverpod_lint` 3.x using `analysis_server_plugin` directly)
+- Updated `.gitignore` template to cover all secret file patterns (`.env`, `key.properties`, `*.jks`, `env.g.dart`, `google-services.json`, etc.)
+- `pubspec_edit.dart` updated to add `flutter_secure_storage`, `envied`, and `envied_generator` packages automatically
