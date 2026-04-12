@@ -1,7 +1,7 @@
 
 # ssl_cli 🚀
 
-**ssl_cli** is your opinionated command-line companion for building production-ready Flutter apps in record time. It bakes in Clean Architecture, modular scaling, design-system best practices, and DevOps automation so your team can stay focused on shipping features—not wiring boilerplate.
+**ssl_cli** is your opinionated command-line companion for building production-ready Flutter apps in record time. It bakes in Clean Architecture, modular scaling, design-system best practices, security-first secret management, AI-powered coding rules, and DevOps automation so your team can stay focused on shipping features—not wiring boilerplate.
 
 ---
 
@@ -20,12 +20,14 @@
 4. [Quick Start](#quick-start)
 5. [Command Reference](#command-reference)
 6. [Generated Project Structure](#generated-project-structure)
-7. [UI & Design System Guidelines](#ui--design-system-guidelines)
-8. [Automation & DevOps Helpers](#automation--devops-helpers)
-9. [Contributing](#contributing-)
-10. [License](#license-)
-11. [Support](#support-)
-12. [Changelog](#changelog-)
+7. [Security & Secret Management](#security--secret-management)
+8. [AI Integration (.claude)](#ai-integration-claude)
+9. [UI & Design System Guidelines](#ui--design-system-guidelines)
+10. [Automation & DevOps Helpers](#automation--devops-helpers)
+11. [Contributing](#contributing-)
+12. [License](#license-)
+13. [Support](#support-)
+14. [Changelog](#changelog-)
 
 ---
 
@@ -48,6 +50,9 @@ Flutter teams fight repetitive setup: folder conventions, state management wirin
 | **Project scaffolding** | Create a Clean Architecture Flutter app from scratch with prewired core modules. |
 | **Module generation** | Spin up feature modules with domain/data/presentation layers and optional Bloc or Riverpod states. |
 | **Design system** | Global widgets, responsive typography via `flutter_screenutil`, centralized colors/assets enums. |
+| **Secure storage** | `flutter_secure_storage` with in-memory cache — encrypted key-value storage out of the box. |
+| **Secret management** | `envied`-based obfuscated secrets, `.env` workflow, auto-generated `key.properties` & `Secret.xcconfig`. |
+| **AI integration** | `.claude/` folder with coding rules, security docs, setup scripts, and Claude Code permissions. |
 | **Assets & L10n** | Auto-generate `k_assets.dart`, create assets folders, and seed localization structure. |
 | **Documentation** | Generate AI-assisted markdown docs for any folder or file. |
 | **Build & Release** | Configure flavors, obfuscate builds, rename APKs by flavor, and deliver them to Telegram groups. |
@@ -177,41 +182,130 @@ ssl_cli build apk --flavorType --t # Build and auto-share APK to Telegram (requi
 Below is a trimmed example of what a Clean Architecture project scaffolding looks like (Riverpod option shown):
 
 ```
-lib/
-├─ core/
-│  ├─ constants/
-│  ├─ di/
-│  ├─ error/
-│  ├─ network/
-│  ├─ presentation/
-│  │  ├─ widgets/
-│  │  │  ├─ global_appbar.dart
-│  │  │  ├─ global_button.dart
-│  │  │  ├─ global_dropdown.dart
-│  │  │  ├─ global_image_loader.dart
-│  │  │  ├─ global_svg_loader.dart
-│  │  │  └─ global_text.dart
-│  │  └─ ...
-│  └─ utils/
-├─ features/
-│  └─ products/
-│     ├─ data/
-│     │  ├─ datasources/
-│     │  ├─ models/
-│     │  └─ repositories/
-│     ├─ domain/
-│     │  ├─ entities/
-│     │  ├─ repositories/
-│     │  └─ usecases/
-│     └─ presentation/
-│        ├─ pages/
-│        ├─ providers/
-│        │  └─ state/
-│        └─ widgets/
-└─ l10n/
+project-root/
+├─ CLAUDE.md                          # AI entry point — project context & pipeline
+├─ .env.example                       # Template for secrets (committed)
+├─ .env                               # Actual secrets (gitignored)
+│
+├─ .claude/                           # AI rules, docs, and scripts
+│  ├─ AI_CODING_RULES.md              # Strict coding rules & patterns
+│  ├─ settings.local.json             # Claude Code tool permissions
+│  ├─ docs/
+│  │  └─ SECURITY.md                  # Secret management guide
+│  └─ scripts/
+│     └─ setup_secrets.sh             # .env → key.properties + Secret.xcconfig
+│
+├─ lib/
+│  ├─ core/
+│  │  ├─ config/
+│  │  │  ├─ env.dart                  # envied class (Env.*)
+│  │  │  └─ env.g.dart                # Generated obfuscated secrets (gitignored)
+│  │  ├─ constants/
+│  │  ├─ di/
+│  │  ├─ error/
+│  │  ├─ network/
+│  │  ├─ presentation/
+│  │  │  ├─ widgets/
+│  │  │  │  ├─ global_appbar.dart
+│  │  │  │  ├─ global_button.dart
+│  │  │  │  ├─ global_dropdown.dart
+│  │  │  │  ├─ global_image_loader.dart
+│  │  │  │  ├─ global_svg_loader.dart
+│  │  │  │  └─ global_text.dart
+│  │  │  └─ ...
+│  │  └─ utils/
+│  │     └─ preferences_helper.dart   # FlutterSecureStorage with cache
+│  ├─ features/
+│  │  └─ homes/
+│  │     ├─ data/
+│  │     │  ├─ datasources/
+│  │     │  ├─ models/
+│  │     │  └─ repositories/
+│  │     ├─ domain/
+│  │     │  ├─ entities/
+│  │     │  ├─ repositories/
+│  │     │  └─ usecases/
+│  │     └─ presentation/
+│  │        ├─ pages/
+│  │        ├─ providers/
+│  │        │  └─ state/
+│  │        └─ widgets/
+│  └─ l10n/
 ```
 
 Selecting Bloc replaces the `providers/` folder with a `bloc/` directory containing `event/`, `state/`, and bloc classes.
+
+---
+
+## Security & Secret Management
+
+ssl_cli generates a complete secret management workflow based on **envied** and a single `.env` file:
+
+### How It Works
+
+```
+.env (developer fills once, gitignored)
+  │
+  ├─ sh .claude/scripts/setup_secrets.sh
+  │     ├──→ android/key.properties       (Gradle signing + Maps key)
+  │     ├──→ ios/Flutter/Secret.xcconfig   (Xcode Maps key)
+  │     ├──→ android/app/release.jks       (decoded from base64)
+  │     ├──→ android/app/google-services.json (decoded from base64)
+  │     └──→ ios/Runner/GoogleService-Info.plist (decoded from base64)
+  │
+  └─ dart run build_runner build
+        └──→ lib/core/config/env.g.dart    (XOR-obfuscated Dart secrets)
+```
+
+### Key Points
+
+- **Single source of truth:** All secrets live in `.env` — only `.env.example` is committed.
+- **Obfuscated at compile time:** `envied` with `obfuscate: true` XOR-encodes secrets into `env.g.dart`.
+- **Access via `Env.*`:** All Dart code reads secrets through the generated `Env` class (e.g., `Env.baseUrlLive`, `Env.googleMapsApiKey`).
+- **Setup script:** `.claude/scripts/setup_secrets.sh` generates native config files and decodes base64-encoded binary files (JKS, Firebase configs).
+- **CI/CD ready:** GitHub Actions writes `.env` from secrets, runs the script, then builds.
+
+### Secure Storage (PrefHelper)
+
+The generated `PrefHelper` class uses **`flutter_secure_storage`** (replacing `shared_preferences`) for encrypted key-value storage:
+
+- Data encrypted at rest using iOS Keychain and Android EncryptedSharedPreferences.
+- In-memory cache layer ensures synchronous reads while writes persist to secure storage.
+- Same public API — drop-in replacement with no migration needed for consuming code.
+
+```dart
+// Initialize in main()
+await PrefHelper.init();
+
+// Usage
+PrefHelper.instance.setString('token', 'abc123');
+String? token = PrefHelper.instance.getString('token');
+```
+
+---
+
+## AI Integration (.claude)
+
+ssl_cli generates a `.claude/` folder structure that provides AI coding assistants (Claude Code, Copilot, etc.) with project-specific context and security guardrails:
+
+| File | Purpose |
+|------|---------|
+| `CLAUDE.md` (root) | AI entry point — project context, architecture, development pipeline |
+| `.claude/AI_CODING_RULES.md` | Strict coding rules, naming conventions, templates for every layer |
+| `.claude/docs/SECURITY.md` | Hard security limits — files AI must never read or expose |
+| `.claude/scripts/setup_secrets.sh` | Reads `.env`, generates native configs, decodes base64 files |
+| `.claude/settings.local.json` | Pre-configured Claude Code permissions for ssl_cli, autosafe, Flutter |
+
+### Development Pipeline
+
+The `CLAUDE.md` defines a 4-stage pipeline for AI-assisted development:
+
+1. **Client BRD** — Extract user stories, screens, API requirements
+2. **Figma Design** — Map design tokens to global widgets
+3. **Coding** — Follow Clean Architecture strictly with ssl_cli scaffolding
+4. **Testing** — Unit test use cases, widget test components (80% coverage target)
+
+> 🔒 **Security:** AI agents are instructed to never read, display, or expose `.env`, `key.properties`, `*.keystore`, `google-services.json`, or any credential file.
 
 ---
 
@@ -256,9 +350,13 @@ If **ssl_cli** streamlines your workflow, please give it a ⭐ on [GitHub](https
 
 See [CHANGELOG.md](CHANGELOG.md) for a history of updates and new features.
 
-## AI CODING RULES
+## AI Coding Rules 🤖
 
-See [AI_CODING_RULES.md](AI_CODING_RULES.md) for a history of updates and new features.
+See [AI_CODING_RULES.md](AI_CODING_RULES.md) for strict coding rules and patterns enforced during project generation.
+
+## Claude Context 🧠
+
+See [CLAUDE.md](CLAUDE.md) for the AI agent entry point — project context, architecture overview, and development pipeline.
 
 ---
 

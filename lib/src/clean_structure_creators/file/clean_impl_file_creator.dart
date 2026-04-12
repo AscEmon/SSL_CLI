@@ -58,10 +58,12 @@ class CleanImplFileCreator implements IFileCreator {
     'Running build_runner to generate env.g.dart...'.printWithColor(
       status: PrintType.warning,
     );
-    final buildResult = Process.runSync(
-      'dart',
-      ['run', 'build_runner', 'build', '--delete-conflicting-outputs'],
-    );
+    final buildResult = Process.runSync('dart', [
+      'run',
+      'build_runner',
+      'build',
+      '--delete-conflicting-outputs',
+    ]);
     if (buildResult.exitCode == 0) {
       'env.g.dart generated successfully'.printWithColor(
         status: PrintType.success,
@@ -1579,18 +1581,23 @@ class Validators {
 ''');
 
     // Utils
-    await _createFile(
-      '$corePath/utils',
-      'preferences_helper',
-      '''import 'package:shared_preferences/shared_preferences.dart';
+    await _createFile('$corePath/utils', 'preferences_helper', '''
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../constants/app_constants.dart';
 
-/// Singleton class for managing SharedPreferences
+/// Singleton class for managing secure storage
+/// Uses FlutterSecureStorage under the hood but maintains the same
+/// synchronous read API by pre-loading all values into an in-memory cache.
 /// Located in core/utils as it's shared across all features
 class PrefHelper {
   static PrefHelper? _instance;
-  static SharedPreferences? _preferences;
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+
+  /// In-memory cache so that getters remain synchronous.
+  /// All writes go through to secure storage AND update this cache.
+  static Map<String, String> _cache = {};
 
   // Private constructor
   PrefHelper._();
@@ -1601,75 +1608,102 @@ class PrefHelper {
     return _instance!;
   }
 
-  /// Initialize SharedPreferences
+  /// Initialize secure storage cache
   /// Call this in main() before runApp()
   static Future<void> init() async {
-    _preferences = await SharedPreferences.getInstance();
+    _cache = await _secureStorage.readAll();
   }
 
   // String operations
   Future<bool> setString(String key, String value) async {
-    return await _preferences!.setString(key, value);
+    try {
+      await _secureStorage.write(key: key, value: value);
+      _cache[key] = value;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   String getString(String key, {String defaultValue = ''}) {
-    return _preferences!.getString(key) ?? defaultValue;
+    return _cache[key] ?? defaultValue;
   }
 
   // Int operations
   Future<bool> setInt(String key, int value) async {
-    return await _preferences!.setInt(key, value);
+    return setString(key, value.toString());
   }
 
   int getInt(String key, {int defaultValue = 0}) {
-    return _preferences!.getInt(key) ?? defaultValue;
+    final value = _cache[key];
+    if (value == null) return defaultValue;
+    return int.tryParse(value) ?? defaultValue;
   }
 
   // Bool operations
   Future<bool> setBool(String key, bool value) async {
-    return await _preferences!.setBool(key, value);
+    return setString(key, value.toString());
   }
 
   bool getBool(String key, {bool defaultValue = false}) {
-    return _preferences!.getBool(key) ?? defaultValue;
+    final value = _cache[key];
+    if (value == null) return defaultValue;
+    return value == 'true';
   }
 
   // Double operations
   Future<bool> setDouble(String key, double value) async {
-    return await _preferences!.setDouble(key, value);
+    return setString(key, value.toString());
   }
 
   double getDouble(String key, {double defaultValue = 0.0}) {
-    return _preferences!.getDouble(key) ?? defaultValue;
+    final value = _cache[key];
+    if (value == null) return defaultValue;
+    return double.tryParse(value) ?? defaultValue;
   }
 
   // List<String> operations
   Future<bool> setStringList(String key, List<String> value) async {
-    return await _preferences!.setStringList(key, value);
+    // Store as a joined string with a delimiter unlikely to appear in data
+    return setString(key, value.join('┃'));
   }
 
   List<String> getStringList(String key, {List<String>? defaultValue}) {
-    return _preferences!.getStringList(key) ?? defaultValue ?? [];
+    final value = _cache[key];
+    if (value == null || value.isEmpty) return defaultValue ?? [];
+    return value.split('┃');
   }
 
   // Remove a key
   Future<bool> remove(String key) async {
-    return await _preferences!.remove(key);
+    try {
+      await _secureStorage.delete(key: key);
+      _cache.remove(key);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // Clear all preferences
   Future<bool> clear() async {
-    return await _preferences!.clear();
+    try {
+      await _secureStorage.deleteAll();
+      _cache.clear();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // Check if key exists
   bool containsKey(String key) {
-    return _preferences!.containsKey(key);
+    return _cache.containsKey(key);
   }
 
   // Get all keys
   Set<String> getKeys() {
-    return _preferences!.getKeys();
+    return _cache.keys.toSet();
   }
 
   // Custom method for language (example)
@@ -1685,8 +1719,7 @@ class PrefHelper {
   }
 }
 
-''',
-    );
+''');
 
     await _createFile('$corePath/utils', 'extension', '''
 import 'dart:developer' as darttools show log;
@@ -3271,10 +3304,7 @@ class GetHomes implements UseCase<List<Home>, NoParams> {
 ''');
 
     // Data - Models
-    await _createFile(
-      '$homesPath/data/models',
-      'home_model',
-      '''
+    await _createFile('$homesPath/data/models', 'home_model', '''
 import '../../domain/entities/home.dart';
 
 class HomeModel extends Home {
@@ -3295,13 +3325,9 @@ class HomeModel extends Home {
   }
 }
 
-''',
-    );
+''');
 
-    await _createFile(
-      '$homesPath/data/models',
-      'home_response',
-      '''
+    await _createFile('$homesPath/data/models', 'home_response', '''
 import 'home_model.dart';
 
 class HomeResponse {
@@ -3320,8 +3346,7 @@ class HomeResponse {
   }
 }
 
-''',
-    );
+''');
 
     // Data - Datasources
     await _createFile(
@@ -3930,12 +3955,12 @@ linter:
     avoid_print: false
 ''';
 
-      // Add custom_lint plugin for Riverpod
+      // Add riverpod_lint plugin (riverpod_lint 3.x uses analysis_server_plugin directly)
       if (stateManagement == "1") {
         content += '''
 analyzer:
   plugins:
-    - custom_lint
+    - riverpod_lint
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
@@ -3989,7 +4014,8 @@ analyzer:
 
   Future<void> _createEnvFiles() async {
     final basePath = Directory.current.path;
-    const content = r'''# ── API & URLs — read by envied → Dart code via Env.* ────────────────────
+    const content =
+        r'''# ── API & URLs — read by envied → Dart code via Env.* ────────────────────
 BASE_URL_LIVE=https://api.yourapp.com
 BASE_URL_DEV=https://dev-api.yourapp.com
 BASE_URL_LOCAL=http://192.168.1.100:8000
@@ -4081,10 +4107,22 @@ abstract class Env {
     await Directory('$basePath/.claude/docs').create(recursive: true);
     await Directory('$basePath/.claude/scripts').create(recursive: true);
     await _createRawFile('$basePath/CLAUDE.md', _claudeMdContent);
-    await _createRawFile('$basePath/.claude/AI_CODING_RULES.md', _aiCodingRulesContent);
-    await _createRawFile('$basePath/.claude/docs/SECURITY.md', _securityMdContent);
-    await _createRawFile('$basePath/.claude/scripts/setup_secrets.sh', _setupSecretsShContent);
-    await _createRawFile('$basePath/.claude/settings.local.json', _settingsLocalJsonContent);
+    await _createRawFile(
+      '$basePath/.claude/AI_CODING_RULES.md',
+      _aiCodingRulesContent,
+    );
+    await _createRawFile(
+      '$basePath/.claude/docs/SECURITY.md',
+      _securityMdContent,
+    );
+    await _createRawFile(
+      '$basePath/.claude/scripts/setup_secrets.sh',
+      _setupSecretsShContent,
+    );
+    await _createRawFile(
+      '$basePath/.claude/settings.local.json',
+      _settingsLocalJsonContent,
+    );
     '.claude folder created successfully'.printWithColor(
       status: PrintType.success,
     );
@@ -4348,7 +4386,8 @@ dependencies:
 *Maintained by Mobile Team*
 ''';
 
-  String get _aiCodingRulesContent => r'''# AI Coding Rules - Flutter Clean Architecture (Feature Based Pattern)
+  String get _aiCodingRulesContent =>
+      r'''# AI Coding Rules - Flutter Clean Architecture (Feature Based Pattern)
 
 > **Purpose:** This document provides AI coding assistants with strict rules and patterns for generating Flutter code following Clean Architecture with Riverpod state management.
 
@@ -4903,7 +4942,8 @@ class NetworkFailure extends Failure {
 **This is a strict, opinionated architecture. Follow it exactly.**
 ''';
 
-  String get _securityMdContent => r'''## 🔒 SECURITY RULES — AI AGENT HARD LIMITS (NON-NEGOTIABLE)
+  String get _securityMdContent =>
+      r'''## 🔒 SECURITY RULES — AI AGENT HARD LIMITS (NON-NEGOTIABLE)
 
 > 🛑 **These rules are ABSOLUTE. No exception, no override, no matter who asks.**
 
