@@ -5,6 +5,12 @@ import 'package:ssl_cli/src/repo_structure_creators/directory/repo_impl_director
 import 'package:ssl_cli/src/repo_structure_creators/file/repo_impl_file_creator.dart'
     as repo;
 import 'package:ssl_cli/src/repo_structure_creators/repo_impl_ssl_creator.dart';
+import 'package:ssl_cli/src/rn_clean_module_creators/file/rn_clean_module_impl_file_creator.dart';
+import 'package:ssl_cli/src/rn_clean_module_creators/module_directory/rn_clean_module_impl_directory_creator.dart';
+import 'package:ssl_cli/src/rn_clean_module_creators/rn_clean_module_impl_ssl_creator.dart';
+import 'package:ssl_cli/src/rn_clean_structure_creators/directory/rn_clean_impl_directory_creator.dart';
+import 'package:ssl_cli/src/rn_clean_structure_creators/file/rn_clean_impl_file_creator.dart';
+import 'package:ssl_cli/src/rn_clean_structure_creators/rn_clean_impl_ssl_creator.dart';
 
 import '../bloc_structure_creators/bloc_impl_ssl_creator.dart';
 import '../bloc_structure_creators/directory/bloc_impl_directory_creator.dart';
@@ -26,15 +32,45 @@ class CreateCommand implements ICommand {
   String? modulePattern;
   String? moduleName;
   String? stateManagement;
+  String? platform;
   CreateCommand({
     this.projectName,
     this.patternNumber,
     this.moduleName,
     this.modulePattern,
     this.stateManagement,
+    this.platform,
   });
   @override
   Future<void> execute() async {
+    // React Native clean architecture – project
+    if (platform == 'rn' &&
+        projectName != null &&
+        patternNumber == 'rn_clean') {
+      final directoryCreator = RNCleanImplDirectoryCreator(projectName!);
+      final fileCreator =
+          RNCleanImplFileCreator(directoryCreator, projectName!);
+      final sslCreator = RNCleanImplSSLCreator(
+        directoryCreator: directoryCreator,
+        fileCreator: fileCreator,
+      );
+      return sslCreator.create();
+    }
+
+    // React Native clean architecture – module
+    if (platform == 'rn' &&
+        moduleName != null &&
+        modulePattern == 'rn_clean') {
+      final directoryCreator = RNCleanModuleImplDirectoryCreator(moduleName!);
+      final fileCreator =
+          RNCleanModuleImplFileCreator(directoryCreator, moduleName!);
+      final sslCreator = RNCleanModuleImplSSLCreator(
+        directoryCreator: directoryCreator,
+        fileCreator: fileCreator,
+      );
+      return sslCreator.create();
+    }
+
     if (projectName != null && patternNumber != null && patternNumber == "1") {
       final directoryCreator = MvcImplDirectoryCreator(projectName!);
       final fileCreator = MvcImplFileCreator(directoryCreator, projectName!);

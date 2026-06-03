@@ -108,37 +108,66 @@ class SSLCommandRunner with SentApkTelegramMixin {
   ICommand? _handleCreateCommand(List<String> arguments) {
     final projectName = arguments[1];
     final isWelcome = welcomeBoard();
-    if (isWelcome) {
-      final String? patternCheck = formatBoard();
-      if (patternCheck != null) {
-        String? stateManagement;
-
-        // If clean architecture is selected, ask for state management
-        if (patternCheck == "4") {
-          stateManagement = stateManagementBoard();
-          if (stateManagement == null) {
-            exit(0);
-          }
-        }
-
-        return CreateCommand(
-          projectName: projectName,
-          patternNumber: patternCheck,
-          stateManagement: stateManagement,
-        );
-      }
-    } else {
+    if (!isWelcome) {
       exit(0);
     }
+
+    final String? platform = platformBoard();
+    if (platform == null) return null;
+
+    // React Native flow
+    if (platform == "2") {
+      final String? rnPattern = rnPatternBoard();
+      if (rnPattern == null) return null;
+      return CreateCommand(
+        projectName: projectName,
+        patternNumber: 'rn_clean',
+        platform: 'rn',
+      );
+    }
+
+    // Flutter flow (original)
+    final String? patternCheck = formatBoard();
+    if (patternCheck != null) {
+      String? stateManagement;
+
+      if (patternCheck == "4") {
+        stateManagement = stateManagementBoard();
+        if (stateManagement == null) {
+          exit(0);
+        }
+      }
+
+      return CreateCommand(
+        projectName: projectName,
+        patternNumber: patternCheck,
+        stateManagement: stateManagement,
+      );
+    }
+
     return null;
   }
 
   ICommand? _handleModuleCommand(List<String> arguments) {
+    final String? platform = platformBoard();
+    if (platform == null) return null;
+
+    // React Native module flow
+    if (platform == "2") {
+      final String? rnPattern = rnPatternBoard();
+      if (rnPattern == null) return null;
+      return CreateCommand(
+        moduleName: arguments.last,
+        modulePattern: 'rn_clean',
+        platform: 'rn',
+      );
+    }
+
+    // Flutter module flow (original)
     final String? modulePattern = formatModuleBoard();
     if (modulePattern != null) {
       String? stateManagement;
 
-      // If clean architecture is selected, ask for state management
       if (modulePattern == "3") {
         stateManagement = stateManagementBoard();
         if (stateManagement == null) {
@@ -340,8 +369,40 @@ String? formatModuleBoard() {
 String? stateManagementBoard() {
   String content = '''
      Please select state management
-     1 for Riverpod 
+     1 for Riverpod
      2 for Bloc
+\n''';
+
+  stderr.write(content);
+
+  final answer = stdin.readLineSync();
+
+  return answer;
+}
+
+String? platformBoard() {
+  String content = '''
+     Please select platform
+     1 for Flutter
+     2 for React Native
+\n''';
+
+  stderr.write(content);
+
+  final answer = stdin.readLineSync();
+
+  if (answer != "1" && answer != "2") {
+    stderr.writeln('Invalid platform selection. Please enter 1 or 2.');
+    return null;
+  }
+
+  return answer;
+}
+
+String? rnPatternBoard() {
+  String content = '''
+     Please select pattern
+     1 for Clean Architecture (recommended)
 \n''';
 
   stderr.write(content);
