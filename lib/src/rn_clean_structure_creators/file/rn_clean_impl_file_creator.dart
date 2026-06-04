@@ -437,7 +437,7 @@ export class ApiClient {
         );
         return config;
       },
-      (error) => Promise.reject(error)
+      (error: unknown) => Promise.reject(error)
     );
 
     this.client.interceptors.response.use(
@@ -447,8 +447,8 @@ export class ApiClient {
         );
         return response;
       },
-      (error) => {
-        console.log(\`[API] ERROR \${error.message}\`);
+      (error: unknown) => {
+        console.log(\`[API] ERROR \${error instanceof Error ? error.message : String(error)}\`);
         return Promise.reject(error);
       }
     );
@@ -517,7 +517,7 @@ export class ApiClient {
     }
   }
 
-  private _handleAxiosError(error: ReturnType<typeof axios.isAxiosError extends (e: unknown) => e is infer R ? (e: unknown) => e is R : never>): Error {
+  private _handleAxiosError(error: unknown): Error {
     if (axios.isCancel(error)) return new RequestCancelledException('Request cancelled');
 
     const axiosErr = error as import('axios').AxiosError;
@@ -544,7 +544,8 @@ export class ApiClient {
 ''');
 
     await _createFile('$corePath/usecases', 'usecase.ts', '''
-import { Either, Failure } from '../error/exception_handler';
+import { Either } from '../error/exception_handler';
+import { Failure } from '../error/failures';
 
 export abstract class UseCase<T, Params> {
   abstract call(params: Params): Promise<Either<Failure, T>>;
@@ -801,7 +802,7 @@ export const navigationRef = createNavigationContainerRef<ParamListBase>();
 
 export function navigate(name: string, params?: object): void {
   if (navigationRef.isReady()) {
-    navigationRef.navigate(name as never, params as never);
+    (navigationRef as NavigationContainerRef<ParamListBase>).navigate(name, params);
   }
 }
 
@@ -1117,8 +1118,8 @@ export interface HomeEntity {
 ''');
 
     await _createFile('$homesPath/domain/repositories', 'home_repository.ts', '''
-import { Either } from '../../../core/error/exception_handler';
-import { Failure } from '../../../core/error/failures';
+import { Either } from '../../../../core/error/exception_handler';
+import { Failure } from '../../../../core/error/failures';
 import { HomeEntity } from '../entities/home';
 
 export interface HomeRepository {
@@ -1127,9 +1128,9 @@ export interface HomeRepository {
 ''');
 
     await _createFile('$homesPath/domain/usecases', 'get_home.ts', '''
-import { Either } from '../../../core/error/exception_handler';
-import { Failure } from '../../../core/error/failures';
-import { UseCase, NoParams } from '../../../core/usecases/usecase';
+import { Either } from '../../../../core/error/exception_handler';
+import { Failure } from '../../../../core/error/failures';
+import { UseCase, NoParams } from '../../../../core/usecases/usecase';
 import { HomeEntity } from '../entities/home';
 import { HomeRepository } from '../repositories/home_repository';
 
@@ -1169,8 +1170,8 @@ export function homeModelToJson(model: HomeModel): Record<string, unknown> {
 
     await _createFile(
         '$homesPath/data/datasources', 'home_remote_datasource.ts', '''
-import { ApiClient, HttpMethod } from '../../../core/network/api_client';
-import { getUrl, ApiUrl } from '../../../core/constants/api_urls';
+import { ApiClient, HttpMethod } from '../../../../core/network/api_client';
+import { getUrl, ApiUrl } from '../../../../core/constants/api_urls';
 import { HomeModel, homeModelFromJson } from '../models/home_model';
 
 export interface HomeRemoteDataSource {
@@ -1219,8 +1220,8 @@ export class HomeLocalDataSourceImpl implements HomeLocalDataSource {
 
     await _createFile(
         '$homesPath/data/repositories', 'home_repository_impl.ts', '''
-import { handleException, Either } from '../../../core/error/exception_handler';
-import { Failure } from '../../../core/error/failures';
+import { handleException, Either } from '../../../../core/error/exception_handler';
+import { Failure } from '../../../../core/error/failures';
 import { HomeEntity } from '../../domain/entities/home';
 import { HomeRepository } from '../../domain/repositories/home_repository';
 import { HomeRemoteDataSource } from '../datasources/home_remote_datasource';
@@ -1389,7 +1390,9 @@ export default HomeWidget;
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initDependencies } from './core/di/service_locator';
 import { navigationRef } from './core/routes/navigation_ref';
 import { AppRoutes } from './core/routes/app_routes';
@@ -1407,25 +1410,36 @@ const App: React.FC = () => {
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={AppColors.primary} />
-      </View>
+      <GestureHandlerRootView style={styles.root}>
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color={AppColors.primary} />
+        </View>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name={AppRoutes.Home} component={HomeScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <NavigationContainer ref={navigationRef}>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name={AppRoutes.Home} component={HomeScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 };
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  loading: { flex: 1, justifyContent: \'center\', alignItems: \'center\' },
+});
 
 export default App;
 ''');
 
-    await _createFile(basePath, 'index.js', '''
+    await _createFile(basePath, 'index.js', '''import 'react-native-gesture-handler';
 import { AppRegistry } from 'react-native';
 import App from './src/App';
 import { name as appName } from './app.json';
@@ -1434,9 +1448,14 @@ AppRegistry.registerComponent(appName, () => App);
 ''');
 
     await _createFile(basePath, 'tsconfig.json', '''{
-  "extends": "@react-native/typescript-config/tsconfig.json",
+  "extends": "@react-native/typescript-config",
   "compilerOptions": {
     "strict": true,
+    "skipLibCheck": true,
+    "jsx": "react-native",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "baseUrl": ".",
     "paths": {
       "@core/*": ["src/core/*"],
@@ -1459,28 +1478,42 @@ AppRegistry.registerComponent(appName, () => App);
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "18.3.1",
-    "react-native": "0.75.0",
-    "@react-navigation/native": "^6.1.18",
-    "@react-navigation/stack": "^6.4.1",
-    "@react-native-async-storage/async-storage": "^2.0.0",
-    "@react-native-community/netinfo": "^11.4.1",
-    "axios": "^1.7.7",
-    "react-native-safe-area-context": "^4.11.0",
-    "react-native-screens": "^3.34.0",
-    "zustand": "^5.0.0"
+    "react": "19.2.3",
+    "react-native": "0.85.3",
+    "@react-navigation/native": "^7.2.5",
+    "@react-navigation/stack": "^7.9.3",
+    "@react-native-async-storage/async-storage": "^3.1.1",
+    "@react-native-community/netinfo": "^12.0.1",
+    "axios": "^1.17.0",
+    "react-native-gesture-handler": "^3.0.0",
+    "react-native-safe-area-context": "^5.8.0",
+    "react-native-screens": "^4.25.2",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
-    "@react-native/typescript-config": "0.75.0",
-    "@react-native/eslint-config": "0.75.0",
-    "@types/react": "^18.3.11",
-    "@types/react-native": "^0.73.0",
-    "typescript": "5.0.4",
+    "@react-native/metro-config": "^0.85.3",
+    "@react-native/typescript-config": "^0.85.3",
+    "@react-native/eslint-config": "0.85.3",
+    "@types/react": "^19.1.1",
+    "typescript": "^5.3.0",
     "eslint": "^8.57.1",
     "jest": "^29.7.0",
     "@types/jest": "^29.5.13"
   }
 }
+''');
+
+    await _createFile(basePath, 'metro.config.js', '''const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
+
+/**
+ * Metro configuration
+ * https://reactnative.dev/docs/metro
+ *
+ * @type {import('@react-native/metro-config').MetroConfig}
+ */
+const config = {};
+
+module.exports = mergeConfig(getDefaultConfig(__dirname), config);
 ''');
 
     await _createFile(basePath, '.eslintrc.js', '''module.exports = {

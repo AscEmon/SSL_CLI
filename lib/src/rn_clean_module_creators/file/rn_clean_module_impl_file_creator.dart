@@ -53,8 +53,8 @@ class RNCleanModuleImplFileCreator implements RNCleanModuleIFileCreator {
     await _createFile(
       '$basePath/domain/repositories',
       '${moduleName}_repository.ts',
-      '''import { Either } from '../../../core/error/exception_handler';
-import { Failure } from '../../../core/error/failures';
+      '''import { Either } from '../../../../core/error/exception_handler';
+import { Failure } from '../../../../core/error/failures';
 import { ${singularClass}Entity } from '../entities/$singular';
 
 export interface ${className}Repository {
@@ -66,9 +66,9 @@ export interface ${className}Repository {
     await _createFile(
       '$basePath/domain/usecases',
       'get_$singular.ts',
-      '''import { Either } from '../../../core/error/exception_handler';
-import { Failure } from '../../../core/error/failures';
-import { UseCase, NoParams } from '../../../core/usecases/usecase';
+      '''import { Either } from '../../../../core/error/exception_handler';
+import { Failure } from '../../../../core/error/failures';
+import { UseCase, NoParams } from '../../../../core/usecases/usecase';
 import { ${singularClass}Entity } from '../entities/$singular';
 import { ${className}Repository } from '../repositories/${moduleName}_repository';
 
@@ -121,7 +121,7 @@ export function ${singular}ModelToJson(model: ${singularClass}Model): Record<str
     await _createFile(
       '$basePath/data/datasources',
       '${moduleName}_remote_datasource.ts',
-      '''import { ApiClient, HttpMethod } from '../../../core/network/api_client';
+      '''import { ApiClient, HttpMethod } from '../../../../core/network/api_client';
 import { ${singularClass}Model, ${singular}ModelFromJson } from '../models/${singular}_model';
 
 export interface ${className}RemoteDataSource {
@@ -172,8 +172,8 @@ export class ${className}LocalDataSourceImpl implements ${className}LocalDataSou
     await _createFile(
       '$basePath/data/repositories',
       '${moduleName}_repository_impl.ts',
-      '''import { handleException, Either } from '../../../core/error/exception_handler';
-import { Failure } from '../../../core/error/failures';
+      '''import { handleException, Either } from '../../../../core/error/exception_handler';
+import { Failure } from '../../../../core/error/failures';
 import { ${singularClass}Entity } from '../../domain/entities/$singular';
 import { ${className}Repository } from '../../domain/repositories/${moduleName}_repository';
 import { ${className}RemoteDataSource } from '../datasources/${moduleName}_remote_datasource';
