@@ -1,12 +1,14 @@
 # AI Coding Rules - Flutter Clean Architecture (Feature Based Pattern)
 
-> **Purpose:** This document provides AI coding assistants with strict rules and patterns for generating Flutter code following Clean Architecture with Riverpod state management.
+> **Purpose:** This document provides AI coding assistants with strict rules and patterns for generating Flutter code following Clean Architecture. State management is **selectable** when scaffolding with `ssl_cli` — **Riverpod** or **flutter_bloc**.
+>
+> **State management is selectable.** `ssl_cli create`/`module` prompts for `1` (Riverpod) or `2` (Bloc). The templates below show the **Riverpod** variant; every generated project also ships an authoritative, state-management-specific rule set in its own `.claude/` (`.claude/rules/*.md`, `.claude/skills/clean_architecture_pattern.md`) plus `AGENTS.md`/`CLAUDE.md` — treat those as the source of truth for the chosen state management. The **domain/data layer is identical for both** (see the Data Layer rules below).
 
 ---
 
 ## 🎯 Core Architecture Pattern
 
-This project follows **Clean Architecture** with **Riverpod** state management. All code generation MUST follow this three-layer structure:
+This project follows **Clean Architecture**. All code generation MUST follow this three-layer structure (only the presentation layer differs between Riverpod and Bloc):
 
 ```
 Domain Layer (Business Logic) → Data Layer (Data Management) → Presentation Layer (UI)
@@ -42,10 +44,14 @@ lib/features/{feature_name}/
 └── presentation/
     ├── pages/
     │   └── {page_name}_page.dart
-    ├── providers/
+    ├── providers/                     # Riverpod variant
     │   ├── {feature}_provider.dart
     │   └── state/
     │       └── {feature}_state.dart
+    │   # Bloc variant instead uses:
+    │   #   bloc/{feature}_bloc.dart
+    │   #   bloc/event/{feature}_event.dart
+    │   #   bloc/state/{feature}_state.dart
     └── widgets/
         └── {widget_name}.dart
 ```
@@ -82,15 +88,15 @@ lib/core/
 import 'package:equatable/equatable.dart';
 
 class {EntityName}Entity extends Equatable {
-  final String id;
+  final int id;
   final String name;
-  // Add fields here
-  
+  // Add fields here (all non-nullable, all with defaults)
+
   const {EntityName}Entity({
-    required this.id,
-    required this.name,
+    this.id = 0,
+    this.name = '',
   });
-  
+
   @override
   List<Object?> get props => [id, name];
 }
@@ -99,8 +105,10 @@ class {EntityName}Entity extends Equatable {
 **Rules:**
 - ✅ MUST extend `Equatable`
 - ✅ MUST be immutable (`const` constructor, `final` fields)
-- ✅ NO Flutter imports
-- ✅ NO external package dependencies (except `equatable`, `dartz`)
+- ✅ MUST be **non-nullable with defaults** (`0`, `''`, `false`, `const []`) — never `required`, never nullable; the UI never null-checks
+- ✅ Models NEVER extend entities — the repository maps model → entity (see Data Layer)
+- ✅ NO Flutter imports, NO `fromJson` (entities never touch raw JSON)
+- ✅ NO external package dependencies (except `equatable`)
 
 #### Repository Contract Template
 
@@ -167,40 +175,59 @@ class {Action}Params extends Equatable {
 
 ### 2. Data Layer Rules
 
-#### Model Template
+#### Response Model Template (wire DTO — does NOT extend the entity)
 
 ```dart
-// lib/features/{feature}/data/models/{model_name}_model.dart
-import '../../domain/entities/{entity_name}_entity.dart';
+// lib/features/{feature}/data/models/{feature}_response.dart
+import 'package:autosafe_json/autosafe_json.dart';
 
-class {Model}Model extends {Entity}Entity {
-  const {Model}Model({
-    required super.id,
-    required super.name,
-  });
-  
-  factory {Model}Model.fromJson(Map<String, dynamic> json) {
-    return {Model}Model(
-      id: json['id'] as String,
-      name: json['name'] as String,
+/// Wire DTO. All fields nullable, decoded with SafeJson. The repository maps
+/// it to the entity — models and entities are SEPARATE hierarchies.
+class {Feature}Response {
+  final List<{Item}Data>? results;
+
+  {Feature}Response({this.results});
+
+  factory {Feature}Response.fromJson(Map<String, dynamic> json) {
+    json = json.autoSafe.raw; // top-level ONLY
+    return {Feature}Response(
+      results: json['results'] == null || json['results'] == ''
+          ? []
+          : List<{Item}Data>.from(
+              SafeJson.asList(json['results'])
+                  .map((x) => {Item}Data.fromJson(SafeJson.asMap(x))),
+            ),
     );
   }
-  
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-    };
-  }
-  
 
+  Map<String, dynamic> toJson() => {
+        'results': results == null
+            ? []
+            : List<dynamic>.from(results!.map((x) => x.toJson())),
+      };
+}
+
+class {Item}Data {
+  final int? id;
+  final String? name;
+
+  {Item}Data({this.id, this.name});
+
+  factory {Item}Data.fromJson(Map<String, dynamic> json) => {Item}Data(
+        id: SafeJson.asInt(json['id']),
+        name: SafeJson.asString(json['name']),
+      );
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
 }
 ```
 
 **Rules:**
-- ✅ MUST extend corresponding entity
-- ✅ MUST have `fromJson` factory
-- ✅ MUST have `toJson` method
+- ✅ MUST use `SafeJson.as*()` for every field — no raw `as` casts
+- ✅ MUST call `json.autoSafe.raw` ONLY in the top-level response model
+- ✅ Fields are **nullable**; the repository coalesces them to entity defaults with `??`
+- ❌ NEVER `extends {Entity}Entity` — models and entities are separate hierarchies
+- ✅ MUST have `fromJson` factory and `toJson` method
 
 #### Remote Data Source Template
 
@@ -285,12 +312,14 @@ class {Feature}RepositoryImpl implements {Feature}Repository {
   
   @override
   Future<Either<Failure, {Entity}Entity>> get{Entity}(String id) async {
-    return handleException(
-      () async {
-        final result = await remoteDataSource.get{Entity}(id);
-        return result;
-      },
-    );
+    return handleException(() async {
+      final dto = await remoteDataSource.get{Entity}(id);
+      // Explicit DTO -> entity mapping with `?? default` fallbacks.
+      return {Entity}Entity(
+        id: dto.id ?? 0,
+        name: dto.name ?? '',
+      );
+    });
   }
 }
     
@@ -299,8 +328,8 @@ class {Feature}RepositoryImpl implements {Feature}Repository {
 **Rules:**
 - ✅ MUST implement domain repository contract
 - ✅ MUST inject data sources
-- ✅ MUST convert exceptions to failures
-- ✅ MUST return `Either<Failure, Entity>`
+- ✅ MUST map the wire DTO → entity (models never extend entities) with `?? default` fallbacks
+- ✅ MUST wrap in `handleException()` and return `Either<Failure, Entity>`
 - ✅ Handle `ServerException`, `SocketException`, and generic exceptions
 
 ### 3. Presentation Layer Rules
@@ -500,12 +529,14 @@ sl.registerFactory(() => {Action}UseCase(repository: sl()));
 | Type | Pattern | Example |
 |------|---------|---------|
 | Entity | `{name}_entity.dart` | `user_entity.dart` |
-| Model | `{name}_model.dart` | `user_model.dart` |
+| Response (DTO) | `{feature}_response.dart` | `user_response.dart` |
 | UseCase | `{action}_usecase.dart` | `get_user_usecase.dart` |
 | Repository | `{feature}_repository.dart` | `auth_repository.dart` |
 | Repository Impl | `{feature}_repository_impl.dart` | `auth_repository_impl.dart` |
 | Data Source | `{feature}_{type}_datasource.dart` | `auth_remote_datasource.dart` |
-| Provider | `{feature}_provider.dart` | `login_provider.dart` |
+| Provider (Riverpod) | `{feature}_provider.dart` | `login_provider.dart` |
+| Bloc (Bloc) | `{feature}_bloc.dart` | `login_bloc.dart` |
+| Event (Bloc) | `{feature}_event.dart` | `login_event.dart` |
 | State | `{feature}_state.dart` | `login_state.dart` |
 | Page | `{name}_page.dart` | `login_page.dart` |
 
@@ -561,9 +592,9 @@ class NetworkFailure extends Failure {
 ### Error Flow
 
 1. **Data Source:** Throw exceptions
-2. **Repository:** Catch exceptions → Return `Left(Failure)`
+2. **Repository:** Catch exceptions → Return `Left(Failure)` (and map DTO → entity)
 3. **Use Case:** Pass through `Either<Failure, Data>`
-4. **Provider:** Handle with `fold()` → Update state
+4. **Provider / Bloc:** Handle with `fold()` → update state (Riverpod: `state = state.copyWith(...)`; Bloc: `emit(...)`)
 
 
 
@@ -577,7 +608,7 @@ When creating a new feature, follow this order:
    - [ ] Create use cases in `domain/usecases/`
 
 2. **Data Layer**
-   - [ ] Create model in `data/models/` (extends entity)
+   - [ ] Create response DTO in `data/models/{feature}_response.dart` (nullable, `SafeJson`, does NOT extend entity)
    - [ ] Create remote data source in `data/datasources/`
    - [ ] Create local data source in `data/datasources/` (if needed)
    - [ ] Create repository implementation in `data/repositories/`
@@ -671,11 +702,12 @@ When generating code for this project:
 2. ALWAYS use the provided templates
 3. ALWAYS use global widgets instead of base Flutter widgets
 4. ALWAYS use ScreenUtil for sizing
-5. ALWAYS register dependencies in service_locator.dart
+5. ALWAYS register dependencies in service_locator.dart (blocs as `registerFactory`)
 6. ALWAYS handle errors with Either<Failure, Data>
-7. ALWAYS use Riverpod for state management
+7. ALWAYS use the state management selected at scaffold time — Riverpod OR flutter_bloc (never mix)
 8. NEVER skip layers (always create domain → data → presentation)
 9. NEVER use repositories directly in presentation (use use cases)
+10. NEVER let models extend entities — the repository maps DTO → entity
 
 
 **This is a strict, opinionated architecture. Follow it exactly.**
