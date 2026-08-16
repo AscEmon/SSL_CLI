@@ -4,6 +4,8 @@ import 'package:ssl_cli/utils/enum.dart';
 import 'package:ssl_cli/utils/extension.dart';
 
 import '../clean_i_creators.dart';
+import 'bloc_ai_docs_creator.dart';
+import 'riverpod_ai_docs_creator.dart';
 
 class CleanImplFileCreator implements IFileCreator {
   final IDirectoryCreator directoryCreator;
@@ -452,17 +454,25 @@ class GlobalResponse {
 }
 ''');
 
+    // Bloc: feature blocs are provided at the route level (created on
+    // navigation, disposed on pop) via BlocProvider + sl.
+    final routesBlocImports = stateManagement == "2"
+        ? "import 'package:flutter_bloc/flutter_bloc.dart';\nimport '/core/di/service_locator.dart';\nimport '../../features/homes/presentation/bloc/home_bloc.dart';\n"
+        : "";
+    final homeRouteWidget = stateManagement == "2"
+        ? "return BlocProvider(\n          create: (_) => sl<HomeBloc>(),\n          child: const HomePage(),\n        );"
+        : "return const HomePage();";
     await _createFile('$corePath/routes', 'app_routes', '''
 import 'package:flutter/material.dart';
 import '../../features/homes/presentation/pages/home_page.dart';
-
+$routesBlocImports
 enum AppRoutes { home }
 
 extension AppRoutesExtention on AppRoutes {
   Widget buildWidget<T extends Object>({T? arguments}) {
     switch (this) {
       case AppRoutes.home:
-        return const HomePage();
+        $homeRouteWidget
     }
   }
 }
@@ -2064,6 +2074,13 @@ class NoParams extends Equatable {
     );
 
     // DI
+    // Bloc: register HomeBloc as a factory (new instance per screen/route).
+    final blocDiImport = stateManagement == "2"
+        ? "import '/features/homes/presentation/bloc/home_bloc.dart';\n"
+        : "";
+    final blocDiRegistration = stateManagement == "2"
+        ? "\n  // Blocs (factory — one fresh instance per screen/route)\n  sl.registerFactory(() => HomeBloc());\n"
+        : "";
     await _createFile('$corePath/di', 'service_locator', '''
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
@@ -2076,7 +2093,7 @@ import '/features/homes/data/datasources/home_remote_datasource.dart';
 import '/features/homes/data/datasources/home_local_datasource.dart';
 import '/features/homes/data/repositories/home_repository_impl.dart';
 import '/features/homes/domain/repositories/home_repository.dart';
-
+$blocDiImport
 final sl = GetIt.instance;
 
 Future<void> initDependencies() async {
@@ -2104,9 +2121,29 @@ Future<void> initDependencies() async {
     () => HomeRepositoryImpl(remoteDataSource: sl(), localDataSource: sl()),
   );
   sl.registerLazySingleton(() => GetHomes(sl()));
-}
+$blocDiRegistration}
 
 ''');
+
+    // Bloc: single place to register app-wide (global) blocs.
+    if (stateManagement == "2") {
+      await _createFile('$corePath/bloc', 'global_bloc_providers', '''
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+/// App-wide blocs that must live for the whole app lifecycle
+/// (e.g. Auth, Theme, Connectivity). Provided once at the root via
+/// MultiBlocProvider in main.dart.
+///
+/// Feature/screen-scoped blocs must NOT go here — provide those at the route
+/// level with `BlocProvider(create: (_) => sl<XBloc>())` in app_routes.dart so
+/// they are created on navigation and disposed when the screen is popped.
+List<BlocProvider> globalBlocProviders() => [
+      // Example:
+      // BlocProvider<AuthBloc>(create: (_) => sl<AuthBloc>()),
+      // BlocProvider<ThemeBloc>(create: (_) => sl<ThemeBloc>()),
+    ];
+''');
+    }
 
     await _createFile('$corePath/presentation/widgets', 'error_dialog', '''
 import 'package:flutter/material.dart';
@@ -3249,213 +3286,11 @@ class ViewUtil {
   Future<void> _createFeatureFiles(String featuresPath) async {
     final homesPath = '$featuresPath/homes';
 
-    // Domain - Entities
-    await _createFile(
-      '$homesPath/domain/entities',
-      'home',
-      '''import 'package:equatable/equatable.dart';
-class Home extends Equatable {
-  final int id;
-  const Home({
-    required this.id,
-  });
-
-  @override
-  List<Object?> get props => [id];
-}
-''',
-    );
-
-    // Domain - Repositories
-    await _createFile('$homesPath/domain/repositories', 'home_repository', '''
-import 'package:dartz/dartz.dart';
-
-import '/core/error/failures.dart';
-import '/features/homes/domain/entities/home.dart';
-
-/// Repository interface for Home functionality
-abstract class HomeRepository {
-  /// Get paginated list of Homes
-  Future<Either<Failure, List<Home>>> getHomes();
-}
-
-''');
-
-    // Domain - Usecases
-    await _createFile('$homesPath/domain/usecases', 'get_home', '''
-import 'package:dartz/dartz.dart';
-import '/core/error/failures.dart';
-import '/core/usecases/usecase.dart';
-import '/features/homes/domain/entities/home.dart';
-import '/features/homes/domain/repositories/home_repository.dart';
-
-/// Use case for getting paginated Homes
-class GetHomes implements UseCase<List<Home>, NoParams> {
-  final HomeRepository _repository;
-
-  GetHomes(this._repository);
-
-  @override
-  Future<Either<Failure, List<Home>>> call(NoParams params) async {
-    return await _repository.getHomes();
-  }
-}
-
-''');
-
-    // Data - Models
-    await _createFile('$homesPath/data/models', 'home_model', '''
-import '../../domain/entities/home.dart';
-
-class HomeModel extends Home {
-  const HomeModel({
-    required super.id,
-  });
-
-  factory HomeModel.fromJson(Map<String, dynamic> json) {
-    return HomeModel(
-      id: json['id'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-    };
-  }
-}
-
-''');
-
-    await _createFile('$homesPath/data/models', 'home_response', '''
-import 'home_model.dart';
-
-class HomeResponse {
-  final List<HomeModel> homes;
-  final int total;
-
-  HomeResponse({required this.homes, required this.total});
-
-  factory HomeResponse.fromJson(Map<String, dynamic> json) {
-    return HomeResponse(
-      homes: (json['homes'] as List)
-          .map((item) => HomeModel.fromJson(item))
-          .toList(),
-      total: json['total'] ?? 0,
-    );
-  }
-}
-
-''');
-
-    // Data - Datasources
-    await _createFile(
-      '$homesPath/data/datasources',
-      'home_remote_datasource',
-      '''
-import '/core/network/api_client.dart';
-import '/core/constants/api_urls.dart';
-import '../models/home_model.dart';
-import '../models/home_response.dart';
-
-abstract class HomeRemoteDataSource {
-  Future<List<HomeModel>> getHomes();
-}
-
-class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
-  final ApiClient _apiClient;
-
-  HomeRemoteDataSourceImpl({required ApiClient apiClient})
-    : _apiClient = apiClient;
-
-  @override
-  Future<List<HomeModel>> getHomes() async {
-    try {
-      final response = await _apiClient.request(
-        endpoint: ApiUrl.homes.url,
-        method: HttpMethod.get,
-      );
-      final homeResponse = HomeResponse.fromJson(response);
-      return homeResponse.homes;
-    } catch (e) {
-      rethrow;
-    }
-  }
-}
-
-''',
-    );
-
-    await _createFile(
-      '$homesPath/data/datasources',
-      'home_local_datasource',
-      '''
-import '/core/error/exceptions.dart';
-import '../models/home_model.dart';
-
-abstract class HomeLocalDataSource {
-  Future<List<HomeModel>> getHomes();
-  Future<void> cacheHomes(List<HomeModel> homes);
-}
-
-class HomeLocalDataSourceImpl implements HomeLocalDataSource {
-  List<HomeModel> _cachedHomes = [];
-
-  @override
-  Future<List<HomeModel>> getHomes() async {
-    if (_cachedHomes.isEmpty) {
-      throw CacheException(message: 'No cached data');
-    }
-    return _cachedHomes;
-  }
-
-  @override
-  Future<void> cacheHomes(List<HomeModel> homes) async {
-    _cachedHomes = homes;
-  }
-}
-
-''',
-    );
-
-    // Data - Repositories
-    await _createFile(
-      '$homesPath/data/repositories',
-      'home_repository_impl',
-      '''
-import 'package:dartz/dartz.dart';
-
-import '/core/error/failures.dart';
-import '../../../../core/error/exception_handler.dart';
-import '../../domain/entities/home.dart';
-import '../../domain/repositories/home_repository.dart';
-import '../datasources/home_local_datasource.dart';
-import '../datasources/home_remote_datasource.dart';
-
-class HomeRepositoryImpl implements HomeRepository {
-  final HomeRemoteDataSource _remoteDataSource;
-  final HomeLocalDataSource _localDataSource;
-
-  HomeRepositoryImpl({
-    required HomeRemoteDataSource remoteDataSource,
-    required HomeLocalDataSource localDataSource,
-  }) : _remoteDataSource = remoteDataSource,
-       _localDataSource = localDataSource;
-
-  @override
-  Future<Either<Failure, List<Home>>> getHomes() async {
-    return handleException(() async {
-      final remoteHomes = await _remoteDataSource.getHomes();
-      await _localDataSource.cacheHomes(remoteHomes);
-      return remoteHomes;
-    });
-  }
-}
-
-
-
-''',
-    );
+    // Clean data→domain pattern for BOTH Riverpod and Bloc (state-management
+    // agnostic, per clean_architecture_pattern.md): entity with defaults, a
+    // response DTO that does NOT extend the entity, and DTO→entity mapping in
+    // the repository.
+    await _createFeatureDomainDataFiles(homesPath);
 
     // Presentation - State Management Files
     if (stateManagement == "2") {
@@ -3467,7 +3302,54 @@ class HomeRepositoryImpl implements HomeRepository {
     }
 
     // Presentation - Pages
-    await _createFile('$homesPath/presentation/pages', 'home_page', '''
+    if (stateManagement == "2") {
+      // Bloc page: dispatches LoadHomes in initState, rebuilds via BlocBuilder.
+      await _createFile('$homesPath/presentation/pages', 'home_page', '''
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '/core/presentation/widgets/global_appbar.dart';
+import '/core/presentation/widgets/global_text.dart';
+import '/core/presentation/widgets/global_loader.dart';
+import '../bloc/home_bloc.dart';
+import '../bloc/event/home_event.dart';
+import '../bloc/state/home_state.dart';
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<HomeBloc>().add(const LoadHomes());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: const GlobalAppBar(title: 'Home List'),
+      body: BlocBuilder<HomeBloc, HomeState>(
+        builder: (context, state) {
+          return switch (state) {
+            HomeLoading() ||
+            HomeInitial() => const Center(child: GlobalLoader()),
+            HomeError(:final message) => Center(child: GlobalText(str: message)),
+            HomeLoaded(:final homes) => Center(
+              child: GlobalText(str: 'Loaded \${homes.length} items'),
+            ),
+          };
+        },
+      ),
+    );
+  }
+}
+''');
+    } else {
+      await _createFile('$homesPath/presentation/pages', 'home_page', '''
 import 'package:flutter/material.dart';
 import '/core/presentation/widgets/global_appbar.dart';
 import '/core/presentation/widgets/global_text.dart';
@@ -3484,6 +3366,7 @@ class HomePage extends StatelessWidget {
   }
 }
 ''');
+    }
 
     // Presentation - Widgets
     await _createFile('$homesPath/presentation/widgets', 'widget', '''
@@ -3556,16 +3439,16 @@ class HomeNotifier extends Notifier<HomeState> {
   }
 
   Future<void> _createBlocPresentationFiles(String homesPath) async {
-    // State
+    // State — sealed, carries the entity in the loaded state
     await _createFile('$homesPath/presentation/bloc/state', 'home_state', '''
 import 'package:equatable/equatable.dart';
 
-import '/features/homes/domain/entities/home.dart';
+import '/features/homes/domain/entities/home_entity.dart';
 
 /// State for Home
 sealed class HomeState extends Equatable {
   const HomeState();
-  
+
   @override
   List<Object?> get props => [];
 }
@@ -3579,19 +3462,19 @@ class HomeLoading extends HomeState {
 }
 
 class HomeLoaded extends HomeState {
-  final List<Home> Homes;
-  
-  const HomeLoaded(this.Homes);
-  
+  final List<HomeEntity> homes;
+
+  const HomeLoaded(this.homes);
+
   @override
-  List<Object?> get props => [Homes];
+  List<Object?> get props => [homes];
 }
 
 class HomeError extends HomeState {
   final String message;
-  
+
   const HomeError(this.message);
-  
+
   @override
   List<Object?> get props => [message];
 }
@@ -3604,7 +3487,7 @@ import 'package:equatable/equatable.dart';
 /// Events for Home
 sealed class HomeEvent extends Equatable {
   const HomeEvent();
-  
+
   @override
   List<Object?> get props => [];
 }
@@ -3618,10 +3501,13 @@ class RefreshHomes extends HomeEvent {
 }
 ''');
 
-    // Bloc
+    // Bloc — resolves the use case via sl and folds the Either into state
     await _createFile('$homesPath/presentation/bloc', 'home_bloc', '''
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '/core/di/service_locator.dart';
+import '/core/usecases/usecase.dart';
+import '/features/homes/domain/usecases/get_home.dart';
 import '/features/homes/presentation/bloc/event/home_event.dart';
 import '/features/homes/presentation/bloc/state/home_state.dart';
 
@@ -3636,18 +3522,12 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     Emitter<HomeState> emit,
   ) async {
     emit(const HomeLoading());
-    
     try {
-      // TODO: Implement use case call
-      // final result = await _getHomesUseCase(NoParams());
-      
-      // result.fold(
-      //   (failure) => emit(HomeError(failure.message)),
-      //   (data) => emit(HomeLoaded(data)),
-      // );
-      
-      // Placeholder
-      emit(const HomeLoaded([]));
+      final result = await sl<GetHomes>()(NoParams());
+      result.fold(
+        (failure) => emit(HomeError(failure.message)),
+        (data) => emit(HomeLoaded(data)),
+      );
     } catch (e) {
       emit(HomeError(e.toString()));
     }
@@ -3664,6 +3544,207 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 ''');
   }
 
+  /// Clean data→domain generation shared by Riverpod and Bloc (the pattern is
+  /// state-management agnostic). Entity uses non-nullable defaults; the wire
+  /// DTO does NOT extend the entity; the repository maps DTO→entity.
+  Future<void> _createFeatureDomainDataFiles(String homesPath) async {
+    // Domain - Entity (non-nullable defaults, Equatable, no fromJson)
+    await _createFile('$homesPath/domain/entities', 'home_entity', '''
+import 'package:equatable/equatable.dart';
+
+/// Domain entity — non-nullable with defaults. The repository maps the
+/// HomeResponse/HomeData wire DTO into this. Entities never extend models.
+class HomeEntity extends Equatable {
+  final int id;
+
+  const HomeEntity({this.id = 0});
+
+  @override
+  List<Object?> get props => [id];
+}
+''');
+
+    // Domain - Repository contract
+    await _createFile('$homesPath/domain/repositories', 'home_repository', '''
+import 'package:dartz/dartz.dart';
+
+import '/core/error/failures.dart';
+import '/features/homes/domain/entities/home_entity.dart';
+
+abstract class HomeRepository {
+  Future<Either<Failure, List<HomeEntity>>> getHomes();
+}
+''');
+
+    // Domain - UseCase
+    await _createFile('$homesPath/domain/usecases', 'get_home', '''
+import 'package:dartz/dartz.dart';
+import '/core/error/failures.dart';
+import '/core/usecases/usecase.dart';
+import '/features/homes/domain/entities/home_entity.dart';
+import '/features/homes/domain/repositories/home_repository.dart';
+
+class GetHomes implements UseCase<List<HomeEntity>, NoParams> {
+  final HomeRepository _repository;
+
+  GetHomes(this._repository);
+
+  @override
+  Future<Either<Failure, List<HomeEntity>>> call(NoParams params) async {
+    return await _repository.getHomes();
+  }
+}
+''');
+
+    // Data - Response DTO (nullable, SafeJson, autoSafe.raw top-level only;
+    // does NOT extend the entity)
+    await _createFile('$homesPath/data/models', 'home_response', '''
+import 'package:autosafe_json/autosafe_json.dart';
+
+/// Wire DTO. All fields nullable, decoded with SafeJson. Mapped to HomeEntity
+/// inside the repository. Models never extend entities.
+class HomeResponse {
+  final List<HomeData>? results;
+
+  HomeResponse({this.results});
+
+  factory HomeResponse.fromJson(Map<String, dynamic> json) {
+    json = json.autoSafe.raw; // top-level sanitise only
+    return HomeResponse(
+      results: json['results'] == null || json['results'] == ''
+          ? []
+          : List<HomeData>.from(
+              SafeJson.asList(json['results'])
+                  .map((x) => HomeData.fromJson(SafeJson.asMap(x))),
+            ),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'results': results == null
+            ? []
+            : List<dynamic>.from(results!.map((x) => x.toJson())),
+      };
+}
+
+class HomeData {
+  final int? id;
+
+  HomeData({this.id});
+
+  factory HomeData.fromJson(Map<String, dynamic> json) =>
+      HomeData(id: SafeJson.asInt(json['id']));
+
+  Map<String, dynamic> toJson() => {'id': id};
+}
+''');
+
+    // Data - Remote datasource (returns the DTO)
+    await _createFile(
+      '$homesPath/data/datasources',
+      'home_remote_datasource',
+      '''
+import '/core/network/api_client.dart';
+import '/core/constants/api_urls.dart';
+import '../models/home_response.dart';
+
+abstract class HomeRemoteDataSource {
+  Future<HomeResponse> getHomes();
+}
+
+class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
+  final ApiClient _apiClient;
+
+  HomeRemoteDataSourceImpl({required ApiClient apiClient})
+    : _apiClient = apiClient;
+
+  @override
+  Future<HomeResponse> getHomes() async {
+    try {
+      final response = await _apiClient.request(
+        endpoint: ApiUrl.homes.url,
+        method: HttpMethod.get,
+      );
+      return HomeResponse.fromJson(response);
+    } catch (e) {
+      rethrow;
+    }
+  }
+}
+''',
+    );
+
+    // Data - Local datasource (caches the DTO items)
+    await _createFile(
+      '$homesPath/data/datasources',
+      'home_local_datasource',
+      '''
+import '/core/error/exceptions.dart';
+import '../models/home_response.dart';
+
+abstract class HomeLocalDataSource {
+  Future<List<HomeData>> getHomes();
+  Future<void> cacheHomes(List<HomeData> homes);
+}
+
+class HomeLocalDataSourceImpl implements HomeLocalDataSource {
+  List<HomeData> _cachedHomes = [];
+
+  @override
+  Future<List<HomeData>> getHomes() async {
+    if (_cachedHomes.isEmpty) {
+      throw CacheException(message: 'No cached data');
+    }
+    return _cachedHomes;
+  }
+
+  @override
+  Future<void> cacheHomes(List<HomeData> homes) async {
+    _cachedHomes = homes;
+  }
+}
+''',
+    );
+
+    // Data - Repository impl (maps DTO -> entity, wrapped in handleException)
+    await _createFile(
+      '$homesPath/data/repositories',
+      'home_repository_impl',
+      '''
+import 'package:dartz/dartz.dart';
+
+import '/core/error/failures.dart';
+import '../../../../core/error/exception_handler.dart';
+import '../../domain/entities/home_entity.dart';
+import '../../domain/repositories/home_repository.dart';
+import '../datasources/home_local_datasource.dart';
+import '../datasources/home_remote_datasource.dart';
+
+class HomeRepositoryImpl implements HomeRepository {
+  final HomeRemoteDataSource _remoteDataSource;
+  final HomeLocalDataSource _localDataSource;
+
+  HomeRepositoryImpl({
+    required HomeRemoteDataSource remoteDataSource,
+    required HomeLocalDataSource localDataSource,
+  }) : _remoteDataSource = remoteDataSource,
+       _localDataSource = localDataSource;
+
+  @override
+  Future<Either<Failure, List<HomeEntity>>> getHomes() async {
+    return handleException(() async {
+      final response = await _remoteDataSource.getHomes();
+      final items = response.results ?? [];
+      await _localDataSource.cacheHomes(items);
+      // Explicit DTO -> entity mapping with ?? fallbacks.
+      return items.map((e) => HomeEntity(id: e.id ?? 0)).toList();
+    });
+  }
+}
+''',
+    );
+  }
+
   Future<void> _createMainFile() async {
     // Generate imports based on state management
     String imports = '''import 'package:flutter/material.dart';
@@ -3674,6 +3755,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
     if (stateManagement == "1") {
       // Add Riverpod import
       imports += '''import 'package:flutter_riverpod/flutter_riverpod.dart';
+''';
+    } else if (stateManagement == "2") {
+      // Add Bloc imports (root MultiBlocProvider + the initial page's feature bloc)
+      imports += '''import 'package:flutter_bloc/flutter_bloc.dart';
+import '/core/bloc/global_bloc_providers.dart';
+import '/features/homes/presentation/bloc/home_bloc.dart';
 ''';
     }
 
@@ -3691,10 +3778,22 @@ import 'core/presentation/widgets/app_starter_error.dart';
 ''';
 
     // Generate runApp based on state management
-    String runAppCode =
-        stateManagement == "1"
-            ? '''runApp(const ProviderScope(child: MyApp()));'''
-            : '''runApp(const MyApp());''';
+    String runAppCode;
+    if (stateManagement == "1") {
+      runAppCode = '''runApp(const ProviderScope(child: MyApp()));''';
+    } else if (stateManagement == "2") {
+      runAppCode = '''runApp(
+      MultiBlocProvider(providers: globalBlocProviders(), child: const MyApp()),
+    );''';
+    } else {
+      runAppCode = '''runApp(const MyApp());''';
+    }
+
+    // The initial page also needs its feature bloc provided. For bloc we wrap
+    // the first screen with BlocProvider (same as the route builder does).
+    final initialPageReturn = stateManagement == "2"
+        ? "return BlocProvider(create: (_) => sl<HomeBloc>(), child: const HomePage());"
+        : "return const HomePage();";
     String runErrorCode =
         stateManagement == "1"
             ? '''runApp(
@@ -3789,7 +3888,7 @@ class MyApp extends StatelessWidget {
     // if (isLoggedIn) {
     //   return const HomePage();
     // }
-    return const HomePage();
+    $initialPageReturn
   }
 }
 
@@ -3942,7 +4041,7 @@ serviceAccountKey.json
 # IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
 # invoked from the command line by running `flutter analyze`.
 
-# Include both Flutter lints and Riverpod lints
+# Flutter recommended lints
 include:
   - package:flutter_lints/flutter.yaml
 
@@ -3997,13 +4096,18 @@ analyzer:
     }
 
     try {
-      final file = await File('$basePath/$fileName.$fileType').create();
+      // create(recursive: true) also creates any missing parent directories
+      // (e.g. core/bloc) so new subfolders don't need a matching entry in the
+      // directory creator.
+      final file = await File(
+        '$basePath/$fileName.$fileType',
+      ).create(recursive: true);
 
       final writer = file.openWrite();
       writer.write(content);
       writer.close();
-    } catch (_) {
-      stderr.write('creating $fileName.$fileType failed!');
+    } catch (e) {
+      stderr.write('creating $fileName.$fileType failed! ($e)');
       exit(2);
     }
   }
@@ -4104,6 +4208,25 @@ abstract class Env {
 
   Future<void> _createClaudeFolderFiles() async {
     final basePath = Directory.current.path;
+
+    // Bloc: generate the full flutter_bloc AI-guidance doc set (mirrors the
+    // reference project — AGENTS.md, CLAUDE.md, .claude/rules, skills, hooks…).
+    if (stateManagement == "2") {
+      await BlocAiDocsCreator().create(basePath);
+      '.claude + AGENTS.md + CLAUDE.md (flutter_bloc) created successfully'
+          .printWithColor(status: PrintType.success);
+      return;
+    }
+
+    // Riverpod: generate the full Riverpod AI-guidance doc set (mirrors the
+    // crm_lite_sebl reference — AGENTS.md, CLAUDE.md, .claude/rules, skills, hooks…).
+    if (stateManagement == "1") {
+      await RiverpodAiDocsCreator().create(basePath);
+      '.claude + AGENTS.md + CLAUDE.md (Riverpod) created successfully'
+          .printWithColor(status: PrintType.success);
+      return;
+    }
+
     await Directory('$basePath/.claude/docs').create(recursive: true);
     await Directory('$basePath/.claude/scripts').create(recursive: true);
     await _createRawFile('$basePath/CLAUDE.md', _claudeMdContent);

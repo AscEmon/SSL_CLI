@@ -71,8 +71,11 @@ class PubspecEdit {
           }
         }
 
-        // Add dev_dependencies for Riverpod if selected
-        if (patternNumber == "4" && stateManagement == "1") {
+        // Add dev_dependencies for clean architecture.
+        // build_runner + envied_generator are required by envied code
+        // generation for BOTH Riverpod and Bloc. riverpod_lint is Riverpod-only.
+        if (patternNumber == "4" &&
+            (stateManagement == "1" || stateManagement == "2")) {
           int devDepsIndex = lines.indexOf('dev_dependencies:');
           if (devDepsIndex != -1) {
             // Find the last dev dependency
@@ -81,10 +84,13 @@ class PubspecEdit {
                 lines[lastDevDepIndex].startsWith('  ')) {
               lastDevDepIndex++;
             }
-            // Insert Riverpod dev dependencies
-            lines.insert(lastDevDepIndex, '  build_runner: ^2.13.1');
-            lines.insert(lastDevDepIndex + 1, '  envied_generator: ^1.3.1');
-            lines.insert(lastDevDepIndex + 2, '  riverpod_lint: ^3.1.3');
+            // Shared: envied code generation needs these regardless of state mgmt
+            lines.insert(lastDevDepIndex++, '  build_runner: ^2.13.1');
+            lines.insert(lastDevDepIndex++, '  envied_generator: ^1.3.1');
+            // Riverpod-only analyzer plugin
+            if (stateManagement == "1") {
+              lines.insert(lastDevDepIndex++, '  riverpod_lint: ^3.1.3');
+            }
           }
         }
 
