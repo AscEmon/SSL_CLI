@@ -76,21 +76,19 @@ class CleanModuleImplFileCreator implements CleanModuleIFileCreator {
   ) async {
     print('Creating domain layer files...');
 
-    // Entity
+    // Entity — non-nullable with defaults, Equatable, no fromJson. The
+    // repository maps the wire DTO into this. Entities never extend models.
     await _createFile(
       '$basePath/domain/entities',
-      singularModuleName,
+      '${singularModuleName}_entity',
       content: '''import 'package:equatable/equatable.dart';
 
-/// $singularClassName entity - Represents $singularModuleName in the business domain
-class $singularClassName extends Equatable {
+/// $singularClassName domain entity — non-nullable with defaults.
+class ${singularClassName}Entity extends Equatable {
   final int id;
-  // Add your entity properties here
+  // Add your entity properties here (all with defaults)
 
-  const $singularClassName({
-    required this.id,
-
-  });
+  const ${singularClassName}Entity({this.id = 0});
 
   @override
   List<Object?> get props => [id];
@@ -105,12 +103,12 @@ class $singularClassName extends Equatable {
       content: '''import 'package:dartz/dartz.dart';
 
 import '/core/error/failures.dart';
-import '/features/$moduleName/domain/entities/$singularModuleName.dart';
+import '/features/$moduleName/domain/entities/${singularModuleName}_entity.dart';
 
 /// Repository interface for $singularModuleName functionality
 abstract class ${singularClassName}Repository {
   /// Get list of ${moduleName}
-  Future<Either<Failure, List<$singularClassName>>> get${className}();
+  Future<Either<Failure, List<${singularClassName}Entity>>> get${className}();
 }
 ''',
     );
@@ -123,17 +121,17 @@ abstract class ${singularClassName}Repository {
 
 import '/core/error/failures.dart';
 import '/core/usecases/usecase.dart';
-import '/features/$moduleName/domain/entities/$singularModuleName.dart';
+import '/features/$moduleName/domain/entities/${singularModuleName}_entity.dart';
 import '/features/$moduleName/domain/repositories/${singularModuleName}_repository.dart';
 
 /// Use case for getting $moduleName
-class Get${className} implements UseCase<List<$singularClassName>, NoParams> {
+class Get${className} implements UseCase<List<${singularClassName}Entity>, NoParams> {
   final ${singularClassName}Repository _repository;
 
   Get${className}(this._repository);
 
   @override
-  Future<Either<Failure, List<$singularClassName>>> call(NoParams params) async {
+  Future<Either<Failure, List<${singularClassName}Entity>>> call(NoParams params) async {
     return await _repository.get${className}();
   }
 }
@@ -149,51 +147,63 @@ class Get${className} implements UseCase<List<$singularClassName>, NoParams> {
   ) async {
     print('Creating data layer files...');
 
-    // Model
+    // Response DTO — nullable, SafeJson, autoSafe.raw top-level only; does NOT
+    // extend the entity. The repository maps it to the entity.
     await _createFile(
       '$basePath/data/models',
-      '${singularModuleName}_model',
-      content:
-          '''import '/features/$moduleName/domain/entities/$singularModuleName.dart';
+      '${singularModuleName}_response',
+      content: '''import 'package:autosafe_json/autosafe_json.dart';
 
-/// Model class for $singularClassName that extends the domain entity
-class ${singularClassName}Model extends $singularClassName {
-  const ${singularClassName}Model({
-    required super.id,
-  });
+/// Wire DTO for $singularClassName. All fields nullable, decoded with SafeJson.
+/// Mapped to ${singularClassName}Entity in the repository. Models never extend entities.
+class ${singularClassName}Response {
+  final List<${singularClassName}Data>? results;
 
-  /// Create a ${singularClassName}Model from JSON
-  factory ${singularClassName}Model.fromJson(Map<String, dynamic> json) {
-    return ${singularClassName}Model(
-      id: json['id'] as int,
-    
+  ${singularClassName}Response({this.results});
+
+  factory ${singularClassName}Response.fromJson(Map<String, dynamic> json) {
+    json = json.autoSafe.raw; // top-level sanitise only
+    return ${singularClassName}Response(
+      results: json['results'] == null || json['results'] == ''
+          ? []
+          : List<${singularClassName}Data>.from(
+              SafeJson.asList(json['results'])
+                  .map((x) => ${singularClassName}Data.fromJson(SafeJson.asMap(x))),
+            ),
     );
   }
 
-  /// Convert ${singularClassName}Model to JSON
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-     
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'results': results == null
+            ? []
+            : List<dynamic>.from(results!.map((x) => x.toJson())),
+      };
+}
+
+class ${singularClassName}Data {
+  final int? id;
+
+  ${singularClassName}Data({this.id});
+
+  factory ${singularClassName}Data.fromJson(Map<String, dynamic> json) =>
+      ${singularClassName}Data(id: SafeJson.asInt(json['id']));
+
+  Map<String, dynamic> toJson() => {'id': id};
 }
 ''',
     );
 
-    // Remote DataSource
+    // Remote DataSource — returns the DTO
     await _createFile(
       '$basePath/data/datasources',
       '${singularModuleName}_remote_datasource',
-      content: '''
-import '/core/network/api_client.dart';
-import '/features/$moduleName/data/models/${singularModuleName}_model.dart';
+      content: '''import '/core/network/api_client.dart';
+import '/features/$moduleName/data/models/${singularModuleName}_response.dart';
 
 /// Interface for $singularModuleName remote data source
 abstract class ${singularClassName}RemoteDataSource {
   /// Get $moduleName from the remote API
-  Future<List<${singularClassName}Model>> get${className}();
-
+  Future<${singularClassName}Response> get${className}();
 }
 
 /// Implementation of $singularModuleName remote data source
@@ -204,58 +214,55 @@ class ${singularClassName}RemoteDataSourceImpl implements ${singularClassName}Re
       : _apiClient = apiClient;
 
   @override
-  Future<List<${singularClassName}Model>> get${className}() async {
+  Future<${singularClassName}Response> get${className}() async {
     try {
       final response = await _apiClient.request(
-        endpoint: '/${moduleName}s', // Update with your API endpoint
+        endpoint: '/$moduleName', // TODO: set your API endpoint
         method: HttpMethod.get,
       );
-
-      final List<dynamic> data = response as List<dynamic>;
-      return data.map((json) => ${singularClassName}Model.fromJson(json)).toList();
-    }  catch (e) {
-     rethrow;
+      return ${singularClassName}Response.fromJson(response);
+    } catch (e) {
+      rethrow;
     }
   }
-
 }
 ''',
     );
 
-    // Local DataSource
+    // Local DataSource — caches the DTO items
     await _createFile(
       '$basePath/data/datasources',
       '${singularModuleName}_local_datasource',
       content:
-          '''import '/features/$moduleName/data/models/${singularModuleName}_model.dart';
+          '''import '/features/$moduleName/data/models/${singularModuleName}_response.dart';
 
 /// Interface for $singularModuleName local data source
 abstract class ${singularClassName}LocalDataSource {
   /// Get cached $moduleName
-  Future<List<${singularClassName}Model>> get$className();
+  Future<List<${singularClassName}Data>> get${className}();
 
-  /// Cache a single $singularModuleName
-  Future<void> cache$singularClassName (${singularClassName}Model $singularModuleName);
+  /// Cache $moduleName
+  Future<void> cache${className}(List<${singularClassName}Data> $moduleName);
 }
 
 /// Implementation of $singularModuleName local data source
 class ${singularClassName}LocalDataSourceImpl implements ${singularClassName}LocalDataSource {
-  // TODO: Implement local caching using SharedPreferences, Hive, or other storage
+  List<${singularClassName}Data> _cached = [];
 
   @override
-  Future<List<${singularClassName}Model>> get$className() async {
-    throw UnimplementedError();
+  Future<List<${singularClassName}Data>> get${className}() async {
+    return _cached;
   }
 
   @override
-  Future<void> cache$singularClassName (${singularClassName}Model $singularModuleName) async {
-    throw UnimplementedError();
+  Future<void> cache${className}(List<${singularClassName}Data> $moduleName) async {
+    _cached = $moduleName;
   }
 }
 ''',
     );
 
-    // Repository Implementation
+    // Repository Implementation — maps DTO -> entity
     await _createFile(
       '$basePath/data/repositories',
       '${singularModuleName}_repository_impl',
@@ -265,7 +272,7 @@ import '../../../../core/error/exception_handler.dart';
 import '/core/error/failures.dart';
 import '/features/$moduleName/data/datasources/${singularModuleName}_local_datasource.dart';
 import '/features/$moduleName/data/datasources/${singularModuleName}_remote_datasource.dart';
-import '/features/$moduleName/domain/entities/$singularModuleName.dart';
+import '/features/$moduleName/domain/entities/${singularModuleName}_entity.dart';
 import '/features/$moduleName/domain/repositories/${singularModuleName}_repository.dart';
 
 /// Implementation of ${singularClassName}Repository
@@ -279,16 +286,16 @@ class ${singularClassName}RepositoryImpl implements ${singularClassName}Reposito
   })  : _remoteDataSource = remoteDataSource,
         _localDataSource = localDataSource;
 
-
   @override
-  Future<Either<Failure, List<$singularClassName>>> get${className}() async {
+  Future<Either<Failure, List<${singularClassName}Entity>>> get${className}() async {
     return handleException(() async {
-        final remote${className} = await _remoteDataSource.get${className}();
-        await _localDataSource.cache${singularClassName}(remote${className}.first);
-        return  remote${className};
-      });
+      final response = await _remoteDataSource.get${className}();
+      final items = response.results ?? [];
+      await _localDataSource.cache${className}(items);
+      // Explicit DTO -> entity mapping with ?? fallbacks.
+      return items.map((e) => ${singularClassName}Entity(id: e.id ?? 0)).toList();
+    });
   }
-
 }
 ''',
     );
@@ -380,54 +387,73 @@ class ${singularClassName}Widget extends StatelessWidget {
     await _createFile(
       '$basePath/presentation/providers/state',
       '${singularModuleName}_state',
-      content: '''
-import 'package:flutter/material.dart';
-import 'package:equatable/equatable.dart';
-import '../../../../../core/error/failures.dart';
+      content: '''import 'package:equatable/equatable.dart';
+import 'package:flutter/foundation.dart';
+
+import '/core/error/failures.dart';
+import '/features/$moduleName/domain/entities/${singularModuleName}_entity.dart';
 
 @immutable
 class ${singularClassName}State extends Equatable {
   final bool isLoading;
+  final List<${singularClassName}Entity> ${moduleName};
   final Failure? failure;
 
   const ${singularClassName}State({
     this.isLoading = false,
+    this.${moduleName} = const [],
     this.failure,
   });
 
   ${singularClassName}State copyWith({
     bool? isLoading,
+    List<${singularClassName}Entity>? ${moduleName},
     Failure? failure,
   }) {
     return ${singularClassName}State(
       isLoading: isLoading ?? this.isLoading,
+      ${moduleName}: ${moduleName} ?? this.${moduleName},
       failure: failure,
     );
   }
 
   @override
-  List<Object?> get props => [isLoading, failure];
+  List<Object?> get props => [isLoading, ${moduleName}, failure];
 }
 ''',
     );
 
-    // Provider
+    // Notifier + Provider (no code generation)
     await _createFile(
       '$basePath/presentation/providers',
       '${singularModuleName}_provider',
-      content: '''
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+      content: '''import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/di/service_locator.dart';
+import '/core/usecases/usecase.dart';
+import '/features/$moduleName/domain/usecases/get_$moduleName.dart';
 import '/features/$moduleName/presentation/providers/state/${singularModuleName}_state.dart';
 
-part '${singularModuleName}_provider.g.dart';
-
-@riverpod
-class ${singularClassName}Notifier extends _\$${singularClassName}Notifier {
+class ${singularClassName}Notifier extends Notifier<${singularClassName}State> {
   @override
-  FutureOr<${singularClassName}State> build() {
+  ${singularClassName}State build() {
     return const ${singularClassName}State();
   }
+
+  Future<void> get${className}() async {
+    state = state.copyWith(isLoading: true);
+    final result = await sl<Get${className}>().call(NoParams());
+    result.fold(
+      (failure) => state = state.copyWith(isLoading: false, failure: failure),
+      (data) => state = state.copyWith(isLoading: false, ${moduleName}: data),
+    );
+  }
 }
+
+final ${singularModuleName}NotifierProvider =
+    NotifierProvider<${singularClassName}Notifier, ${singularClassName}State>(
+  ${singularClassName}Notifier.new,
+);
 ''',
     );
   }
@@ -446,7 +472,7 @@ class ${singularClassName}Notifier extends _\$${singularClassName}Notifier {
       '${singularModuleName}_state',
       content: '''import 'package:equatable/equatable.dart';
 
-import '/features/$moduleName/domain/entities/$singularModuleName.dart';
+import '/features/$moduleName/domain/entities/${singularModuleName}_entity.dart';
 
 /// State for $singularClassName
 sealed class ${singularClassName}State extends Equatable {
@@ -465,7 +491,7 @@ class ${singularClassName}Loading extends ${singularClassName}State {
 }
 
 class ${singularClassName}Loaded extends ${singularClassName}State {
-  final List<$singularClassName> $moduleName;
+  final List<${singularClassName}Entity> $moduleName;
   
   const ${singularClassName}Loaded(this.$moduleName);
   
@@ -508,22 +534,46 @@ class Refresh${className} extends ${singularClassName}Event {
 ''',
     );
 
-    // Bloc
+    // Bloc — resolves the use case via sl and folds the Either into state
     await _createFile(
       '$basePath/presentation/bloc',
       '${singularModuleName}_bloc',
       content: '''import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '/core/di/service_locator.dart';
+import '/core/usecases/usecase.dart';
+import '/features/$moduleName/domain/usecases/get_$moduleName.dart';
 import '/features/$moduleName/presentation/bloc/event/${singularModuleName}_event.dart';
 import '/features/$moduleName/presentation/bloc/state/${singularModuleName}_state.dart';
 
 class ${singularClassName}Bloc extends Bloc<${singularClassName}Event, ${singularClassName}State> {
   ${singularClassName}Bloc() : super(const ${singularClassName}Initial()) {
- 
+    on<Load${className}>(_onLoad);
+    on<Refresh${className}>(_onRefresh);
   }
 
- 
+  Future<void> _onLoad(
+    Load${className} event,
+    Emitter<${singularClassName}State> emit,
+  ) async {
+    emit(const ${singularClassName}Loading());
+    try {
+      final result = await sl<Get${className}>()(NoParams());
+      result.fold(
+        (failure) => emit(${singularClassName}Error(failure.message)),
+        (data) => emit(${singularClassName}Loaded(data)),
+      );
+    } catch (e) {
+      emit(${singularClassName}Error(e.toString()));
+    }
+  }
 
+  Future<void> _onRefresh(
+    Refresh${className} event,
+    Emitter<${singularClassName}State> emit,
+  ) async {
+    await _onLoad(Load${className}(), emit);
+  }
 }
 ''',
     );
@@ -545,7 +595,10 @@ class ${singularClassName}Bloc extends Bloc<${singularClassName}Event, ${singula
     }
 
     try {
-      final file = await File('$basePath/$fileName.$fileType').create();
+      // recursive: true also creates any missing parent directories.
+      final file = await File(
+        '$basePath/$fileName.$fileType',
+      ).create(recursive: true);
 
       if (content != null) {
         final writer = file.openWrite();

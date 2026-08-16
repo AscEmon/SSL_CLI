@@ -36,38 +36,46 @@ class PubspecEdit {
 
       if (indexOfCupertinoIcons != -1) {
         // Add lines for dio and shared_preferences after 'cupertino_icons: ^1.0.2'
-        lines.insert(indexOfCupertinoIcons + 1, '  dio: ^5.9.0');
-        lines.insert(indexOfCupertinoIcons + 2, '  shared_preferences: ^2.5.3');
+        lines.insert(indexOfCupertinoIcons + 1, '  dio: ^5.9.2');
+        lines.insert(
+          indexOfCupertinoIcons + 2,
+          '  flutter_secure_storage: ^10.0.0',
+        );
         lines.insert(indexOfCupertinoIcons + 3, '  intl: ^0.20.2');
-        lines.insert(indexOfCupertinoIcons + 4, '  connectivity_plus: ^7.0.0');
+        lines.insert(indexOfCupertinoIcons + 4, '  connectivity_plus: ^7.1.1');
         lines.insert(indexOfCupertinoIcons + 5, '  flutter_screenutil: ^5.9.3');
-        lines.insert(indexOfCupertinoIcons + 6, '  package_info_plus: ^9.0.0');
-        lines.insert(indexOfCupertinoIcons + 7, '  flutter_svg: ^2.2.1');
-        lines.insert(indexOfCupertinoIcons + 8, '  google_fonts: ^6.2.1');
+        lines.insert(indexOfCupertinoIcons + 6, '  package_info_plus: ^9.0.1');
+        lines.insert(indexOfCupertinoIcons + 7, '  flutter_svg: ^2.2.4');
+        lines.insert(indexOfCupertinoIcons + 8, '  google_fonts: ^8.0.2');
         if (patternNumber != null && patternNumber == "3") {
           // for bloc pattern
-          lines.insert(indexOfCupertinoIcons + 9, '  flutter_bloc: ^8.1.6');
+          lines.insert(indexOfCupertinoIcons + 9, '  flutter_bloc: ^9.1.1');
         }
         if (patternNumber != null && patternNumber == "4") {
           // for clean architecture pattern
           int currentIndex = indexOfCupertinoIcons + 9;
-          lines.insert(currentIndex++, '  equatable: ^2.0.7');
+          lines.insert(currentIndex++, '  equatable: ^2.0.8');
           lines.insert(currentIndex++, '  dartz: ^0.10.1');
-          lines.insert(currentIndex++, '  get_it: ^8.2.0');
+          lines.insert(currentIndex++, '  get_it: ^9.2.1');
 
           // Add state management specific packages
+          lines.insert(currentIndex++, '  autosafe_json: ^1.0.0');
+          lines.insert(currentIndex++, '  envied: ^1.3.0');
+
           if (stateManagement == "1") {
             // Riverpod
-            lines.insert(currentIndex++, '  flutter_riverpod: ^3.0.1');
-            lines.insert(currentIndex++, '  riverpod_annotation: ^3.0.1');
+            lines.insert(currentIndex++, '  flutter_riverpod: ^3.3.1');
           } else if (stateManagement == "2") {
             // Bloc
-            lines.insert(currentIndex++, '  flutter_bloc: ^8.1.6');
+            lines.insert(currentIndex++, '  flutter_bloc: ^9.1.1');
           }
         }
 
-        // Add dev_dependencies for Riverpod if selected
-        if (patternNumber == "4" && stateManagement == "1") {
+        // Add dev_dependencies for clean architecture.
+        // build_runner + envied_generator are required by envied code
+        // generation for BOTH Riverpod and Bloc. riverpod_lint is Riverpod-only.
+        if (patternNumber == "4" &&
+            (stateManagement == "1" || stateManagement == "2")) {
           int devDepsIndex = lines.indexOf('dev_dependencies:');
           if (devDepsIndex != -1) {
             // Find the last dev dependency
@@ -76,11 +84,13 @@ class PubspecEdit {
                 lines[lastDevDepIndex].startsWith('  ')) {
               lastDevDepIndex++;
             }
-            // Insert Riverpod dev dependencies
-            lines.insert(lastDevDepIndex, '  build_runner: ^2.4.8');
-            lines.insert(lastDevDepIndex + 1, '  riverpod_generator: ^3.0.1');
-            lines.insert(lastDevDepIndex + 2, '  custom_lint: ^0.8.0');
-            lines.insert(lastDevDepIndex + 3, '  riverpod_lint: ^3.0.1');
+            // Shared: envied code generation needs these regardless of state mgmt
+            lines.insert(lastDevDepIndex++, '  build_runner: ^2.13.1');
+            lines.insert(lastDevDepIndex++, '  envied_generator: ^1.3.1');
+            // Riverpod-only analyzer plugin
+            if (stateManagement == "1") {
+              lines.insert(lastDevDepIndex++, '  riverpod_lint: ^3.1.3');
+            }
           }
         }
 

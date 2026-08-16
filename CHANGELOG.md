@@ -460,3 +460,47 @@
 - Updated dependency injection to remove NetworkInfo from ApiClient and repositories
 - Changed example feature from "products" to "homes" throughout the codebase
 - themebased asset handle using cli
+
+
+## 4.0.6
+- **`.claude` folder integration** — generates a complete `.claude/` directory on project creation:
+  - `.claude/AI_CODING_RULES.md` — strict coding rules, patterns, and conventions for AI agents
+  - `.claude/docs/SECURITY.md` — comprehensive secret management guide (envied + setup script + CI/CD)
+  - `.claude/scripts/setup_secrets.sh` — reads `.env` and generates `key.properties`, `Secret.xcconfig`, decodes base64 JKS & Firebase configs
+  - `.claude/settings.local.json` — pre-configured Claude Code permissions for CLI tools
+  - `CLAUDE.md` — root-level AI entry point with project context, architecture overview, and development pipeline
+- **`flutter_secure_storage` replaces `shared_preferences`** in Clean Architecture template:
+  - `PrefHelper` now uses `FlutterSecureStorage` for encrypted key-value storage
+  - In-memory cache layer for synchronous read access while writes go to secure storage
+  - Same public API maintained — no breaking changes for consuming code
+- **`envied` integration** for secret management:
+  - `.env` / `.env.example` files generated with all common secret fields (API URLs, Maps key, payment keys, keystore credentials, Firebase base64 configs)
+  - `lib/core/config/env.dart` generated with `@Envied(obfuscate: true)` — all secrets XOR-obfuscated at compile time
+  - `env.g.dart` auto-generated via `build_runner` and gitignored
+  - API URLs in `api_urls.dart` now read from `Env.*` instead of hardcoded strings
+- **Removed `custom_lint`** from generated `pubspec.yaml` dev_dependencies (redundant with `riverpod_lint` 3.x using `analysis_server_plugin` directly)
+- Updated `.gitignore` template to cover all secret file patterns (`.env`, `key.properties`, `*.jks`, `env.g.dart`, `google-services.json`, etc.)
+- `pubspec_edit.dart` updated to add `flutter_secure_storage`, `envied`, and `envied_generator` packages automatically
+
+
+## 4.0.7
+- **State management selection for Clean Architecture** — `ssl_cli create` (pattern 4) and `ssl_cli module` (pattern 3) now prompt for state management: `1` for Riverpod, `2` for Bloc. All generation below is gated on this choice; the Riverpod path is unchanged in behavior.
+- **`flutter_bloc` scaffolding** (when Bloc is selected):
+  - Sealed `Event` / `State` classes + a `Bloc` wired to the use case via `sl<GetHomes>()` and `result.fold(...) → emit(...)`
+  - Feature `bloc/` folder layout (`bloc/`, `bloc/event/`, `bloc/state/`) and a `BlocBuilder`-driven page
+  - `flutter_bloc` added to `dependencies`; `build_runner` + `envied_generator` added to `dev_dependencies` (previously only added for Riverpod, so envied code-gen now works for Bloc too)
+- **Centralized Bloc architecture** ("register once, scale to many modules"):
+  - Blocs registered as `sl.registerFactory(...)` in `service_locator.dart`
+  - New `core/bloc/global_bloc_providers.dart` — single list of app-wide blocs, provided at the root via `MultiBlocProvider` in `main.dart`
+  - Feature blocs provided at the route level in `app_routes.dart` (`BlocProvider(create: (_) => sl<XBloc>())`) and for the initial page in `main.dart` — created on navigation, disposed on pop
+- **Full AI-guidance docs generated for BOTH state managements** (replaces the older single `AI_CODING_RULES.md` set):
+  - `AGENTS.md` + `CLAUDE.md` (universal-rules + `@AGENTS.md` import style) + `.claude/{rules,skills,docs,hooks,scripts,mcp,settings.json}`
+  - Bloc → flutter_bloc doc set; generated `.claude/settings.json` ships empty `permissions` with the security guard `hooks` retained
+  - Riverpod → full Riverpod doc set (rules, skills, hooks, scripts, MCP), shell hooks/scripts marked executable
+- **Clean data→domain pattern is now the default for both Riverpod and Bloc** (state-management agnostic, per `clean_architecture_pattern.md`):
+  - Entity is `*_entity.dart` with non-nullable **default** fields (no `required`), and never has `fromJson`
+  - Wire DTO is `*_response.dart` decoded with `SafeJson.as*` + `json.autoSafe.raw` (top-level) and **does not extend the entity**
+  - Repository performs explicit field-by-field **DTO → entity mapping** with `?? default` fallbacks
+  - Applied to both `ssl_cli create` and `ssl_cli module`
+- **Fix:** file writer now creates missing parent directories recursively (`File.create(recursive: true)`) in both the project and module creators — previously a new output folder (e.g. `core/bloc`) caused generation to abort with `exit(2)` before the `.claude`/docs step
+- **Fix:** the generated Bloc in `ssl_cli module` is no longer empty — it now registers `on<Load…>` / `on<Refresh…>` handlers and calls the use case

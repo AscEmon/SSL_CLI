@@ -4,6 +4,8 @@ import 'package:ssl_cli/utils/enum.dart';
 import 'package:ssl_cli/utils/extension.dart';
 
 import '../clean_i_creators.dart';
+import 'bloc_ai_docs_creator.dart';
+import 'riverpod_ai_docs_creator.dart';
 
 class CleanImplFileCreator implements IFileCreator {
   final IDirectoryCreator directoryCreator;
@@ -41,14 +43,45 @@ class CleanImplFileCreator implements IFileCreator {
     // Create analysis_options.yaml
     await _createAnalysisOptionsFile();
 
+    // Create .env and .env.example
+    await _createEnvFiles();
+
+    // Create lib/core/config/env.dart for envied
+    await _createEnvConfigFile();
+
+    // Create .claude folder with AI rules and security docs
+    await _createClaudeFolderFiles();
+
     'All Clean Architecture files created successfully!'.printWithColor(
       status: PrintType.success,
     );
+
+    // Generate env.g.dart so envied is ready before first run
+    'Running build_runner to generate env.g.dart...'.printWithColor(
+      status: PrintType.warning,
+    );
+    final buildResult = Process.runSync('dart', [
+      'run',
+      'build_runner',
+      'build',
+      '--delete-conflicting-outputs',
+    ]);
+    if (buildResult.exitCode == 0) {
+      'env.g.dart generated successfully'.printWithColor(
+        status: PrintType.success,
+      );
+    } else {
+      'build_runner warning: ${buildResult.stderr}'.printWithColor(
+        status: PrintType.warning,
+      );
+    }
   }
 
   Future<void> _createCoreFiles(String corePath) async {
     // Constants
     await _createFile('$corePath/constants', 'api_urls', '''
+import '/core/config/env.dart';
+
 enum UrlLink { isLive, isDev, isLocalServer }
 
 enum ApiUrl { base, baseImage, homes }
@@ -60,15 +93,15 @@ extension ApiUrlExtention on ApiUrl {
   static void setUrl(UrlLink urlLink) {
     switch (urlLink) {
       case UrlLink.isLive:
-        _baseUrl = '';
-        _baseImageUrl = '';
+        _baseUrl = Env.baseUrlLive;
+        _baseImageUrl = Env.baseImageUrlLive;
         break;
       case UrlLink.isDev:
-        _baseUrl = '';
-        _baseImageUrl = '';
+        _baseUrl = Env.baseUrlDev;
+        _baseImageUrl = Env.baseImageUrlDev;
         break;
       case UrlLink.isLocalServer:
-        _baseUrl = '';
+        _baseUrl = Env.baseUrlLocal;
         break;
     }
   }
@@ -421,17 +454,25 @@ class GlobalResponse {
 }
 ''');
 
+    // Bloc: feature blocs are provided at the route level (created on
+    // navigation, disposed on pop) via BlocProvider + sl.
+    final routesBlocImports = stateManagement == "2"
+        ? "import 'package:flutter_bloc/flutter_bloc.dart';\nimport '/core/di/service_locator.dart';\nimport '../../features/homes/presentation/bloc/home_bloc.dart';\n"
+        : "";
+    final homeRouteWidget = stateManagement == "2"
+        ? "return BlocProvider(\n          create: (_) => sl<HomeBloc>(),\n          child: const HomePage(),\n        );"
+        : "return const HomePage();";
     await _createFile('$corePath/routes', 'app_routes', '''
 import 'package:flutter/material.dart';
 import '../../features/homes/presentation/pages/home_page.dart';
-
+$routesBlocImports
 enum AppRoutes { home }
 
 extension AppRoutesExtention on AppRoutes {
   Widget buildWidget<T extends Object>({T? arguments}) {
     switch (this) {
       case AppRoutes.home:
-        return const HomePage();
+        $homeRouteWidget
     }
   }
 }
@@ -1550,18 +1591,23 @@ class Validators {
 ''');
 
     // Utils
-    await _createFile(
-      '$corePath/utils',
-      'preferences_helper',
-      '''import 'package:shared_preferences/shared_preferences.dart';
+    await _createFile('$corePath/utils', 'preferences_helper', '''
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import '../constants/app_constants.dart';
 
-/// Singleton class for managing SharedPreferences
+/// Singleton class for managing secure storage
+/// Uses FlutterSecureStorage under the hood but maintains the same
+/// synchronous read API by pre-loading all values into an in-memory cache.
 /// Located in core/utils as it's shared across all features
 class PrefHelper {
   static PrefHelper? _instance;
-  static SharedPreferences? _preferences;
+  static const FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+
+  /// In-memory cache so that getters remain synchronous.
+  /// All writes go through to secure storage AND update this cache.
+  static Map<String, String> _cache = {};
 
   // Private constructor
   PrefHelper._();
@@ -1572,75 +1618,102 @@ class PrefHelper {
     return _instance!;
   }
 
-  /// Initialize SharedPreferences
+  /// Initialize secure storage cache
   /// Call this in main() before runApp()
   static Future<void> init() async {
-    _preferences = await SharedPreferences.getInstance();
+    _cache = await _secureStorage.readAll();
   }
 
   // String operations
   Future<bool> setString(String key, String value) async {
-    return await _preferences!.setString(key, value);
+    try {
+      await _secureStorage.write(key: key, value: value);
+      _cache[key] = value;
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   String getString(String key, {String defaultValue = ''}) {
-    return _preferences!.getString(key) ?? defaultValue;
+    return _cache[key] ?? defaultValue;
   }
 
   // Int operations
   Future<bool> setInt(String key, int value) async {
-    return await _preferences!.setInt(key, value);
+    return setString(key, value.toString());
   }
 
   int getInt(String key, {int defaultValue = 0}) {
-    return _preferences!.getInt(key) ?? defaultValue;
+    final value = _cache[key];
+    if (value == null) return defaultValue;
+    return int.tryParse(value) ?? defaultValue;
   }
 
   // Bool operations
   Future<bool> setBool(String key, bool value) async {
-    return await _preferences!.setBool(key, value);
+    return setString(key, value.toString());
   }
 
   bool getBool(String key, {bool defaultValue = false}) {
-    return _preferences!.getBool(key) ?? defaultValue;
+    final value = _cache[key];
+    if (value == null) return defaultValue;
+    return value == 'true';
   }
 
   // Double operations
   Future<bool> setDouble(String key, double value) async {
-    return await _preferences!.setDouble(key, value);
+    return setString(key, value.toString());
   }
 
   double getDouble(String key, {double defaultValue = 0.0}) {
-    return _preferences!.getDouble(key) ?? defaultValue;
+    final value = _cache[key];
+    if (value == null) return defaultValue;
+    return double.tryParse(value) ?? defaultValue;
   }
 
   // List<String> operations
   Future<bool> setStringList(String key, List<String> value) async {
-    return await _preferences!.setStringList(key, value);
+    // Store as a joined string with a delimiter unlikely to appear in data
+    return setString(key, value.join('┃'));
   }
 
   List<String> getStringList(String key, {List<String>? defaultValue}) {
-    return _preferences!.getStringList(key) ?? defaultValue ?? [];
+    final value = _cache[key];
+    if (value == null || value.isEmpty) return defaultValue ?? [];
+    return value.split('┃');
   }
 
   // Remove a key
   Future<bool> remove(String key) async {
-    return await _preferences!.remove(key);
+    try {
+      await _secureStorage.delete(key: key);
+      _cache.remove(key);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // Clear all preferences
   Future<bool> clear() async {
-    return await _preferences!.clear();
+    try {
+      await _secureStorage.deleteAll();
+      _cache.clear();
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // Check if key exists
   bool containsKey(String key) {
-    return _preferences!.containsKey(key);
+    return _cache.containsKey(key);
   }
 
   // Get all keys
   Set<String> getKeys() {
-    return _preferences!.getKeys();
+    return _cache.keys.toSet();
   }
 
   // Custom method for language (example)
@@ -1656,8 +1729,7 @@ class PrefHelper {
   }
 }
 
-''',
-    );
+''');
 
     await _createFile('$corePath/utils', 'extension', '''
 import 'dart:developer' as darttools show log;
@@ -2002,6 +2074,13 @@ class NoParams extends Equatable {
     );
 
     // DI
+    // Bloc: register HomeBloc as a factory (new instance per screen/route).
+    final blocDiImport = stateManagement == "2"
+        ? "import '/features/homes/presentation/bloc/home_bloc.dart';\n"
+        : "";
+    final blocDiRegistration = stateManagement == "2"
+        ? "\n  // Blocs (factory — one fresh instance per screen/route)\n  sl.registerFactory(() => HomeBloc());\n"
+        : "";
     await _createFile('$corePath/di', 'service_locator', '''
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
@@ -2014,7 +2093,7 @@ import '/features/homes/data/datasources/home_remote_datasource.dart';
 import '/features/homes/data/datasources/home_local_datasource.dart';
 import '/features/homes/data/repositories/home_repository_impl.dart';
 import '/features/homes/domain/repositories/home_repository.dart';
-
+$blocDiImport
 final sl = GetIt.instance;
 
 Future<void> initDependencies() async {
@@ -2042,9 +2121,29 @@ Future<void> initDependencies() async {
     () => HomeRepositoryImpl(remoteDataSource: sl(), localDataSource: sl()),
   );
   sl.registerLazySingleton(() => GetHomes(sl()));
-}
+$blocDiRegistration}
 
 ''');
+
+    // Bloc: single place to register app-wide (global) blocs.
+    if (stateManagement == "2") {
+      await _createFile('$corePath/bloc', 'global_bloc_providers', '''
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+/// App-wide blocs that must live for the whole app lifecycle
+/// (e.g. Auth, Theme, Connectivity). Provided once at the root via
+/// MultiBlocProvider in main.dart.
+///
+/// Feature/screen-scoped blocs must NOT go here — provide those at the route
+/// level with `BlocProvider(create: (_) => sl<XBloc>())` in app_routes.dart so
+/// they are created on navigation and disposed when the screen is popped.
+List<BlocProvider> globalBlocProviders() => [
+      // Example:
+      // BlocProvider<AuthBloc>(create: (_) => sl<AuthBloc>()),
+      // BlocProvider<ThemeBloc>(create: (_) => sl<ThemeBloc>()),
+    ];
+''');
+    }
 
     await _createFile('$corePath/presentation/widgets', 'error_dialog', '''
 import 'package:flutter/material.dart';
@@ -3187,221 +3286,11 @@ class ViewUtil {
   Future<void> _createFeatureFiles(String featuresPath) async {
     final homesPath = '$featuresPath/homes';
 
-    // Domain - Entities
-    await _createFile(
-      '$homesPath/domain/entities',
-      'home',
-      '''import 'package:equatable/equatable.dart';
-class Home extends Equatable {
-  final int id;
-  const Home({
-    required this.id,
-  });
-
-  @override
-  List<Object?> get props => [id];
-}
-''',
-    );
-
-    // Domain - Repositories
-    await _createFile('$homesPath/domain/repositories', 'home_repository', '''
-import 'package:dartz/dartz.dart';
-
-import '/core/error/failures.dart';
-import '/features/homes/domain/entities/home.dart';
-
-/// Repository interface for Home functionality
-abstract class HomeRepository {
-  /// Get paginated list of Homes
-  Future<Either<Failure, List<Home>>> getHomes();
-}
-
-''');
-
-    // Domain - Usecases
-    await _createFile('$homesPath/domain/usecases', 'get_home', '''
-import 'package:dartz/dartz.dart';
-import '/core/error/failures.dart';
-import '/core/usecases/usecase.dart';
-import '/features/homes/domain/entities/home.dart';
-import '/features/homes/domain/repositories/home_repository.dart';
-
-/// Use case for getting paginated Homes
-class GetHomes implements UseCase<List<Home>, NoParams> {
-  final HomeRepository _repository;
-
-  GetHomes(this._repository);
-
-  @override
-  Future<Either<Failure, List<Home>>> call(NoParams params) async {
-    return await _repository.getHomes();
-  }
-}
-
-''');
-
-    // Data - Models
-    await _createFile(
-      '$homesPath/data/models',
-      'home_model',
-      '''
-import '../../domain/entities/home.dart';
-
-class HomeModel extends Home {
-  const HomeModel({
-    required super.id,
-  });
-
-  factory HomeModel.fromJson(Map<String, dynamic> json) {
-    return HomeModel(
-      id: json['id'] ?? 0,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-    };
-  }
-}
-
-''',
-    );
-
-    await _createFile(
-      '$homesPath/data/models',
-      'home_response',
-      '''
-import 'home_model.dart';
-
-class HomeResponse {
-  final List<HomeModel> homes;
-  final int total;
-
-  HomeResponse({required this.homes, required this.total});
-
-  factory HomeResponse.fromJson(Map<String, dynamic> json) {
-    return HomeResponse(
-      homes: (json['homes'] as List)
-          .map((item) => HomeModel.fromJson(item))
-          .toList(),
-      total: json['total'] ?? 0,
-    );
-  }
-}
-
-''',
-    );
-
-    // Data - Datasources
-    await _createFile(
-      '$homesPath/data/datasources',
-      'home_remote_datasource',
-      '''
-import '/core/network/api_client.dart';
-import '/core/constants/api_urls.dart';
-import '../models/home_model.dart';
-import '../models/home_response.dart';
-
-abstract class HomeRemoteDataSource {
-  Future<List<HomeModel>> getHomes();
-}
-
-class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
-  final ApiClient _apiClient;
-
-  HomeRemoteDataSourceImpl({required ApiClient apiClient})
-    : _apiClient = apiClient;
-
-  @override
-  Future<List<HomeModel>> getHomes() async {
-    try {
-      final response = await _apiClient.request(
-        endpoint: ApiUrl.homes.url,
-        method: HttpMethod.get,
-      );
-      final homeResponse = HomeResponse.fromJson(response);
-      return homeResponse.homes;
-    } catch (e) {
-      rethrow;
-    }
-  }
-}
-
-''',
-    );
-
-    await _createFile(
-      '$homesPath/data/datasources',
-      'home_local_datasource',
-      '''
-import '/core/error/exceptions.dart';
-import '../models/home_model.dart';
-
-abstract class HomeLocalDataSource {
-  Future<List<HomeModel>> getHomes();
-  Future<void> cacheHomes(List<HomeModel> homes);
-}
-
-class HomeLocalDataSourceImpl implements HomeLocalDataSource {
-  List<HomeModel> _cachedHomes = [];
-
-  @override
-  Future<List<HomeModel>> getHomes() async {
-    if (_cachedHomes.isEmpty) {
-      throw CacheException(message: 'No cached data');
-    }
-    return _cachedHomes;
-  }
-
-  @override
-  Future<void> cacheHomes(List<HomeModel> homes) async {
-    _cachedHomes = homes;
-  }
-}
-
-''',
-    );
-
-    // Data - Repositories
-    await _createFile(
-      '$homesPath/data/repositories',
-      'home_repository_impl',
-      '''
-import 'package:dartz/dartz.dart';
-
-import '/core/error/failures.dart';
-import '../../../../core/error/exception_handler.dart';
-import '../../domain/entities/home.dart';
-import '../../domain/repositories/home_repository.dart';
-import '../datasources/home_local_datasource.dart';
-import '../datasources/home_remote_datasource.dart';
-
-class HomeRepositoryImpl implements HomeRepository {
-  final HomeRemoteDataSource _remoteDataSource;
-  final HomeLocalDataSource _localDataSource;
-
-  HomeRepositoryImpl({
-    required HomeRemoteDataSource remoteDataSource,
-    required HomeLocalDataSource localDataSource,
-  }) : _remoteDataSource = remoteDataSource,
-       _localDataSource = localDataSource;
-
-  @override
-  Future<Either<Failure, List<Home>>> getHomes() async {
-    return handleException(() async {
-      final remoteHomes = await _remoteDataSource.getHomes();
-      await _localDataSource.cacheHomes(remoteHomes);
-      return remoteHomes;
-    });
-  }
-}
-
-
-
-''',
-    );
+    // Clean data→domain pattern for BOTH Riverpod and Bloc (state-management
+    // agnostic, per clean_architecture_pattern.md): entity with defaults, a
+    // response DTO that does NOT extend the entity, and DTO→entity mapping in
+    // the repository.
+    await _createFeatureDomainDataFiles(homesPath);
 
     // Presentation - State Management Files
     if (stateManagement == "2") {
@@ -3413,7 +3302,54 @@ class HomeRepositoryImpl implements HomeRepository {
     }
 
     // Presentation - Pages
-    await _createFile('$homesPath/presentation/pages', 'home_page', '''
+    if (stateManagement == "2") {
+      // Bloc page: dispatches LoadHomes in initState, rebuilds via BlocBuilder.
+      await _createFile('$homesPath/presentation/pages', 'home_page', '''
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '/core/presentation/widgets/global_appbar.dart';
+import '/core/presentation/widgets/global_text.dart';
+import '/core/presentation/widgets/global_loader.dart';
+import '../bloc/home_bloc.dart';
+import '../bloc/event/home_event.dart';
+import '../bloc/state/home_state.dart';
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<HomeBloc>().add(const LoadHomes());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: const GlobalAppBar(title: 'Home List'),
+      body: BlocBuilder<HomeBloc, HomeState>(
+        builder: (context, state) {
+          return switch (state) {
+            HomeLoading() ||
+            HomeInitial() => const Center(child: GlobalLoader()),
+            HomeError(:final message) => Center(child: GlobalText(str: message)),
+            HomeLoaded(:final homes) => Center(
+              child: GlobalText(str: 'Loaded \${homes.length} items'),
+            ),
+          };
+        },
+      ),
+    );
+  }
+}
+''');
+    } else {
+      await _createFile('$homesPath/presentation/pages', 'home_page', '''
 import 'package:flutter/material.dart';
 import '/core/presentation/widgets/global_appbar.dart';
 import '/core/presentation/widgets/global_text.dart';
@@ -3430,6 +3366,7 @@ class HomePage extends StatelessWidget {
   }
 }
 ''');
+    }
 
     // Presentation - Widgets
     await _createFile('$homesPath/presentation/widgets', 'widget', '''
@@ -3502,16 +3439,16 @@ class HomeNotifier extends Notifier<HomeState> {
   }
 
   Future<void> _createBlocPresentationFiles(String homesPath) async {
-    // State
+    // State — sealed, carries the entity in the loaded state
     await _createFile('$homesPath/presentation/bloc/state', 'home_state', '''
 import 'package:equatable/equatable.dart';
 
-import '/features/homes/domain/entities/home.dart';
+import '/features/homes/domain/entities/home_entity.dart';
 
 /// State for Home
 sealed class HomeState extends Equatable {
   const HomeState();
-  
+
   @override
   List<Object?> get props => [];
 }
@@ -3525,19 +3462,19 @@ class HomeLoading extends HomeState {
 }
 
 class HomeLoaded extends HomeState {
-  final List<Home> Homes;
-  
-  const HomeLoaded(this.Homes);
-  
+  final List<HomeEntity> homes;
+
+  const HomeLoaded(this.homes);
+
   @override
-  List<Object?> get props => [Homes];
+  List<Object?> get props => [homes];
 }
 
 class HomeError extends HomeState {
   final String message;
-  
+
   const HomeError(this.message);
-  
+
   @override
   List<Object?> get props => [message];
 }
@@ -3550,7 +3487,7 @@ import 'package:equatable/equatable.dart';
 /// Events for Home
 sealed class HomeEvent extends Equatable {
   const HomeEvent();
-  
+
   @override
   List<Object?> get props => [];
 }
@@ -3564,10 +3501,13 @@ class RefreshHomes extends HomeEvent {
 }
 ''');
 
-    // Bloc
+    // Bloc — resolves the use case via sl and folds the Either into state
     await _createFile('$homesPath/presentation/bloc', 'home_bloc', '''
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '/core/di/service_locator.dart';
+import '/core/usecases/usecase.dart';
+import '/features/homes/domain/usecases/get_home.dart';
 import '/features/homes/presentation/bloc/event/home_event.dart';
 import '/features/homes/presentation/bloc/state/home_state.dart';
 
@@ -3582,18 +3522,12 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     Emitter<HomeState> emit,
   ) async {
     emit(const HomeLoading());
-    
     try {
-      // TODO: Implement use case call
-      // final result = await _getHomesUseCase(NoParams());
-      
-      // result.fold(
-      //   (failure) => emit(HomeError(failure.message)),
-      //   (data) => emit(HomeLoaded(data)),
-      // );
-      
-      // Placeholder
-      emit(const HomeLoaded([]));
+      final result = await sl<GetHomes>()(NoParams());
+      result.fold(
+        (failure) => emit(HomeError(failure.message)),
+        (data) => emit(HomeLoaded(data)),
+      );
     } catch (e) {
       emit(HomeError(e.toString()));
     }
@@ -3610,6 +3544,207 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 ''');
   }
 
+  /// Clean data→domain generation shared by Riverpod and Bloc (the pattern is
+  /// state-management agnostic). Entity uses non-nullable defaults; the wire
+  /// DTO does NOT extend the entity; the repository maps DTO→entity.
+  Future<void> _createFeatureDomainDataFiles(String homesPath) async {
+    // Domain - Entity (non-nullable defaults, Equatable, no fromJson)
+    await _createFile('$homesPath/domain/entities', 'home_entity', '''
+import 'package:equatable/equatable.dart';
+
+/// Domain entity — non-nullable with defaults. The repository maps the
+/// HomeResponse/HomeData wire DTO into this. Entities never extend models.
+class HomeEntity extends Equatable {
+  final int id;
+
+  const HomeEntity({this.id = 0});
+
+  @override
+  List<Object?> get props => [id];
+}
+''');
+
+    // Domain - Repository contract
+    await _createFile('$homesPath/domain/repositories', 'home_repository', '''
+import 'package:dartz/dartz.dart';
+
+import '/core/error/failures.dart';
+import '/features/homes/domain/entities/home_entity.dart';
+
+abstract class HomeRepository {
+  Future<Either<Failure, List<HomeEntity>>> getHomes();
+}
+''');
+
+    // Domain - UseCase
+    await _createFile('$homesPath/domain/usecases', 'get_home', '''
+import 'package:dartz/dartz.dart';
+import '/core/error/failures.dart';
+import '/core/usecases/usecase.dart';
+import '/features/homes/domain/entities/home_entity.dart';
+import '/features/homes/domain/repositories/home_repository.dart';
+
+class GetHomes implements UseCase<List<HomeEntity>, NoParams> {
+  final HomeRepository _repository;
+
+  GetHomes(this._repository);
+
+  @override
+  Future<Either<Failure, List<HomeEntity>>> call(NoParams params) async {
+    return await _repository.getHomes();
+  }
+}
+''');
+
+    // Data - Response DTO (nullable, SafeJson, autoSafe.raw top-level only;
+    // does NOT extend the entity)
+    await _createFile('$homesPath/data/models', 'home_response', '''
+import 'package:autosafe_json/autosafe_json.dart';
+
+/// Wire DTO. All fields nullable, decoded with SafeJson. Mapped to HomeEntity
+/// inside the repository. Models never extend entities.
+class HomeResponse {
+  final List<HomeData>? results;
+
+  HomeResponse({this.results});
+
+  factory HomeResponse.fromJson(Map<String, dynamic> json) {
+    json = json.autoSafe.raw; // top-level sanitise only
+    return HomeResponse(
+      results: json['results'] == null || json['results'] == ''
+          ? []
+          : List<HomeData>.from(
+              SafeJson.asList(json['results'])
+                  .map((x) => HomeData.fromJson(SafeJson.asMap(x))),
+            ),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'results': results == null
+            ? []
+            : List<dynamic>.from(results!.map((x) => x.toJson())),
+      };
+}
+
+class HomeData {
+  final int? id;
+
+  HomeData({this.id});
+
+  factory HomeData.fromJson(Map<String, dynamic> json) =>
+      HomeData(id: SafeJson.asInt(json['id']));
+
+  Map<String, dynamic> toJson() => {'id': id};
+}
+''');
+
+    // Data - Remote datasource (returns the DTO)
+    await _createFile(
+      '$homesPath/data/datasources',
+      'home_remote_datasource',
+      '''
+import '/core/network/api_client.dart';
+import '/core/constants/api_urls.dart';
+import '../models/home_response.dart';
+
+abstract class HomeRemoteDataSource {
+  Future<HomeResponse> getHomes();
+}
+
+class HomeRemoteDataSourceImpl implements HomeRemoteDataSource {
+  final ApiClient _apiClient;
+
+  HomeRemoteDataSourceImpl({required ApiClient apiClient})
+    : _apiClient = apiClient;
+
+  @override
+  Future<HomeResponse> getHomes() async {
+    try {
+      final response = await _apiClient.request(
+        endpoint: ApiUrl.homes.url,
+        method: HttpMethod.get,
+      );
+      return HomeResponse.fromJson(response);
+    } catch (e) {
+      rethrow;
+    }
+  }
+}
+''',
+    );
+
+    // Data - Local datasource (caches the DTO items)
+    await _createFile(
+      '$homesPath/data/datasources',
+      'home_local_datasource',
+      '''
+import '/core/error/exceptions.dart';
+import '../models/home_response.dart';
+
+abstract class HomeLocalDataSource {
+  Future<List<HomeData>> getHomes();
+  Future<void> cacheHomes(List<HomeData> homes);
+}
+
+class HomeLocalDataSourceImpl implements HomeLocalDataSource {
+  List<HomeData> _cachedHomes = [];
+
+  @override
+  Future<List<HomeData>> getHomes() async {
+    if (_cachedHomes.isEmpty) {
+      throw CacheException(message: 'No cached data');
+    }
+    return _cachedHomes;
+  }
+
+  @override
+  Future<void> cacheHomes(List<HomeData> homes) async {
+    _cachedHomes = homes;
+  }
+}
+''',
+    );
+
+    // Data - Repository impl (maps DTO -> entity, wrapped in handleException)
+    await _createFile(
+      '$homesPath/data/repositories',
+      'home_repository_impl',
+      '''
+import 'package:dartz/dartz.dart';
+
+import '/core/error/failures.dart';
+import '../../../../core/error/exception_handler.dart';
+import '../../domain/entities/home_entity.dart';
+import '../../domain/repositories/home_repository.dart';
+import '../datasources/home_local_datasource.dart';
+import '../datasources/home_remote_datasource.dart';
+
+class HomeRepositoryImpl implements HomeRepository {
+  final HomeRemoteDataSource _remoteDataSource;
+  final HomeLocalDataSource _localDataSource;
+
+  HomeRepositoryImpl({
+    required HomeRemoteDataSource remoteDataSource,
+    required HomeLocalDataSource localDataSource,
+  }) : _remoteDataSource = remoteDataSource,
+       _localDataSource = localDataSource;
+
+  @override
+  Future<Either<Failure, List<HomeEntity>>> getHomes() async {
+    return handleException(() async {
+      final response = await _remoteDataSource.getHomes();
+      final items = response.results ?? [];
+      await _localDataSource.cacheHomes(items);
+      // Explicit DTO -> entity mapping with ?? fallbacks.
+      return items.map((e) => HomeEntity(id: e.id ?? 0)).toList();
+    });
+  }
+}
+''',
+    );
+  }
+
   Future<void> _createMainFile() async {
     // Generate imports based on state management
     String imports = '''import 'package:flutter/material.dart';
@@ -3620,6 +3755,12 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
     if (stateManagement == "1") {
       // Add Riverpod import
       imports += '''import 'package:flutter_riverpod/flutter_riverpod.dart';
+''';
+    } else if (stateManagement == "2") {
+      // Add Bloc imports (root MultiBlocProvider + the initial page's feature bloc)
+      imports += '''import 'package:flutter_bloc/flutter_bloc.dart';
+import '/core/bloc/global_bloc_providers.dart';
+import '/features/homes/presentation/bloc/home_bloc.dart';
 ''';
     }
 
@@ -3637,10 +3778,22 @@ import 'core/presentation/widgets/app_starter_error.dart';
 ''';
 
     // Generate runApp based on state management
-    String runAppCode =
-        stateManagement == "1"
-            ? '''runApp(const ProviderScope(child: MyApp()));'''
-            : '''runApp(const MyApp());''';
+    String runAppCode;
+    if (stateManagement == "1") {
+      runAppCode = '''runApp(const ProviderScope(child: MyApp()));''';
+    } else if (stateManagement == "2") {
+      runAppCode = '''runApp(
+      MultiBlocProvider(providers: globalBlocProviders(), child: const MyApp()),
+    );''';
+    } else {
+      runAppCode = '''runApp(const MyApp());''';
+    }
+
+    // The initial page also needs its feature bloc provided. For bloc we wrap
+    // the first screen with BlocProvider (same as the route builder does).
+    final initialPageReturn = stateManagement == "2"
+        ? "return BlocProvider(create: (_) => sl<HomeBloc>(), child: const HomePage());"
+        : "return const HomePage();";
     String runErrorCode =
         stateManagement == "1"
             ? '''runApp(
@@ -3735,7 +3888,7 @@ class MyApp extends StatelessWidget {
     // if (isLoggedIn) {
     //   return const HomePage();
     // }
-    return const HomePage();
+    $initialPageReturn
   }
 }
 
@@ -3845,6 +3998,23 @@ build/
 
 # Config files with sensitive data
 config.json
+
+# Secrets — NEVER commit
+.env
+.env.*
+android/key.properties
+android/app/release.jks
+android/app/*.jks
+ios/Flutter/Secret.xcconfig
+lib/core/config/env.g.dart
+*.keystore
+google-services.json
+GoogleService-Info.plist
+local.properties
+serviceAccountKey.json
+*.p12
+*.pem
+*.cer
 ''');
       writer.close();
       '.gitignore created successfully'.printWithColor(
@@ -3871,7 +4041,7 @@ config.json
 # IDEs (https://dart.dev/tools#ides-and-editors). The analyzer can also be
 # invoked from the command line by running `flutter analyze`.
 
-# Include both Flutter lints and Riverpod lints
+# Flutter recommended lints
 include:
   - package:flutter_lints/flutter.yaml
 
@@ -3884,12 +4054,12 @@ linter:
     avoid_print: false
 ''';
 
-      // Add custom_lint plugin for Riverpod
+      // Add riverpod_lint plugin (riverpod_lint 3.x uses analysis_server_plugin directly)
       if (stateManagement == "1") {
         content += '''
 analyzer:
   plugins:
-    - custom_lint
+    - riverpod_lint
 
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
@@ -3926,14 +4096,1290 @@ analyzer:
     }
 
     try {
-      final file = await File('$basePath/$fileName.$fileType').create();
+      // create(recursive: true) also creates any missing parent directories
+      // (e.g. core/bloc) so new subfolders don't need a matching entry in the
+      // directory creator.
+      final file = await File(
+        '$basePath/$fileName.$fileType',
+      ).create(recursive: true);
 
       final writer = file.openWrite();
       writer.write(content);
       writer.close();
-    } catch (_) {
-      stderr.write('creating $fileName.$fileType failed!');
+    } catch (e) {
+      stderr.write('creating $fileName.$fileType failed! ($e)');
       exit(2);
     }
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Security & AI setup files
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Future<void> _createEnvFiles() async {
+    final basePath = Directory.current.path;
+    const content =
+        r'''# ── API & URLs — read by envied → Dart code via Env.* ────────────────────
+BASE_URL_LIVE=https://api.yourapp.com
+BASE_URL_DEV=https://dev-api.yourapp.com
+BASE_URL_LOCAL=http://192.168.1.100:8000
+BASE_IMAGE_URL_LIVE=https://images.yourapp.com
+BASE_IMAGE_URL_DEV=https://dev-images.yourapp.com
+GOOGLE_MAPS_API_KEY=AIzaSyDUMMY_replace_with_your_real_key
+PAYMENT_API_KEY=pk_test_DUMMY_replace_with_your_real_key
+SMS_API_KEY=sms_DUMMY_replace_with_your_real_key
+
+# ── Android Keystore ───────────────────────────────────────────────────────
+# JKS file must be at: android/app/release.jks
+KEYSTORE_PATH=android/app/release.jks
+KEYSTORE_PASSWORD=your_keystore_password
+KEY_ALIAS=your_key_alias
+KEY_PASSWORD=your_key_password
+
+# ── Release Keystore (base64) ──────────────────────────────────────────────
+# How to encode: base64 -i android/app/release.jks | tr -d '\n'
+# The setup script decodes this → android/app/release.jks (gitignored)
+RELEASE_JKS_BASE64=<paste_base64_encoded_jks_here>
+
+# ── Firebase Android ───────────────────────────────────────────────────────
+# How to encode: base64 -i android/app/google-services.json | tr -d '\n'
+# The setup script decodes this → android/app/google-services.json (gitignored)
+GOOGLE_SERVICES_JSON_BASE64=<paste_base64_encoded_google_services_json_here>
+
+# ── Firebase iOS ───────────────────────────────────────────────────────────
+# How to encode: base64 -i ios/Runner/GoogleService-Info.plist | tr -d '\n'
+# The setup script decodes this → ios/Runner/GoogleService-Info.plist (gitignored)
+GOOGLE_SERVICE_INFO_BASE64=<paste_base64_encoded_google_service_info_plist_here>
+''';
+    try {
+      await File('$basePath/.env.example').writeAsString(content);
+      await File('$basePath/.env').writeAsString(content);
+      '.env and .env.example created successfully'.printWithColor(
+        status: PrintType.success,
+      );
+    } catch (e) {
+      stderr.write('creating .env files failed: $e');
+    }
+  }
+
+  Future<void> _createEnvConfigFile() async {
+    final configDir = '${Directory.current.path}/lib/core/config';
+    await Directory(configDir).create(recursive: true);
+    const content = r'''import 'package:envied/envied.dart';
+
+part 'env.g.dart';
+
+@Envied(path: '.env', obfuscate: true)
+abstract class Env {
+  @EnviedField(varName: 'BASE_URL_LIVE')
+  static final String baseUrlLive = _Env.baseUrlLive;
+
+  @EnviedField(varName: 'BASE_URL_DEV')
+  static final String baseUrlDev = _Env.baseUrlDev;
+
+  @EnviedField(varName: 'BASE_URL_LOCAL')
+  static final String baseUrlLocal = _Env.baseUrlLocal;
+
+  @EnviedField(varName: 'BASE_IMAGE_URL_LIVE')
+  static final String baseImageUrlLive = _Env.baseImageUrlLive;
+
+  @EnviedField(varName: 'BASE_IMAGE_URL_DEV')
+  static final String baseImageUrlDev = _Env.baseImageUrlDev;
+
+  @EnviedField(varName: 'GOOGLE_MAPS_API_KEY')
+  static final String googleMapsApiKey = _Env.googleMapsApiKey;
+
+  @EnviedField(varName: 'PAYMENT_API_KEY')
+  static final String paymentApiKey = _Env.paymentApiKey;
+
+  @EnviedField(varName: 'SMS_API_KEY')
+  static final String smsApiKey = _Env.smsApiKey;
+}
+''';
+    try {
+      await File('$configDir/env.dart').writeAsString(content);
+      'lib/core/config/env.dart created successfully'.printWithColor(
+        status: PrintType.success,
+      );
+    } catch (e) {
+      stderr.write('creating env.dart failed: $e');
+    }
+  }
+
+  Future<void> _createClaudeFolderFiles() async {
+    final basePath = Directory.current.path;
+
+    // Bloc: generate the full flutter_bloc AI-guidance doc set (mirrors the
+    // reference project — AGENTS.md, CLAUDE.md, .claude/rules, skills, hooks…).
+    if (stateManagement == "2") {
+      await BlocAiDocsCreator().create(basePath);
+      '.claude + AGENTS.md + CLAUDE.md (flutter_bloc) created successfully'
+          .printWithColor(status: PrintType.success);
+      return;
+    }
+
+    // Riverpod: generate the full Riverpod AI-guidance doc set (mirrors the
+    // crm_lite_sebl reference — AGENTS.md, CLAUDE.md, .claude/rules, skills, hooks…).
+    if (stateManagement == "1") {
+      await RiverpodAiDocsCreator().create(basePath);
+      '.claude + AGENTS.md + CLAUDE.md (Riverpod) created successfully'
+          .printWithColor(status: PrintType.success);
+      return;
+    }
+
+    await Directory('$basePath/.claude/docs').create(recursive: true);
+    await Directory('$basePath/.claude/scripts').create(recursive: true);
+    await _createRawFile('$basePath/CLAUDE.md', _claudeMdContent);
+    await _createRawFile(
+      '$basePath/.claude/AI_CODING_RULES.md',
+      _aiCodingRulesContent,
+    );
+    await _createRawFile(
+      '$basePath/.claude/docs/SECURITY.md',
+      _securityMdContent,
+    );
+    await _createRawFile(
+      '$basePath/.claude/scripts/setup_secrets.sh',
+      _setupSecretsShContent,
+    );
+    await _createRawFile(
+      '$basePath/.claude/settings.local.json',
+      _settingsLocalJsonContent,
+    );
+    '.claude folder created successfully'.printWithColor(
+      status: PrintType.success,
+    );
+  }
+
+  Future<void> _createRawFile(String fullPath, String content) async {
+    try {
+      await File(fullPath).writeAsString(content);
+    } catch (e) {
+      stderr.write('creating $fullPath failed: $e');
+    }
+  }
+
+  // ── Content strings ────────────────────────────────────────────────────
+
+  String get _claudeMdContent => r'''# Mobile Team — AI Context
+
+> **Purpose:** This is the entry point for any AI agent working on mobile projects.
+> Read this file first. All detailed rules, docs, and scripts live inside the `.claude/` folder.
+
+---
+
+## 🏢 About the Team
+- **Team:** Mobile Development
+- **Stack:** Flutter (Dart)
+- **Architecture:** Clean Architecture (Feature Based)
+- **State Management:** Riverpod
+- **Flutter project:** If project is not created then first create flutter project using flutter create <project_name> after that run the cli command in root folder.
+- **CLI Tool:** ssl_cli (dart CLI)
+- **JSON Safety:** autosafe_json (safe JSON parsing — eliminates type mismatch crashes)
+- **Security:** envied (obfuscated secrets)
+
+---
+
+## 🤖 AI Agent — Start Here
+
+Before writing any code, follow this order:
+
+1. **Read this file** — understand the project context
+2. **Read `.claude/AI_CODING_RULES.md`** — follow strict coding rules, security rules, and patterns
+3. **Check ssl_cli** — run `ssl_cli help --all` before any scaffolding
+4. **Check autosafe_json** — run `autosafe --version` before writing any model
+5. **Identify the pipeline stage** — see pipeline section below
+
+> ⚠️ **SECURITY FIRST:** AI agents must NEVER read or expose `.env`, `key.properties`,
+> `*.keystore`, `google-services.json`, or any credential file.
+> Full security rules are in `.claude/docs/SECURITY.md`.
+
+---
+
+## 🔄 Development Pipeline
+
+Every feature follows this exact pipeline. Always identify which stage you are in before starting work:
+
+```
+Stage 1: Client BRD
+        ↓
+Stage 2: Figma Design
+        ↓
+Stage 3: Coding
+        ↓
+Stage 4: Testing
+```
+
+### Stage 1 — Client BRD
+- Analyze the BRD document
+- Extract user stories, screens needed, API requirements
+- Identify edge cases and missing information
+- List clarification questions for the client
+- Output as structured markdown
+
+### Stage 2 — Figma Design
+- Always ask for Figma frame URL before coding any UI
+- Read design tokens (spacing, colors, typography)
+- Check existing component library before creating new components
+- Map Figma components to global widgets in the codebase
+- Never hardcode colors or sizes — use design tokens
+
+### Stage 3 — Coding
+- Always use `ssl_cli` for scaffolding (never manually create structure)
+- Follow Clean Architecture strictly: Domain → Data → Presentation
+- Use global widgets, ScreenUtil, Riverpod
+- All `fromJson` must use `autosafe_json` — zero raw `as` casts allowed
+- Run `autosafe /path/to/model.dart` after every model change
+- Never hardcode secrets — all secrets via `envied` (`Env.*`)
+- Follow all rules in `.claude/AI_CODING_RULES.md`
+
+### Stage 4 — Testing
+- Unit test all UseCases and ViewModels
+- Widget test all reusable components
+- Mock all external dependencies
+- Minimum coverage: 80%
+
+---
+
+## 🔌 Connected Tools & Resources
+
+| Tool | Purpose | Link |
+|------|---------|-------|
+| **Figma** | UI Design & Design System | _add your figma link_ |
+| **Jira** | Task & Project Management | _add your jira link_ |
+| **Confluence** | BRD & Documentation | _add your confluence link_ |
+| **Notion** | Team Docs & Guides | _add your notion link_ |
+| **GitHub** | Source Code | _add your github link_ |
+
+---
+
+## 📁 Repo Structure
+
+```
+project-root/
+├── CLAUDE.md                        ← You are here (AI entry point — only file in root)
+├── .env.example                     ← Copy → .env, fill values locally (NEVER commit .env)
+│
+└── .claude/                         ← All AI rules, docs, and scripts live here
+    ├── AI_CODING_RULES.md           ← Strict coding rules, security rules, patterns
+    ├── scripts/
+    │   └── setup_secrets.sh         ← Reads .env → generates key.properties + Secret.xcconfig
+    └── docs/
+        └── SECURITY.md              ← Complete secret management guide (envied + script + CI/CD)
+```
+
+---
+
+## 🔐 Secret Management Workflow
+
+All secrets flow from a single `.env` file. Never write secrets in code or native config files directly.
+
+```
+.env (developer fills once, gitignored)
+  │
+  ├─ sh .claude/scripts/setup_secrets.sh
+  │     ├──→ android/key.properties       (gitignored — Gradle reads for signing + Maps)
+  │     └──→ ios/Flutter/Secret.xcconfig  (gitignored — Xcode reads for Maps key)
+  │
+  └─ dart run build_runner build
+        └──→ lib/core/config/env.g.dart   (gitignored — obfuscated Dart secrets via envied)
+```
+
+**Key rules:**
+- Only `.env.example` is committed — never `.env`
+- `key.properties` and `Secret.xcconfig` are auto-generated — never edit manually
+- `env.g.dart` is auto-generated — never edit or commit
+- Read all env values in Dart via `Env.*` (from `lib/core/config/env.dart`)
+
+See `.claude/docs/SECURITY.md` for the complete guide.
+
+---
+
+## 📐 Architecture Overview
+
+```
+┌──────────────────────────┐
+│ Presentation Layer       │  Riverpod, Pages, Widgets
+├──────────────────────────┤
+│ Domain Layer             │  UseCases, Entities, Repository Contracts
+├──────────────────────────┤
+│ Data Layer               │  Models, Repository Impl, Remote/Local DataSources
+└──────────────────────────┘
+```
+
+**Dependency Rule:** Dependencies only point inward. Domain layer has zero dependencies on outer layers.
+
+---
+
+## 🎨 Design System
+
+- All UI components use **Global Widgets** (GlobalText, GlobalButton, GlobalLoader, etc.)
+- Responsive sizing via **flutter_screenutil** (.w, .h, .sp, .r)
+- Colors defined in `AppColors` enum — never hardcode HEX values
+- Assets registered in `k_assets.dart` enum — never hardcode asset paths
+- After adding any image or SVG → run `ssl_cli generate k_assets.dart`
+
+---
+
+## 🚀 ssl_cli — Team CLI Tool
+
+Mobile Team uses a custom CLI to scaffold projects and modules. **Always use it — never manually create folder structures.**
+
+```bash
+# Check installation
+ssl_cli help --all
+
+# Install if not found
+dart pub global activate ssl_cli
+
+# New project
+ssl_cli create <project_name>     # Select pattern 4 + Riverpod
+
+# New feature module
+ssl_cli module <module_name>      # Select pattern 3 + Riverpod
+
+# After adding images or SVGs
+ssl_cli generate k_assets.dart
+
+# Build
+ssl_cli build apk --flavorType    # --DEV / --LIVE / --LOCAL / --STAGE
+```
+
+> Full ssl_cli command reference and agent decision flow is in [`.claude/AI_CODING_RULES.md`](./.claude/AI_CODING_RULES.md)
+
+---
+
+## 🛡️ autosafe_json — Safe JSON Parsing
+
+Prevents runtime `TypeError` crashes from API type mismatches. **Required in all models.**
+
+```bash
+# Check installation
+autosafe --version
+
+# Install if not found
+dart pub global activate autosafe_json
+
+# Apply safe transforms to a model file
+autosafe lib/features/{feature}/data/models/{model}_model.dart
+```
+
+```yaml
+# pubspec.yaml
+dependencies:
+  autosafe_json: ^1.0.0
+```
+
+> Full autosafe_json rules, helper table, and model templates are in [`.claude/AI_CODING_RULES.md`](./.claude/AI_CODING_RULES.md)
+
+---
+
+## ✅ Quick Checklist for Every Feature
+
+**Setup**
+- [ ] Identified pipeline stage (BRD / Figma / Coding / Testing)
+- [ ] ssl_cli is installed and verified (`ssl_cli help --all`)
+- [ ] autosafe_json CLI is installed (`autosafe --version`)
+- [ ] `autosafe_json: ^1.0.0` added to `pubspec.yaml`
+- [ ] `.env` exists locally (copied from `.env.example`, filled from vault)
+- [ ] `sh .claude/scripts/setup_secrets.sh` has been run
+- [ ] `dart run build_runner build` has been run (generates `env.g.dart`)
+- [ ] `.gitignore` covers all secret file patterns
+
+**Coding**
+- [ ] Module scaffolded via `ssl_cli module <name>`
+- [ ] Figma frame reviewed before UI coding
+- [ ] Clean Architecture layers followed (Domain → Data → Presentation)
+- [ ] Global widgets used (no raw Flutter widgets)
+- [ ] Dependencies registered in `service_locator.dart`
+- [ ] Error handling with `Either<Failure, Data>`
+- [ ] All `fromJson` use `SafeJson.as*()` — no raw `as` casts
+- [ ] `autosafe /path/to/model.dart` run after each model change
+- [ ] `ssl_cli generate k_assets.dart` run if assets were added
+
+**Security**
+- [ ] No hardcoded API keys, tokens, or passwords in any Dart file
+- [ ] All secrets read via `Env.*` (envied — obfuscated)
+- [ ] `key.properties` and `Secret.xcconfig` are gitignored and auto-generated
+- [ ] `env.g.dart` is gitignored
+- [ ] Sensitive files confirmed absent from version control
+
+---
+
+*Maintained by Mobile Team*
+''';
+
+  String get _aiCodingRulesContent =>
+      r'''# AI Coding Rules - Flutter Clean Architecture (Feature Based Pattern)
+
+> **Purpose:** This document provides AI coding assistants with strict rules and patterns for generating Flutter code following Clean Architecture with Riverpod state management.
+
+## ⚠️ **Before handling any secret, key, or credential — read `.claude/docs/SECURITY.md` first. Those rules are ABSOLUTE.**
+
+## 🤖 AI AGENT FIRST STEP — ssl_cli Check (MANDATORY)
+
+> ⚠️ **Before writing ANY code or creating ANY file or folder manually, the AI agent MUST follow this checklist.**
+
+### Step 1 — Check if ssl_cli is Installed
+
+Run this command first:
+
+```bash
+ssl_cli help --all
+```
+
+- ✅ **If output is shown** → ssl_cli is installed. Proceed to Step 2.
+- ❌ **If command not found** → Install it first:
+
+```bash
+dart pub global activate ssl_cli
+```
+
+Then verify PATH is set:
+- **macOS/Linux:** `export PATH="$PATH":"$HOME/.pub-cache/bin"` → add to `~/.zshrc` or `~/.bashrc`
+- **Windows:** Add Dart pub cache to System Environment Variables
+
+After install, re-run `ssl_cli help --all` to confirm.
+
+---
+
+### Step 2 — Use ssl_cli for ALL Scaffolding (NEVER manually create structure)
+
+> 🚫 **AI agents MUST NOT manually create folders/files for project or module scaffolding.**
+> ✅ **ALWAYS use ssl_cli commands. This saves tokens and ensures consistent structure.**
+
+#### Creating a New Project
+
+```bash
+ssl_cli create <project_name>
+```
+- When prompted for pattern → **select pattern `4`** (Clean Architecture)
+- When prompted for state management → **select `Riverpod`**
+
+#### Adding a New Feature Module
+
+```bash
+ssl_cli module <module_name>
+```
+- When prompted for pattern → **select Clean Architecture pattern `3`**
+- When prompted for state management → **select `Riverpod`**
+
+#### After Adding Assets (Images / SVGs)
+
+> ⚠️ **Whenever any image or SVG file is added to the assets folder, the AI agent MUST run this command immediately:**
+
+```bash
+ssl_cli generate k_assets.dart
+```
+
+**Rules:**
+- ✅ ALWAYS run after adding any `.png`, `.jpg`, `.jpeg`, `.svg` file
+- ✅ Reference assets via generated enum only (e.g. `ImageNamePng.myImage`, `SvgName.myIcon`)
+- ❌ NEVER hardcode asset paths as raw strings
+
+#### Build & Release
+
+```bash
+ssl_cli build apk --flavorType       # --DEV / --LIVE / --LOCAL / --STAGE
+ssl_cli build apk --flavorType --t   # Build + auto-share to Telegram
+```
+
+---
+
+### Step 3 — After ssl_cli Scaffolding, Fill in the Logic
+
+Once ssl_cli generates the structure, the AI agent fills in:
+- Entity fields
+- Model `fromJson` / `toJson`
+- UseCase business logic
+- Repository implementation
+- Provider state & actions
+- UI page & widgets
+
+> Only write code **inside** the generated files. Never create new folders manually.
+
+---
+
+### ssl_cli + autosafe_json Agent Decision Flow
+
+```
+AI receives a task
+       ↓
+Run: ssl_cli help --all
+       ↓
+Found? ──No──→ dart pub global activate ssl_cli → verify → continue
+       │
+      Yes
+       ↓
+Is autosafe_json activated?
+       ↓
+Run: autosafe --version
+       ↓
+Found? ──No──→ dart pub global activate autosafe_json → verify → continue
+       │
+      Yes
+       ↓
+Is it a new project? ──Yes──→ ssl_cli create <project_name> (pick pattern 4 + Riverpod)
+       │                       + Verify .gitignore has all secret file entries
+      No
+       ↓
+Is it a new feature? ──Yes──→ ssl_cli module <module_name> (pick pattern 3 + Riverpod)
+       │
+      No
+       ↓
+Did you write or modify a fromJson? ──Yes──→ autosafe /path/to/model.dart
+       │
+      No
+       ↓
+Added new assets? ──Yes──→ ssl_cli generate k_assets.dart
+       │
+      No
+       ↓
+Fill in logic inside generated files following rules below
+```
+
+---
+
+## 🎯 Core Architecture Pattern
+
+This project follows **Clean Architecture** with **Riverpod** state management. All code generation MUST follow this three-layer structure:
+
+```
+Domain Layer (Business Logic) → Data Layer (Data Management) → Presentation Layer (UI)
+```
+
+**Dependency Rule:** Dependencies ONLY point inward. Domain has NO dependencies on outer layers.
+
+---
+
+## 📁 Mandatory Project Structure
+
+### Feature Module Structure (STRICT)
+
+When creating ANY new feature, you MUST create this exact folder structure:
+
+```
+lib/features/{feature_name}/
+├── data/
+│   ├── datasources/
+│   │   ├── {feature}_remote_datasource.dart
+│   │   └── {feature}_local_datasource.dart
+│   ├── models/
+│   │   └── {model_name}_model.dart
+│   └── repositories/
+│       └── {feature}_repository_impl.dart
+├── domain/
+│   ├── entities/
+│   │   └── {entity_name}_entity.dart
+│   ├── repositories/
+│   │   └── {feature}_repository.dart
+│   └── usecases/
+│       └── {action}_usecase.dart
+└── presentation/
+    ├── pages/
+    │   └── {page_name}_page.dart
+    ├── providers/
+    │   ├── {feature}_provider.dart
+    │   └── state/
+    │       └── {feature}_state.dart
+    └── widgets/
+        └── {widget_name}.dart
+```
+
+### Core Structure (Shared Infrastructure)
+
+```
+lib/core/
+├── config/            # env.dart (envied secrets)
+├── constants/         # API URLs, app constants
+├── di/                # Dependency injection (GetIt)
+├── entities/          # Base entities
+├── error/             # Exceptions and failures
+├── models/            # Global models
+├── network/           # API client, network info
+├── presentation/
+│   ├── widgets/       # Global reusable widgets
+│   └── mixins/        # Shared presentation logic
+├── routes/            # Navigation
+├── theme/             # Theme, colors
+├── usecases/          # Base UseCase interface
+└── utils/             # Helpers, extensions
+```
+
+---
+
+## 🔧 Code Generation Rules
+
+### 1. Domain Layer Rules
+
+#### Entity Template
+
+```dart
+// lib/features/{feature}/domain/entities/{entity_name}_entity.dart
+import 'package:equatable/equatable.dart';
+
+class {EntityName}Entity extends Equatable {
+  final String id;
+  final String name;
+
+  const {EntityName}Entity({
+    required this.id,
+    required this.name,
+  });
+
+  @override
+  List<Object?> get props => [id, name];
+}
+```
+
+**Rules:**
+- ✅ MUST extend `Equatable`
+- ✅ MUST be immutable (`const` constructor, `final` fields)
+- ✅ NO Flutter imports
+- ✅ NO external package dependencies (except `equatable`, `dartz`)
+
+#### Repository Contract Template
+
+```dart
+// lib/features/{feature}/domain/repositories/{feature}_repository.dart
+import 'package:dartz/dartz.dart';
+import '../../../../core/error/failures.dart';
+import '../entities/{entity_name}_entity.dart';
+
+abstract class {Feature}Repository {
+  Future<Either<Failure, {Entity}Entity>> get{Entity}(String id);
+  Future<Either<Failure, List<{Entity}Entity>>> get{Entity}List();
+  Future<Either<Failure, void>> create{Entity}({Entity}Entity entity);
+  Future<Either<Failure, void>> update{Entity}({Entity}Entity entity);
+  Future<Either<Failure, void>> delete{Entity}(String id);
+}
+```
+
+#### UseCase Template
+
+```dart
+// lib/features/{feature}/domain/usecases/{action}_usecase.dart
+import 'package:dartz/dartz.dart';
+import 'package:equatable/equatable.dart';
+import '../../../../core/error/failures.dart';
+import '../../../../core/usecases/usecase.dart';
+import '../entities/{entity_name}_entity.dart';
+import '../repositories/{feature}_repository.dart';
+
+class {Action}UseCase implements UseCase<{Return}Entity, {Action}Params> {
+  final {Feature}Repository repository;
+
+  {Action}UseCase({required this.repository});
+
+  @override
+  Future<Either<Failure, {Return}Entity>> call({Action}Params params) async {
+    return await repository.{action}(params);
+  }
+}
+
+class {Action}Params extends Equatable {
+  final String id;
+
+  const {Action}Params({required this.id});
+
+  @override
+  List<Object?> get props => [id];
+}
+```
+
+### 2. Data Layer Rules
+
+#### 🛡️ autosafe_json — Mandatory Safe JSON Parsing
+
+> **All models in this project MUST use `autosafe_json` for JSON parsing. Raw `as` casting is strictly forbidden.**
+
+##### Installation
+
+```yaml
+# pubspec.yaml
+dependencies:
+  autosafe_json: ^1.0.0
+```
+
+```bash
+dart pub global activate autosafe_json
+```
+
+##### CLI Command — Apply After Every Model Change
+
+```bash
+autosafe /path/to/your/model/{model_name}_model.dart
+```
+
+##### autosafe_json Helper Methods Reference
+
+| Helper | Input type | Safe output |
+|--------|-----------|-------------|
+| `SafeJson.asInt(v)` | any | `int` (0 if null/invalid) |
+| `SafeJson.asString(v)` | any | `String` ('' if null) |
+| `SafeJson.asBool(v)` | any | `bool` (false if null) |
+| `SafeJson.asDouble(v)` | any | `double` (0.0 if null) |
+| `SafeJson.asNum(v)` | any | `num` (0 if null) |
+| `SafeJson.asMap(v)` | list/map/null | `Map<String, dynamic>` |
+| `SafeJson.asList(v)` | list/map/null | `List<dynamic>` |
+| `json.autoSafe.raw` | raw json map | sanitized `Map<String, dynamic>` |
+
+##### autosafe_json Integration Rule
+
+- `json = json.autoSafe.raw;` → **ONLY in the top-level / base response model**
+- **Nested models** receive the pre-sanitized map → no need to call `autoSafe.raw` again
+- Use `SafeJson.as*()` helpers for every primitive field in every model
+
+#### Model Template
+
+```dart
+// lib/features/{feature}/data/models/{model_name}_model.dart
+import 'package:autosafe_json/autosafe_json.dart';
+import '../../domain/entities/{entity_name}_entity.dart';
+
+class {Model}Model extends {Entity}Entity {
+  const {Model}Model({
+    required super.id,
+    required super.name,
+  });
+
+  factory {Model}Model.fromJson(Map<String, dynamic> json) {
+    json = json.autoSafe.raw; // top-level only
+    return {Model}Model(
+      id: SafeJson.asString(json['id']),
+      name: SafeJson.asString(json['name']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+}
+```
+
+**Rules:**
+- ✅ MUST import `package:autosafe_json/autosafe_json.dart`
+- ✅ MUST use `SafeJson.as*()` for every primitive field — no raw `as` casting
+- ✅ MUST call `json.autoSafe.raw` only in top-level response model
+- ✅ MUST extend corresponding entity
+- ❌ NEVER use `json['field'] as String` — always use `SafeJson.asString(json['field'])`
+- ❌ NEVER use `json['field'] ?? ''` alone — SafeJson handles nulls internally
+
+### 3. Presentation Layer Rules
+
+#### Provider Template (Riverpod)
+
+```dart
+// lib/features/{feature}/presentation/providers/{feature}_provider.dart
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/di/service_locator.dart';
+import '../../domain/usecases/{action}_usecase.dart';
+import 'state/{feature}_state.dart';
+
+final {Feature}Provider = NotifierProvider<{Feature}Notifier, {Feature}State>(
+  {Feature}Notifier.new,
+);
+
+class {Feature}Notifier extends Notifier<{Feature}State> {
+  @override
+  {Feature}State build() => const {Feature}State();
+
+  Future<void> {action}({required String param}) async {
+    final useCase = sl<{Action}UseCase>();
+    final result = await useCase({Action}Params(param: param));
+    result.fold(
+      (failure) => state = state.copyWith(failure: failure),
+      (entity) => state = state.copyWith(entity: entity),
+    );
+  }
+}
+```
+
+#### Page Template
+
+```dart
+// lib/features/{feature}/presentation/pages/{page_name}_page.dart
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../../core/presentation/widgets/global_text.dart';
+import '../../../../core/presentation/widgets/global_button.dart';
+import '../../../../core/presentation/widgets/global_loader.dart';
+import '../providers/{feature}_provider.dart';
+
+class {Page}Page extends ConsumerWidget {
+  const {Page}Page({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch({feature}Provider);
+    return Scaffold(
+      appBar: AppBar(title: const GlobalText(str: '{Page}')),
+      body: const Center(child: GlobalText(str: 'Content here')),
+    );
+  }
+}
+```
+
+**Rules:**
+- ✅ MUST use `ConsumerWidget` for Riverpod; `ConsumerStatefulWidget` if stateful
+- ✅ MUST use `ref.watch()` for state; `ref.read().notifier` for actions
+- ✅ MUST use global widgets (GlobalText, GlobalButton, etc.)
+- ✅ MUST use ScreenUtil (.w, .h, .sp, .r)
+
+---
+
+## 🎨 UI Component Rules
+
+### Global Widgets (MANDATORY)
+
+| ❌ DON'T USE | ✅ USE INSTEAD |
+|-------------|---------------|
+| `Text()` | `GlobalText()` |
+| `ElevatedButton()` | `GlobalButton()` |
+| `TextFormField()` | `GlobalTextFormField()` |
+| `DropdownButton()` | `GlobalDropdown()` |
+| `Image.asset()` | `GlobalImageLoader()` |
+| `CircularProgressIndicator()` | `GlobalLoader()` |
+| `AppBar()` | `GlobalAppBar()` |
+| `snackbar` | `ViewUtil.snackbar(context, message)` |
+
+### Responsive Sizing (MANDATORY)
+
+```dart
+// ❌ DON'T
+Container(width: 200, height: 100)
+
+// ✅ DO
+Container(width: 200.w, height: 100.h)
+GlobalText(str: 'Hello', fontSize: 16)
+```
+
+---
+
+## 🔗 Dependency Injection Rules
+
+```dart
+// 1. Data Sources
+sl.registerLazySingleton<{Feature}RemoteDataSource>(
+  () => {Feature}RemoteDataSourceImpl(apiClient: sl()),
+);
+
+// 2. Repository
+sl.registerLazySingleton<{Feature}Repository>(
+  () => {Feature}RepositoryImpl(remoteDataSource: sl(), localDataSource: sl()),
+);
+
+// 3. Use Cases (Factory)
+sl.registerFactory(() => {Action}UseCase(repository: sl()));
+```
+
+---
+
+## 📝 Naming Conventions (STRICT)
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Entity | `{name}_entity.dart` | `user_entity.dart` |
+| Model | `{name}_model.dart` | `user_model.dart` |
+| UseCase | `{action}_usecase.dart` | `get_user_usecase.dart` |
+| Repository | `{feature}_repository.dart` | `auth_repository.dart` |
+| Provider | `{feature}_provider.dart` | `login_provider.dart` |
+| Page | `{name}_page.dart` | `login_page.dart` |
+
+---
+
+## ⚠️ Error Handling Pattern (MANDATORY)
+
+```dart
+// core/error/failures.dart
+abstract class Failure extends Equatable {
+  final String message;
+  const Failure({required this.message});
+  @override
+  List<Object> get props => [message];
+}
+
+class NetworkFailure extends Failure {
+  const NetworkFailure({required super.message});
+}
+```
+
+**Error Flow:**
+1. **Data Source:** Throw exceptions
+2. **Repository:** Catch exceptions → Return `Left(Failure)`
+3. **Use Case:** Pass through `Either<Failure, Data>`
+4. **Provider:** Handle with `fold()` → Update state
+
+---
+
+## 🚫 Common Mistakes to Avoid
+
+**Architecture & CLI**
+1. ❌ NOT checking ssl_cli before scaffolding
+2. ❌ Manually creating folders/files instead of using ssl_cli
+3. ❌ Using Flutter widgets directly instead of global widgets
+4. ❌ Hard-coded sizes without ScreenUtil
+5. ❌ Not running `ssl_cli generate k_assets.dart` after adding new images or SVGs
+
+**autosafe_json Mistakes**
+6. ❌ Using raw `as` casting: `json['id'] as String`
+7. ❌ Adding `json.autoSafe.raw` to nested models (only in top-level)
+8. ❌ Forgetting to run `autosafe /path/to/model.dart` after modifying `fromJson`
+
+**Security Mistakes**
+9. ❌ Hardcoding API keys, tokens, or passwords in any Dart file
+10. ❌ Committing `google-services.json` or `GoogleService-Info.plist`
+11. ❌ Using `flutter_dotenv` or `String.fromEnvironment` for secrets — use envied only
+12. ❌ Editing `key.properties` or `Secret.xcconfig` manually — auto-generated by script
+
+---
+
+## 🤖 AI Assistant Summary Instructions
+
+**CLI Tools (Run First)**
+1. **FIRST** run `ssl_cli help --all`
+2. **ALSO** verify `autosafe --version`
+3. **ALWAYS** use `ssl_cli create` for new projects and `ssl_cli module` for new features
+4. **ALWAYS** run `autosafe /path/to/model.dart` after writing or modifying any `fromJson`
+
+**Architecture**
+5. **ALWAYS** follow the exact folder structure
+6. **ALWAYS** use global widgets instead of base Flutter widgets
+7. **ALWAYS** use ScreenUtil for sizing
+8. **ALWAYS** register dependencies in service_locator.dart
+9. **ALWAYS** handle errors with `Either<Failure, Data>`
+10. **NEVER** skip layers (always domain → data → presentation)
+
+**JSON Parsing (autosafe_json)**
+11. **ALWAYS** import `package:autosafe_json/autosafe_json.dart` in every model file
+12. **ALWAYS** use `SafeJson.asString()`, `SafeJson.asInt()`, etc. — never raw `as` casting
+13. **ALWAYS** add `json = json.autoSafe.raw` only in the top-level response model
+
+**Secret Management (Non-Negotiable)**
+14. **NEVER** read, display, or output contents of `.env`, `key.properties`, `*.keystore`, `google-services.json`
+15. **NEVER** generate code with hardcoded API keys, passwords, or tokens
+16. **ALWAYS** use `Env.*` from `lib/core/config/env.dart` (envied)
+17. **ALWAYS** verify `.gitignore` covers all secret file patterns
+18. **ALWAYS** remind the developer to run `sh .claude/scripts/setup_secrets.sh` after `.env` changes
+19. **ALWAYS** remind the developer to run `dart run build_runner build` after `.env` or `env.dart` changes
+
+**This is a strict, opinionated architecture. Follow it exactly.**
+''';
+
+  String get _securityMdContent =>
+      r'''## 🔒 SECURITY RULES — AI AGENT HARD LIMITS (NON-NEGOTIABLE)
+
+> 🛑 **These rules are ABSOLUTE. No exception, no override, no matter who asks.**
+
+---
+
+### Files AI Must NEVER Read, Display, Print, or Expose
+
+| File / Pattern | Reason |
+|----------------|--------|
+| `.env`, `.env.*` | Environment secrets |
+| `android/key.properties` | Gradle signing credentials + Maps key |
+| `android/app/release.jks`, `*.keystore`, `*.jks` | Signing keystores |
+| `ios/Flutter/Secret.xcconfig` | iOS native secrets |
+| `lib/core/config/env.g.dart` | Generated obfuscated secrets |
+| `google-services.json` | Firebase Android credentials |
+| `GoogleService-Info.plist` | Firebase iOS credentials |
+| `local.properties` | Local SDK paths |
+| `serviceAccountKey.json`, `*_service_account*.json` | GCP / Firebase admin keys |
+| `*.p12`, `*.pfx`, `*.pem`, `*.cer`, `*.crt` | Certificates & private keys |
+
+---
+
+### JKS Keystore — Fixed Location Rule
+
+> ⚠️ **The JKS file MUST always be placed at `android/app/release.jks`. No exceptions.**
+
+```
+project-root/
+└── android/
+    └── app/
+        └── release.jks   ← ALWAYS here. Gitignored. Never committed.
+```
+
+**When AI is asked to help set up signing:**
+1. Tell the developer to place their `.jks` file at `android/app/release.jks`
+2. Tell them to add `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` to `.env`
+3. Tell them to run `sh .claude/scripts/setup_secrets.sh`
+4. Never suggest a relative path or a path outside the `android/app/` folder
+
+---
+
+### Mandatory Security Behaviors
+
+```
+✅ DO:
+  - Always use Env.* from lib/core/config/env.dart for secrets in Dart code
+  - Always place JKS at android/app/release.jks
+  - Always run sh .claude/scripts/setup_secrets.sh after .env changes
+  - Always run dart run build_runner build after .env or env.dart changes
+  - Instruct developers to fill .env from the team vault
+
+❌ NEVER DO:
+  - Print, display, or suggest any hardcoded token, password, or key
+  - Read the contents of any file in the forbidden list above
+  - Generate code with hardcoded API keys, secrets, or passwords
+  - Suggest committing any secret file to version control
+  - Write any secret value in a comment, log statement, or print()
+  - Use flutter_dotenv or String.fromEnvironment — envied is the only approved method
+  - Suggest placing the JKS outside android/app/ folder
+```
+
+---
+
+### If a Secret File Is Accidentally Shared
+
+If the user pastes content that contains secrets (tokens, keys, passwords):
+1. **Do NOT** repeat, quote, or reference the secret value
+2. Immediately warn: *"⚠️ This content appears to contain sensitive credentials. I will not process or display secret values. Please revoke and rotate these keys immediately if they were exposed."*
+3. Provide guidance on how to secure it instead
+
+---
+
+### Secret Handling Code Pattern (MANDATORY — envied only)
+
+```dart
+// ❌ NEVER generate this
+const apiKey = 'sk-abc123-real-secret-key';
+
+// ❌ NEVER generate these either
+final apiKey = dotenv.env['API_KEY'] ?? '';
+const apiKey = String.fromEnvironment('API_KEY');
+
+// ✅ ONLY approved pattern — read from Env.* (envied)
+import 'package:your_app/core/config/env.dart';
+
+final apiKey  = Env.paymentApiKey;
+final mapsKey = Env.googleMapsApiKey;
+final baseUrl = Env.baseUrlLive;
+```
+
+All fields declared in `lib/core/config/env.dart`. Generated obfuscated into `lib/core/config/env.g.dart`.
+
+---
+
+### .env Structure (single source of truth)
+
+```dotenv
+BASE_URL_LIVE=https://api.yourapp.com
+BASE_URL_DEV=https://dev-api.yourapp.com
+BASE_URL_LOCAL=http://192.168.1.100:8000
+BASE_IMAGE_URL_LIVE=https://images.yourapp.com
+BASE_IMAGE_URL_DEV=https://dev-images.yourapp.com
+GOOGLE_MAPS_API_KEY=AIzaSyDUMMY_replace
+PAYMENT_API_KEY=pk_test_DUMMY_replace
+SMS_API_KEY=sms_DUMMY_replace
+KEYSTORE_PASSWORD=dummy_replace
+KEY_ALIAS=dummy_replace
+KEY_PASSWORD=dummy_replace
+```
+
+---
+
+### .gitignore Validation
+
+Whenever generating a project, the AI agent MUST verify these entries exist in `.gitignore`:
+
+```gitignore
+.env
+.env.*
+android/key.properties
+android/app/release.jks
+android/app/*.jks
+ios/Flutter/Secret.xcconfig
+lib/core/config/env.g.dart
+*.keystore
+google-services.json
+GoogleService-Info.plist
+local.properties
+serviceAccountKey.json
+*.p12
+*.pem
+*.cer
+```
+
+---
+
+### How Secrets Flow (full picture)
+
+```
+.env (developer fills, gitignored)
+  │
+  ├─ sh .claude/scripts/setup_secrets.sh
+  │     ├──→ android/key.properties
+  │     │     storeFile = release.jks  ← relative path inside android/app/
+  │     │     storePassword, keyAlias, keyPassword, GOOGLE_MAPS_API_KEY
+  │     │
+  │     └──→ ios/Flutter/Secret.xcconfig
+  │           GOOGLE_MAPS_API_KEY
+  │
+  └─ dart run build_runner build
+        └──→ lib/core/config/env.g.dart  (XOR-obfuscated — Dart reads via Env.*)
+```
+
+**CI/CD:** GitHub Actions writes `.env` from GitHub Secrets, decodes JKS to `android/app/release.jks`,
+runs the script, then runs build_runner, then builds.
+''';
+
+  String get _setupSecretsShContent => r'''#!/bin/bash
+# .claude/scripts/setup_secrets.sh
+#
+# PURPOSE:
+#   Reads .env and:
+#     1. Decodes RELEASE_JKS_BASE64          → android/app/release.jks
+#     2. Decodes GOOGLE_SERVICES_JSON_BASE64  → android/app/google-services.json
+#     3. Decodes GOOGLE_SERVICE_INFO_BASE64   → ios/Runner/GoogleService-Info.plist
+#     4. Generates android/key.properties     (Gradle signing + Maps key)
+#     5. Generates ios/Flutter/Secret.xcconfig (Xcode Maps key)
+#
+# HOW TO RUN (always from project root):
+#   sh .claude/scripts/setup_secrets.sh
+#
+# RE-RUN whenever .env changes.
+# All generated / decoded files are gitignored — never commit them.
+
+set -e
+
+# ── Resolve project root ──────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+ENV_FILE="$PROJECT_ROOT/.env"
+KEY_PROPS="$PROJECT_ROOT/android/key.properties"
+XCCONFIG_FILE="$PROJECT_ROOT/ios/Flutter/Secret.xcconfig"
+JKS_PATH="$PROJECT_ROOT/android/app/release.jks"
+GOOGLE_SERVICES_PATH="$PROJECT_ROOT/android/app/google-services.json"
+GOOGLE_SERVICE_INFO_PATH="$PROJECT_ROOT/ios/Runner/GoogleService-Info.plist"
+
+echo "📂 Project root : $PROJECT_ROOT"
+echo ""
+
+# ── Check .env exists ─────────────────────────────────────────────
+if [ ! -f "$ENV_FILE" ]; then
+    echo "❌  .env not found."
+    echo "    Run:  cp .env.example .env"
+    echo "    Then fill in real values from the team vault."
+    exit 1
+fi
+
+# ── Helper: read a key from .env ─────────────────────────────────
+get_env() {
+    local key="$1"
+    grep -E "^${key}[[:space:]]*=" "$ENV_FILE" \
+        | head -n 1 \
+        | sed "s/^${key}[[:space:]]*=[[:space:]]*//" \
+        | tr -d '\r' \
+        | sed "s/^['\"]//; s/['\"]$//"
+}
+
+# ── Helper: decode base64 value to file ──────────────────────────
+decode_to_file() {
+    local value="$1"
+    local output="$2"
+    local label="$3"
+    # Skip placeholders
+    if [ -z "$value" ] || echo "$value" | grep -q "^<"; then
+        echo "⏭️   $label — placeholder in .env, skipping"
+        return
+    fi
+    mkdir -p "$(dirname "$output")"
+    printf '%s' "$value" | base64 -d > "$output"
+    echo "✅  $label decoded → $(basename "$output")"
+}
+
+# ── Read values from .env ─────────────────────────────────────────
+KEYSTORE_PASSWORD=$(get_env "KEYSTORE_PASSWORD")
+KEY_ALIAS=$(get_env "KEY_ALIAS")
+KEY_PASSWORD=$(get_env "KEY_PASSWORD")
+GOOGLE_MAPS_API_KEY=$(get_env "GOOGLE_MAPS_API_KEY")
+RELEASE_JKS_BASE64=$(get_env "RELEASE_JKS_BASE64")
+GOOGLE_SERVICES_JSON_BASE64=$(get_env "GOOGLE_SERVICES_JSON_BASE64")
+GOOGLE_SERVICE_INFO_BASE64=$(get_env "GOOGLE_SERVICE_INFO_BASE64")
+
+# ── Decode binary files from base64 ──────────────────────────────
+echo "── Decoding binary files ────────────────────────────────────"
+decode_to_file "$RELEASE_JKS_BASE64"         "$JKS_PATH"                  "release.jks"
+decode_to_file "$GOOGLE_SERVICES_JSON_BASE64" "$GOOGLE_SERVICES_PATH"     "google-services.json"
+decode_to_file "$GOOGLE_SERVICE_INFO_BASE64"  "$GOOGLE_SERVICE_INFO_PATH" "GoogleService-Info.plist"
+echo ""
+
+# ── Warn if JKS still missing ─────────────────────────────────────
+if [ ! -f "$JKS_PATH" ]; then
+    echo "⚠️  release.jks not found — add RELEASE_JKS_BASE64 to .env"
+    echo "   Debug builds still work. Release builds will fail."
+    echo ""
+fi
+
+# ── Validate signing fields ───────────────────────────────────────
+HAS_WARNING=false
+check_field() {
+    local name="$1"
+    local value="$2"
+    if [ -z "$value" ]; then
+        echo "⚠️   $name is empty in .env"
+        HAS_WARNING=true
+    fi
+}
+check_field "KEYSTORE_PASSWORD"   "$KEYSTORE_PASSWORD"
+check_field "KEY_ALIAS"           "$KEY_ALIAS"
+check_field "KEY_PASSWORD"        "$KEY_PASSWORD"
+check_field "GOOGLE_MAPS_API_KEY" "$GOOGLE_MAPS_API_KEY"
+
+if [ "$HAS_WARNING" = true ]; then
+    echo ""
+    echo "   Fill the missing values in .env and re-run this script."
+    echo ""
+fi
+
+# ── Generate android/key.properties ──────────────────────────────
+echo "── Generating native config files ───────────────────────────"
+mkdir -p "$(dirname "$KEY_PROPS")"
+{
+    echo "# Auto-generated — DO NOT edit. Edit .env and re-run script."
+    echo ""
+    echo "storeFile=release.jks"
+    echo "storePassword=$KEYSTORE_PASSWORD"
+    echo "keyAlias=$KEY_ALIAS"
+    echo "keyPassword=$KEY_PASSWORD"
+    echo "GOOGLE_MAPS_API_KEY=$GOOGLE_MAPS_API_KEY"
+} > "$KEY_PROPS"
+echo "✅  android/key.properties generated"
+
+# ── Generate ios/Flutter/Secret.xcconfig ─────────────────────────
+mkdir -p "$(dirname "$XCCONFIG_FILE")"
+{
+    echo "// Auto-generated — DO NOT edit. Edit .env and re-run script."
+    echo ""
+    echo "GOOGLE_MAPS_API_KEY = $GOOGLE_MAPS_API_KEY"
+} > "$XCCONFIG_FILE"
+echo "✅  ios/Flutter/Secret.xcconfig generated"
+
+echo ""
+echo "✅  All done. Next step:"
+echo "    dart run build_runner build --delete-conflicting-outputs"
+''';
+
+  String get _settingsLocalJsonContent => r'''{
+  "permissions": {
+    "allow": [
+      "Bash(ssl_cli help:*)",
+      "Bash(ssl_cli create:*)",
+      "Bash(ssl_cli module:*)",
+      "Bash(ssl_cli generate:*)",
+      "Bash(ssl_cli build:*)",
+      "Bash(autosafe:*)",
+      "Bash(flutter --version)",
+      "Bash(flutter create:*)",
+      "Bash(flutter pub:*)",
+      "Bash(dart pub:*)",
+      "Bash(dart run build_runner:*)",
+      "Bash(sh .claude/scripts/setup_secrets.sh)",
+      "Bash(python3:*)"
+    ]
+  }
+}
+''';
 }
