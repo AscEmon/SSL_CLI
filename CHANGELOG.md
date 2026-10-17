@@ -538,3 +538,14 @@ All templates:
 k_assets generator:
 
 - Clean architecture detected only when lib/core and lib/features exist.
+
+## 4.0.9
+
+k_assets generator (`ssl_cli generate k_assets.dart --t`):
+
+- **Fix:** `imagesRoot` and `svgRoot` getters are always generated, even when
+  `assets/images` or `assets/svg` is empty — previously `imagesRoot` was dropped
+  and the generated `k_assets.dart` failed to compile.
+- **Fix:** themed assets now resolve from their own folder root (e.g.
+  `icons/light/home.png` → `iconsRoot`) instead of always `imagesRoot`/`svgRoot`.
+  `_themedSvg`/`_themedPng` are replaced by a single `_themed(folderRoot, fileName)` helper.

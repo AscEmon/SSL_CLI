@@ -99,12 +99,20 @@ class AssetPathThemedFileCreator implements AssetPathIFileCreator {
         pathCode.write(finalCode.toString());
         pathCode.write('  String get root => \'assets\';\n');
 
-        // Generate root getters for each subfolder
-        for (final subfolderPath in subfolderPaths.values.toSet()) {
-          final varName = subfolderPath.toLowerCase();
+        // Generate root getters for each subfolder. `images` and `svg` are
+        // always emitted so the getters stay stable even when those folders
+        // are empty, since app code may reference them directly.
+        final rootGetters = <String, String>{
+          'images': 'images',
+          'svg': 'svg',
+        };
+        for (final subfolderPath in subfolderPaths.values) {
+          rootGetters[subfolderPath.toLowerCase()] = subfolderPath;
+        }
+        rootGetters.forEach((varName, subfolderPath) {
           pathCode.write(
               '  String get ${varName}Root => \'\$root/$subfolderPath\';\n');
-        }
+        });
 
         pathCode.write('  String get imagePath {\n');
         pathCode.write('    switch (this) {\n');
@@ -115,15 +123,9 @@ class AssetPathThemedFileCreator implements AssetPathIFileCreator {
           final isThemed = hasThemeFolder[enumNames[i]] ?? false;
 
           if (isThemed) {
-            // Use themed helper
-            final ext = extensionNames[i];
-            if (ext == 'svg') {
-              pathCode.write(
-                  '        return _themedSvg("${assetNames[i]}.${extensionNames[i]}");\n');
-            } else {
-              pathCode.write(
-                  '        return _themedPng("${assetNames[i]}.${extensionNames[i]}");\n');
-            }
+            // Use themed helper with the asset's own folder root
+            pathCode.write(
+                '        return _themed(${subfolderPath?.toLowerCase()}Root, "${assetNames[i]}.${extensionNames[i]}");\n');
           } else {
             // Direct path for common assets (not in dark/light folders)
             pathCode.write(
@@ -134,17 +136,11 @@ class AssetPathThemedFileCreator implements AssetPathIFileCreator {
         pathCode.write('    }\n');
         pathCode.write('  }\n\n');
 
-        // Add themed helper methods
-        pathCode.write('  String _themedSvg(String fileName) {\n');
+        // Add themed helper method
+        pathCode.write('  String _themed(String folderRoot, String fileName) {\n');
         pathCode.write('    final isDark = ThemeManager().isDarkMode;\n');
         pathCode.write('    final folder = isDark ? \'dark\' : \'light\';\n');
-        pathCode.write('    return \'\$svgRoot/\$folder/\$fileName\';\n');
-        pathCode.write('  }\n\n');
-
-        pathCode.write('  String _themedPng(String fileName) {\n');
-        pathCode.write('    final isDark = ThemeManager().isDarkMode;\n');
-        pathCode.write('    final folder = isDark ? \'dark\' : \'light\';\n');
-        pathCode.write('    return \'\$imagesRoot/\$folder/\$fileName\';\n');
+        pathCode.write('    return \'\$folderRoot/\$folder/\$fileName\';\n');
         pathCode.write('  }\n');
 
         pathCode.write('}\n');
