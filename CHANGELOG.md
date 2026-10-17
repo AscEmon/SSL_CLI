@@ -549,3 +549,21 @@ k_assets generator (`ssl_cli generate k_assets.dart --t`):
 - **Fix:** themed assets now resolve from their own folder root (e.g.
   `icons/light/home.png` → `iconsRoot`) instead of always `imagesRoot`/`svgRoot`.
   `_themedSvg`/`_themedPng` are replaced by a single `_themed(folderRoot, fileName)` helper.
+
+## 4.0.10
+
+k_assets generator (`ssl_cli generate k_assets.dart` with and without `--t`):
+
+- **Fix:** assets inside nested folders (e.g. `images/onboarding/step1.png`,
+  `images/onboarding/light/hero.png`) are now included — previously only the
+  first folder level was scanned and everything deeper was silently dropped.
+- **Fix:** without `--t`, files inside `light`/`dark` folders are no longer
+  ignored; duplicate file names across folders get a folder-prefixed enum name
+  (e.g. `imagesLightAPng`) instead of being skipped.
+- **Fix:** file names with extra dots (`bg.v2.png`), `@` (`logo@2x.png`) or a
+  leading digit (`2fa.png`) now produce valid enum names and correct paths;
+  hidden files such as `.DS_Store` are skipped.
+- `_themed` helper and `theme_manager.dart` import are generated only when a
+  themed asset exists (no unused-element warning).
+- Both generators share a new recursive `AssetScanner`; enum values are sorted
+  by path, and `k_assets.dart` is flushed to disk before the command exits.

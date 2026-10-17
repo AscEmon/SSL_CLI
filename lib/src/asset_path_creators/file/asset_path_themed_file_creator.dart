@@ -2,361 +2,104 @@ import 'dart:io';
 import 'package:ssl_cli/utils/extension.dart';
 import '../../../utils/enum.dart';
 import '../asset_path_i_creators.dart';
-import 'package:path/path.dart' as path;
+import 'asset_scanner.dart';
 
 class AssetPathThemedFileCreator implements AssetPathIFileCreator {
   final AssetPathIDirectoryCreator directoryCreator;
   final String moduleName;
 
-  AssetPathThemedFileCreator(
-    this.directoryCreator,
-    this.moduleName,
-  );
+  AssetPathThemedFileCreator(this.directoryCreator, this.moduleName);
 
   @override
   Future<void> createNecessaryFiles() async {
     'creating theme-based necessary files...'.printWithColor();
 
-    final subDirectories = directoryCreator.assetsDir
-        .listSync(recursive: false, followLinks: false);
-    if (subDirectories.isNotEmpty) {
-      final enumNames = <String>[];
-      final assetNames = <String>[];
-      final extensionNames = <String>[];
-      final subfolderPaths = <String, String>{};
-      final hasThemeFolder = <String, bool>{};
-      final darkOnlyPaths = <String, String>{}; // Track files only in dark folder
+    final assets =
+        AssetScanner(directoryCreator.assetsDir, themeAware: true).scan();
 
-      final pathCode = StringBuffer('enum KAssetName {\n');
-
-      for (final subDirectory in subDirectories) {
-        if (subDirectory is Directory) {
-          final directoryName = path.basename(subDirectory.path);
-          if (!(directoryName.toLowerCase() == "fonts" ||
-              directoryName.toLowerCase() == "font")) {
-            // Check if this directory has dark/light subfolders
-            final hasThemed = _hasThemeFolders(subDirectory);
-
-            if (hasThemed) {
-              // Process themed assets (dark/light folders)
-              await _processThemedAssets(
-                subDirectory,
-                directoryName,
-                enumNames,
-                assetNames,
-                extensionNames,
-                pathCode,
-                subfolderPaths,
-                hasThemeFolder,
-                darkOnlyPaths,
-              );
-              // Also process common assets in parent folder
-              await _processCommonAssetsInParent(
-                subDirectory,
-                directoryName,
-                enumNames,
-                assetNames,
-                extensionNames,
-                pathCode,
-                subfolderPaths,
-                hasThemeFolder,
-              );
-            } else {
-              // Process common assets (no theme folders)
-              await _processCommonAssets(
-                subDirectory,
-                directoryName,
-                enumNames,
-                assetNames,
-                extensionNames,
-                pathCode,
-                subfolderPaths,
-                hasThemeFolder,
-              );
-            }
-          }
-        }
-      }
-
-      // if no asset found on any sub directories
-      if (pathCode.toString() == "enum KAssetName {\n") {
-        await _createFile(
-          directoryCreator.stylesSubDir.path,
-          'k_assets',
-          content: "",
-        );
-        'No Assets found on any Sub directories'.printWithColor(
-          status: PrintType.warning,
-        );
-      } else {
-        // Insert import at the beginning
-        final finalCode = StringBuffer();
-        finalCode.write("import '../../theme/theme_manager.dart';\n\n");
-        finalCode.write(pathCode.toString());
-        finalCode.write('}\n\n');
-        finalCode.write('extension AssetsExtension on KAssetName {\n');
-        pathCode.clear();
-        pathCode.write(finalCode.toString());
-        pathCode.write('  String get root => \'assets\';\n');
-
-        // Generate root getters for each subfolder. `images` and `svg` are
-        // always emitted so the getters stay stable even when those folders
-        // are empty, since app code may reference them directly.
-        final rootGetters = <String, String>{
-          'images': 'images',
-          'svg': 'svg',
-        };
-        for (final subfolderPath in subfolderPaths.values) {
-          rootGetters[subfolderPath.toLowerCase()] = subfolderPath;
-        }
-        rootGetters.forEach((varName, subfolderPath) {
-          pathCode.write(
-              '  String get ${varName}Root => \'\$root/$subfolderPath\';\n');
-        });
-
-        pathCode.write('  String get imagePath {\n');
-        pathCode.write('    switch (this) {\n');
-
-        for (int i = 0; i < enumNames.length; i++) {
-          pathCode.write('      case KAssetName.${enumNames[i]}:\n');
-          final subfolderPath = subfolderPaths[enumNames[i]];
-          final isThemed = hasThemeFolder[enumNames[i]] ?? false;
-
-          if (isThemed) {
-            // Use themed helper with the asset's own folder root
-            pathCode.write(
-                '        return _themed(${subfolderPath?.toLowerCase()}Root, "${assetNames[i]}.${extensionNames[i]}");\n');
-          } else {
-            // Direct path for common assets (not in dark/light folders)
-            pathCode.write(
-                '        return "\$${subfolderPath?.toLowerCase()}Root/${assetNames[i]}.${extensionNames[i]}";\n');
-          }
-        }
-
-        pathCode.write('    }\n');
-        pathCode.write('  }\n\n');
-
-        // Add themed helper method
-        pathCode.write('  String _themed(String folderRoot, String fileName) {\n');
-        pathCode.write('    final isDark = ThemeManager().isDarkMode;\n');
-        pathCode.write('    final folder = isDark ? \'dark\' : \'light\';\n');
-        pathCode.write('    return \'\$folderRoot/\$folder/\$fileName\';\n');
-        pathCode.write('  }\n');
-
-        pathCode.write('}\n');
-
-        await _createFile(
-          directoryCreator.stylesSubDir.path,
-          'k_assets',
-          content: pathCode.toString(),
-        );
-        "Successfully generated theme-based image paths.".printWithColor(
-          status: PrintType.success,
-        );
-      }
-    } else {
+    // if no asset found on any sub directories
+    if (assets.isEmpty) {
       await _createFile(
         directoryCreator.stylesSubDir.path,
         'k_assets',
         content: "",
       );
-      "No sub-Directories found inside assets".printWithColor(
+      'No Assets found on any Sub directories'.printWithColor(
         status: PrintType.warning,
       );
+      return;
     }
-  }
 
-  bool _hasThemeFolders(Directory directory) {
-    final subDirs = directory
-        .listSync(recursive: false, followLinks: false)
-        .whereType<Directory>();
-    final dirNames =
-        subDirs.map((d) => path.basename(d.path).toLowerCase()).toSet();
-    return dirNames.contains('dark') && dirNames.contains('light');
-  }
+    final pathCode = StringBuffer();
+    final hasThemedAssets = assets.any((asset) => asset.isThemed);
+    if (hasThemedAssets) {
+      pathCode.write("import '../../theme/theme_manager.dart';\n\n");
+    }
+    pathCode.write('enum KAssetName {\n');
+    for (final asset in assets) {
+      pathCode.write('  ${asset.enumName},\n');
+    }
+    pathCode.write('}\n\n');
 
-  Future<void> _processThemedAssets(
-    Directory subDirectory,
-    String directoryName,
-    List<String> enumNames,
-    List<String> assetNames,
-    List<String> extensionNames,
-    StringBuffer pathCode,
-    Map<String, String> subfolderPaths,
-    Map<String, bool> hasThemeFolder,
-    Map<String, String> darkOnlyPaths,
-  ) async {
-    final lightDir = Directory('${subDirectory.path}/light');
-    final darkDir = Directory('${subDirectory.path}/dark');
-    final processedFiles = <String>{};
-    
-    // Process light folder files
-    if (await lightDir.exists()) {
-      final files = lightDir.listSync(recursive: false, followLinks: false);
-      for (final file in files) {
-        if (file is File) {
-          final fileName = path.basename(file.path);
-          if (fileName.trim().isNotEmpty) {
-            processedFiles.add(fileName);
-            
-            List<String> parts = fileName.split('.');
-            String tempAssetName = "";
-            String tempExtensionName = "";
-            if (parts.length == 2) {
-              tempAssetName = parts[0];
-              tempExtensionName = parts[1];
-            }
+    pathCode.write('extension AssetsExtension on KAssetName {\n');
+    pathCode.write('  String get root => \'assets\';\n');
 
-            String assetName = "";
-            List<String> fileNameSplitList =
-                fileName.split(RegExp(r'[-_.]'));
-            for (int i = 0; i < fileNameSplitList.length; i++) {
-              assetName =
-                  "$assetName${i == 0 ? fileNameSplitList[i] : fileNameSplitList[i].convertToCamelCase()}";
-            }
+    // Generate root getters for each subfolder. `images` and `svg` are
+    // always emitted so the getters stay stable even when those folders
+    // are empty, since app code may reference them directly.
+    final rootGetters = <String, String>{'images': 'images', 'svg': 'svg'};
+    for (final asset in assets) {
+      rootGetters[_rootGetterName(asset.rootFolder)] = asset.rootFolder;
+    }
+    rootGetters.forEach((varName, folder) {
+      pathCode.write('  String get ${varName}Root => \'\$root/$folder\';\n');
+    });
 
-            if (!enumNames.contains(assetName)) {
-              enumNames.add(assetName);
-              assetNames.add(tempAssetName);
-              extensionNames.add(tempExtensionName);
-              pathCode.write('  $assetName,\n');
-              subfolderPaths[assetName] = directoryName;
-              // Mark as themed since it's in dark/light folder
-              hasThemeFolder[assetName] = true;
-            }
-          }
-        }
+    pathCode.write('  String get imagePath {\n');
+    pathCode.write('    switch (this) {\n');
+    for (final asset in assets) {
+      final folderRoot =
+          '\$${_rootGetterName(asset.rootFolder)}Root'
+          '${asset.subPath.isEmpty ? '' : '/${asset.subPath}'}';
+      pathCode.write('      case KAssetName.${asset.enumName}:\n');
+      if (asset.isThemed) {
+        // Use themed helper with the asset's own folder root
+        pathCode.write(
+          '        return _themed(${asset.subPath.isEmpty ? '${_rootGetterName(asset.rootFolder)}Root' : '"$folderRoot"'}, "${asset.fileName}");\n',
+        );
+      } else {
+        // Direct path for common assets (not in dark/light folders)
+        pathCode.write('        return "$folderRoot/${asset.fileName}";\n');
       }
     }
-    
-    // Process dark folder files that don't exist in light
-    if (await darkDir.exists()) {
-      final files = darkDir.listSync(recursive: false, followLinks: false);
-      for (final file in files) {
-        if (file is File) {
-          final fileName = path.basename(file.path);
-          if (fileName.trim().isNotEmpty && !processedFiles.contains(fileName)) {
-            List<String> parts = fileName.split('.');
-            String tempAssetName = "";
-            String tempExtensionName = "";
-            if (parts.length == 2) {
-              tempAssetName = parts[0];
-              tempExtensionName = parts[1];
-            }
+    pathCode.write('    }\n');
+    pathCode.write('  }\n');
 
-            String assetName = "";
-            List<String> fileNameSplitList =
-                fileName.split(RegExp(r'[-_.]'));
-            for (int i = 0; i < fileNameSplitList.length; i++) {
-              assetName =
-                  "$assetName${i == 0 ? fileNameSplitList[i] : fileNameSplitList[i].convertToCamelCase()}";
-            }
-
-            if (!enumNames.contains(assetName)) {
-              enumNames.add(assetName);
-              assetNames.add(tempAssetName);
-              extensionNames.add(tempExtensionName);
-              pathCode.write('  $assetName,\n');
-              subfolderPaths[assetName] = directoryName;
-              // Mark as themed since it's in dark/light folder
-              hasThemeFolder[assetName] = true;
-            }
-          }
-        }
-      }
+    // Add themed helper method only when a themed asset uses it
+    if (hasThemedAssets) {
+      pathCode.write('\n');
+      pathCode.write(
+        '  String _themed(String folderRoot, String fileName) {\n',
+      );
+      pathCode.write('    final isDark = ThemeManager().isDarkMode;\n');
+      pathCode.write('    final folder = isDark ? \'dark\' : \'light\';\n');
+      pathCode.write('    return \'\$folderRoot/\$folder/\$fileName\';\n');
+      pathCode.write('  }\n');
     }
+    pathCode.write('}\n');
+
+    await _createFile(
+      directoryCreator.stylesSubDir.path,
+      'k_assets',
+      content: pathCode.toString(),
+    );
+    "Successfully generated theme-based image paths (${assets.length} assets)."
+        .printWithColor(status: PrintType.success);
   }
 
-  Future<void> _processCommonAssetsInParent(
-    Directory subDirectory,
-    String directoryName,
-    List<String> enumNames,
-    List<String> assetNames,
-    List<String> extensionNames,
-    StringBuffer pathCode,
-    Map<String, String> subfolderPaths,
-    Map<String, bool> hasThemeFolder,
-  ) async {
-    // Process files directly in parent folder (not in dark/light subfolders)
-    final items = subDirectory.listSync(recursive: false, followLinks: false);
-    for (final item in items) {
-      if (item is File) {
-        final fileName = path.basename(item.path);
-        if (fileName.trim().isNotEmpty) {
-          List<String> parts = fileName.split('.');
-          String tempAssetName = "";
-          String tempExtensionName = "";
-          if (parts.length == 2) {
-            tempAssetName = parts[0];
-            tempExtensionName = parts[1];
-          }
-
-          String assetName = "";
-          List<String> fileNameSplitList =
-              fileName.split(RegExp(r'[-_.]'));
-          for (int i = 0; i < fileNameSplitList.length; i++) {
-            assetName =
-                "$assetName${i == 0 ? fileNameSplitList[i] : fileNameSplitList[i].convertToCamelCase()}";
-          }
-
-          if (!enumNames.contains(assetName)) {
-            enumNames.add(assetName);
-            assetNames.add(tempAssetName);
-            extensionNames.add(tempExtensionName);
-            pathCode.write('  $assetName,\n');
-            subfolderPaths[assetName] = directoryName;
-            hasThemeFolder[assetName] = false; // Common asset
-          }
-        }
-      }
-    }
-  }
-
-  Future<void> _processCommonAssets(
-    Directory subDirectory,
-    String directoryName,
-    List<String> enumNames,
-    List<String> assetNames,
-    List<String> extensionNames,
-    StringBuffer pathCode,
-    Map<String, String> subfolderPaths,
-    Map<String, bool> hasThemeFolder,
-  ) async {
-    final files = subDirectory.listSync(recursive: false, followLinks: false);
-    for (final file in files) {
-      if (file is File) {
-        final fileName = path.basename(file.path);
-        if (fileName.trim().isNotEmpty) {
-          List<String> parts = fileName.split('.');
-          String tempAssetName = "";
-          String tempExtensionName = "";
-          if (parts.length == 2) {
-            tempAssetName = parts[0];
-            tempExtensionName = parts[1];
-          }
-
-          String assetName = "";
-          List<String> fileNameSplitList =
-              fileName.split(RegExp(r'[-_.]')); // Split by '-' or '_'
-          for (int i = 0; i < fileNameSplitList.length; i++) {
-            assetName =
-                "$assetName${i == 0 ? fileNameSplitList[i] : fileNameSplitList[i].convertToCamelCase()}";
-          }
-
-          if (!enumNames.contains(assetName)) {
-            enumNames.add(assetName);
-            assetNames.add(tempAssetName);
-            extensionNames.add(tempExtensionName);
-            pathCode.write('  $assetName,\n');
-            subfolderPaths[assetName] = directoryName;
-            hasThemeFolder[assetName] = false;
-          } else {
-            'Naming with $fileName exists in multiple folders'
-                .printWithColor(status: PrintType.warning);
-          }
-        }
-      }
-    }
+  String _rootGetterName(String folder) {
+    final name = AssetScanner.toIdentifier([folder]);
+    return name[0].toLowerCase() + name.substring(1);
   }
 
   Future<void> _createFile(
@@ -388,14 +131,10 @@ class AssetPathThemedFileCreator implements AssetPathIFileCreator {
       }
 
       if (content != null) {
-        final writer = file.openWrite();
-        writer.write(content);
-        writer.close();
+        await file.writeAsString(content, flush: true);
       }
     } catch (e) {
-      e.toString().printWithColor(
-            status: PrintType.error,
-          );
+      e.toString().printWithColor(status: PrintType.error);
       stderr.write('creating $fileName.$fileType failed!');
       exit(2);
     }
