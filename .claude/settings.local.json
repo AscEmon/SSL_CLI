@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p /Users/sayed/Documents/flutter_project/SSL_CLI/lib/src/rn_clean_structure_creators/directory)",
+      "Bash(mkdir -p /Users/sayed/Documents/flutter_project/SSL_CLI/lib/src/rn_clean_structure_creators/file)",
+      "Bash(mkdir -p /Users/sayed/Documents/flutter_project/SSL_CLI/lib/src/rn_clean_module_creators/module_directory)",
+      "Bash(mkdir -p /Users/sayed/Documents/flutter_project/SSL_CLI/lib/src/rn_clean_module_creators/file)",
+      "Bash(dart pub *)",
+      "Bash(dart analyze *)",
+      "Bash(CLAUDE_CODE_TMPDIR=/tmp/cc dart analyze lib/)"
+    ]
+  }
+}

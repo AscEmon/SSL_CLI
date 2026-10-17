@@ -366,61 +366,71 @@
 - bug issue resolve
 - K_asset file generation command added
 
-
 ## 1.5.5
 
 - automatic route added with repo based module generation
 - pubspec edit and config all neccessary packages and other stuff
 
-
 ## 1.5.6
+
 - update changelog file
 
 ## 1.5.7
+
 - auto route generation issue resolve
 
-
 ## 2.0.0
+
 - flavor type added with dart define
 - setup flavor command added
 - telegram sent integrate for App distribution
 
 ## 2.0.1
+
 - bug fix
 
 ## 2.0.2
+
 - executable change for windows shell
 
 ## 2.0.3
+
 - command conflict issue resolve
 
 ## 3.0.0
+
 - Bloc pattern architecture create
-- Module create for bloc pattern 
+- Module create for bloc pattern
 
 ## 3.0.1
+
 - package version update
 - Network connection update
 
 ## 3.0.2
+
 - yaml edit issue resolve
 
 ## 3.0.3
+
 - flavor issue resolve
 
 ## 3.0.4
+
 - bloc reinitializer and dispose integrate
 - new widget key issue resolve
 - build gradle version name and number issue resolve
 
-
-
 ## 3.1.5
+
 - Automatic Doc generation integrate
+
 ## 3.1.6
-- override command added for  config.json
+
+- override command added for config.json
 
 ## 4.0.0
+
 - clean architecture integrate
 - Dependency injection integrate
 - default theme integrate
@@ -433,36 +443,35 @@
 - Riverpod and Bloc pattern module create
 - flavorType rename to mode
 
-
 ## 4.0.1
+
 - Riverpod notifier build method return type update to FutureOr
 
-
 ## 4.0.2
+
 - build_runner and build_runner_watch command added
 
-
 ## 4.0.3
+
 - Validation failure issue resolve
 - Exception handler utility added
 - Build runner and watch issue resolve
 
-
 ## 4.0.4
+
 - Clean architecture extension utilities refactor
-- GlobalImageLoader Icon issue resolve 
+- GlobalImageLoader Icon issue resolve
 
-
- 
 ## 4.0.5
+
 - Removed NetworkInfo checks from repository implementations to simplify data flow
 - Eliminated API request queuing mechanism from NetworkInfoImpl
 - Updated dependency injection to remove NetworkInfo from ApiClient and repositories
 - Changed example feature from "products" to "homes" throughout the codebase
 - themebased asset handle using cli
 
-
 ## 4.0.6
+
 - **`.claude` folder integration** — generates a complete `.claude/` directory on project creation:
   - `.claude/AI_CODING_RULES.md` — strict coding rules, patterns, and conventions for AI agents
   - `.claude/docs/SECURITY.md` — comprehensive secret management guide (envied + setup script + CI/CD)
@@ -482,8 +491,8 @@
 - Updated `.gitignore` template to cover all secret file patterns (`.env`, `key.properties`, `*.jks`, `env.g.dart`, `google-services.json`, etc.)
 - `pubspec_edit.dart` updated to add `flutter_secure_storage`, `envied`, and `envied_generator` packages automatically
 
-
 ## 4.0.7
+
 - **State management selection for Clean Architecture** — `ssl_cli create` (pattern 4) and `ssl_cli module` (pattern 3) now prompt for state management: `1` for Riverpod, `2` for Bloc. All generation below is gated on this choice; the Riverpod path is unchanged in behavior.
 - **`flutter_bloc` scaffolding** (when Bloc is selected):
   - Sealed `Event` / `State` classes + a `Bloc` wired to the use case via `sl<GetHomes>()` and `result.fold(...) → emit(...)`
@@ -504,3 +513,28 @@
   - Applied to both `ssl_cli create` and `ssl_cli module`
 - **Fix:** file writer now creates missing parent directories recursively (`File.create(recursive: true)`) in both the project and module creators — previously a new output folder (e.g. `core/bloc`) caused generation to abort with `exit(2)` before the `.claude`/docs step
 - **Fix:** the generated Bloc in `ssl_cli module` is no longer empty — it now registers `on<Load…>` / `on<Refresh…>` handlers and calls the use case
+
+## 4.0.8
+
+safe error messages, l10n by default, debug-only logging
+Clean architecture template:
+
+- Error module: every AppException maps to its own Failure; unknown and
+  parse errors never expose raw text (DataParsing/Unexpected failures).
+- ApiClient keeps a server message only when usable (String, non-blank,
+  <= 200 chars); 5xx and HTML/string bodies are never shown. Adds 403
+  ForbiddenException and 2xx body-code handling (401/405/422/429/5xx).
+- New server_message.dart and failure_message.dart: localized en/bn
+  fallback per failure type; ErrorHandlerMixin and ErrorDialog use it.
+- error\_\* keys added to intl_en/intl_bn arb.
+- Localization enabled by default (extension loc getter, main.dart
+  delegates) and `flutter gen-l10n` runs during create.
+- Stop generating .claude/, AGENTS.md and CLAUDE.md.
+
+All templates:
+
+- Log extension only logs in debug builds (kDebugMode).
+
+k_assets generator:
+
+- Clean architecture detected only when lib/core and lib/features exist.
