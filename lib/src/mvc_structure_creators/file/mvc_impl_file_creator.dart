@@ -1527,6 +1527,7 @@ class DashboardScreen extends StatelessWidget {
 
     await _createFile(directoryCreator.utilsDir.path, 'extension',
         content: """import 'dart:developer' as darttools show log;
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart'
@@ -1681,7 +1682,11 @@ extension WidgetExtention on Widget {
 }
 
 extension Log on Object {
-  void log() => darttools.log(toString());
+  void log() {
+    if (kDebugMode) {
+      darttools.log(toString());
+    }
+  }
 }
 
 // It will formate the date which will show in our application.

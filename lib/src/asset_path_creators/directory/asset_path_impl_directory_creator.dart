@@ -7,6 +7,7 @@ class AssetPathImplDirectoryCreator implements AssetPathIDirectoryCreator {
   final _utils = 'utils';
   final _styles = 'styles';
   final _core = 'core';
+  final _features = 'features';
   final _images = 'images';
   final _svg = 'svg';
   final _fonts = 'fonts';
@@ -50,9 +51,12 @@ class AssetPathImplDirectoryCreator implements AssetPathIDirectoryCreator {
       if (await libDir.exists()) {
         basePath = libDir.absolute.path;
         
-        // Check if it's a clean architecture project
+        // Clean Architecture projects (ssl_cli pattern 4) have both lib/core
+        // and lib/features; every other pattern keeps utils directly in lib/.
         final coreDir = Directory('$basePath/$_core');
-        isCleanArchitecture = await coreDir.exists();
+        final featuresDir = Directory('$basePath/$_features');
+        isCleanArchitecture =
+            await coreDir.exists() && await featuresDir.exists();
         
         if (isCleanArchitecture) {
           print('Detected Clean Architecture project structure');
